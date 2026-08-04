@@ -1,6 +1,5 @@
 /* FAQ accordion — split out of the former theme-sections-*.css bundles. */
 @layer sections {
-  /* ---- 09 faq ------------------------------------------------------------ */
   .faq{ max-width:720px; margin-top:var(--s-7); }
   .faq details{ border-bottom:1px solid var(--jute); }
   .faq summary{

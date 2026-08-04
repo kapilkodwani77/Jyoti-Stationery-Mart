@@ -1,8 +1,9 @@
 /* 404 + search states — split out of the former theme-sections-*.css bundles. */
 @layer sections {
-  /* ---- 404 / search --------------------------------------------------------- */
   .state-page{ min-height:60svh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:var(--s-9) var(--s-5); }
   .search-form{ display:flex; gap:var(--s-3); max-width:480px; margin:var(--s-6) auto 0; }
-  .search-input{ flex:1; height:48px; border:1px solid var(--jute); border-radius:var(--r-md); padding-inline:var(--s-4); background:var(--chalk); }
+  /* 16px minimum, otherwise iOS zooms the viewport when the field is focused. */
+  .search-input{ flex:1; height:52px; border:1px solid var(--jute); border-radius:var(--r-md); padding-inline:var(--s-4); background:var(--chalk); font-size:16px; }
+  .search-input:focus-visible{ border-color:var(--indigo); }
   .search-results{ margin-top:var(--s-8); }
 }
