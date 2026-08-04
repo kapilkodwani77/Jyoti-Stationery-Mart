@@ -1,0 +1,214 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "settings": {}
+    },
+    "benefits": {
+      "type": "pdp-benefits",
+      "settings": {
+        "surface": "chalk"
+      },
+      "blocks": {
+        "b1": {
+          "type": "benefit",
+          "settings": {
+            "icon": "expand",
+            "title": "Extra Large 6.5 x 5 ft",
+            "text": "Spacious safe zone for crawling, tummy time and first steps."
+          }
+        },
+        "b2": {
+          "type": "benefit",
+          "settings": {
+            "icon": "cushion",
+            "title": "6 mm thick XPE foam",
+            "text": "Soft landing for everyday falls on hard tiles and marble floors."
+          }
+        },
+        "b3": {
+          "type": "benefit",
+          "settings": {
+            "icon": "shield",
+            "title": "Baby-safe, non-toxic",
+            "text": "BPA free, phthalate free, no harmful chemicals, odour free."
+          }
+        },
+        "b4": {
+          "type": "benefit",
+          "settings": {
+            "icon": "droplet",
+            "title": "Waterproof, wipes clean",
+            "text": "No machine washing. A damp cloth handles milk spills and messes."
+          }
+        },
+        "b5": {
+          "type": "benefit",
+          "settings": {
+            "icon": "fold",
+            "title": "Folds in three panels",
+            "text": "Stands behind a sofa or door. Frees your floor when playtime ends."
+          }
+        },
+        "b6": {
+          "type": "benefit",
+          "settings": {
+            "icon": "heart",
+            "title": "Suitable 0 to 3 years",
+            "text": "From newborn tummy time to confident walking."
+          }
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2",
+        "b3",
+        "b4",
+        "b5",
+        "b6"
+      ]
+    },
+    "fold": {
+      "type": "fold-sequence",
+      "settings": {
+        "surface": "jute",
+        "heading": "Folds in seconds. Fits behind a door.",
+        "body": "One motion. No rolling, no straps, no wrestling it back into a bag it never fitted in."
+      }
+    },
+    "roomtest": {
+      "type": "room-test",
+      "settings": {
+        "surface": "chalk",
+        "heading": "Down for the day. Gone by dinner.",
+        "body": "A play mat is the largest thing a baby adds to a room you also live in. This one is quiet on both sides, and it is behind the door in seconds."
+      }
+    },
+    "specs": {
+      "type": "pdp-specs",
+      "settings": {
+        "surface": "jute"
+      },
+      "blocks": {
+        "s1": {
+          "type": "accordion",
+          "settings": {
+            "title": "Specifications",
+            "content_type": "specs",
+            "row_1_key": "Size (unfolded)",
+            "row_1_val": "6.5 x 5 ft (198 x 152 cm)",
+            "row_2_key": "Thickness",
+            "row_2_val": "6 mm",
+            "row_3_key": "Material",
+            "row_3_val": "XPE foam",
+            "row_4_key": "Weight",
+            "row_4_val": "Approximately 2 kg",
+            "row_5_key": "Folds to",
+            "row_5_val": "3 panels, approx. 66 x 50 cm",
+            "row_6_key": "Suitable for",
+            "row_6_val": "0 to 3 years",
+            "row_7_key": "Surface",
+            "row_7_val": "Double-sided"
+          }
+        },
+        "s2": {
+          "type": "accordion",
+          "settings": {
+            "title": "Care instructions",
+            "content_type": "text",
+            "text_content": "<p>Wipe clean with a damp cloth. For deeper cleaning, use mild soap and water. Do not machine wash or tumble dry. Keep away from direct sunlight when not in use.</p>"
+          }
+        },
+        "s3": {
+          "type": "accordion",
+          "settings": {
+            "title": "Shipping and returns",
+            "content_type": "text",
+            "text_content": "<p>Free shipping across India. Cash on delivery available on every order.</p><p>30-day returns from the date of delivery. Contact us to arrange a pickup. Refunds processed within 5-7 business days.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    "faq": {
+      "type": "faq-accordion",
+      "settings": {
+        "heading": "Questions about this product.",
+        "surface": "chalk"
+      },
+      "blocks": {
+        "q1": {
+          "type": "faq",
+          "settings": {
+            "question": "Is it waterproof?",
+            "answer": "<p>Yes. The surface is sealed XPE foam. Spills sit on top and wipe away in seconds.</p>"
+          }
+        },
+        "q2": {
+          "type": "faq",
+          "settings": {
+            "question": "Is it safe for newborns?",
+            "answer": "<p>Yes. Suitable from birth. BPA free, phthalate free, no harmful chemicals. The surface has no loose parts.</p>"
+          }
+        },
+        "q3": {
+          "type": "faq",
+          "settings": {
+            "question": "Will it slide on tiles?",
+            "answer": "<p>The mat has a textured underside designed to grip smooth flooring including polished tiles and marble.</p>"
+          }
+        },
+        "q4": {
+          "type": "faq",
+          "settings": {
+            "question": "Does it fold?",
+            "answer": "<p>Yes. Three fold panels. No rolling, no straps. It stands upright behind a sofa or door.</p>"
+          }
+        },
+        "q5": {
+          "type": "faq",
+          "settings": {
+            "question": "What if I do not like it?",
+            "answer": "<p>30-day returns from delivery. Use it, put the baby on it, and if it is not right for you, contact us and we will arrange a pickup.</p>"
+          }
+        },
+        "q6": {
+          "type": "faq",
+          "settings": {
+            "question": "Do you deliver across India?",
+            "answer": "<p>Yes. We ship across India with cash on delivery available on every order. Free shipping, no minimum.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "q1",
+        "q2",
+        "q3",
+        "q4",
+        "q5",
+        "q6"
+      ]
+    }
+  },
+  "order": [
+    "main",
+    "benefits",
+    "fold",
+    "roomtest",
+    "specs",
+    "faq"
+  ]
+}

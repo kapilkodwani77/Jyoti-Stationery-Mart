@@ -1,0 +1,15 @@
+/* FAQ accordion — split out of the former theme-sections-*.css bundles. */
+@layer sections {
+  /* ---- 09 faq ------------------------------------------------------------ */
+  .faq{ max-width:720px; margin-top:var(--s-7); }
+  .faq details{ border-bottom:1px solid var(--jute); }
+  .faq summary{
+    list-style:none; min-height:56px; display:flex; align-items:center; gap:var(--s-4);
+    font-weight:500; font-size:17px; padding-block:var(--s-3); cursor:pointer;
+  }
+  .faq summary::-webkit-details-marker{ display:none; }
+  .faq summary .chev{ margin-left:auto; flex:0 0 auto; transition:transform var(--dur-fast) var(--ease); }
+  .faq details[open] summary .chev{ transform:rotate(90deg); }
+  .faq .ans{ padding:0 0 var(--s-5); font-size:16px; color:var(--ink-2); max-width:60ch; animation:faqIn 200ms var(--ease); }
+  @keyframes faqIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
+}

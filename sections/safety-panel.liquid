@@ -1,0 +1,53 @@
+{%- liquid
+  assign ctx_product = product | default: settings.featured_product
+  assign report = ctx_product.metafields.custom.test_report
+-%}
+{{ 'section-safety.css' | asset_url | stylesheet_tag }}
+<section class="sec {% render 'surface-class', s: section.settings.surface %}">
+  <div class="wrap">
+    <h2 class="h2">{{ section.settings.heading }}</h2>
+
+    <div class="safe-grid">
+      <div class="macro" data-reveal>
+        {% render 'responsive-image', img: section.settings.image, alt: 'Close-up of the mat edge showing the foam thickness', widths: '600,900,1200', sizes: '(min-width:900px) 55vw, 100vw' %}
+      </div>
+
+      <div data-reveal>
+        <dl class="safe-dl">
+          <div>
+            <dt>{% render 'spec', product: ctx_product, key: 'thickness_mm', suffix: ' mm' %} of {% render 'spec', product: ctx_product, key: 'material' %}</dt>
+            <dd>Dense enough that a knee landing on it does not find the floor underneath.</dd>
+          </div>
+          <div>
+            <dt>Sealed edges</dt>
+            <dd>No exposed foam at the perimeter, so there is nothing to pick at and nothing to pull off.</dd>
+          </div>
+          <div>
+            <dt>Wipes clean</dt>
+            <dd>A damp cloth handles most of it. {% render 'spec', product: ctx_product, key: 'cleaning_note', label: 'cleaning note' %}</dd>
+          </div>
+        </dl>
+
+        <p class="body-copy" style="margin-top:var(--s-5);font-size:15px;opacity:.82;max-width:42ch">
+          Made without phthalates, BPA or formaldehyde. {% render 'spec', product: ctx_product, key: 'test_report_status', label: 'certification status' %}
+        </p>
+
+        {%- if report.value -%}
+          <a class="report-link" href="{{ report.value.url }}" target="_blank" rel="noopener">Read the test report — PDF →</a>
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Safety",
+  "settings": [
+    { "type": "select", "id": "surface", "label": "Surface", "default": "chalk", "options": [{ "value": "chalk", "label": "Chalk" }, { "value": "jute", "label": "Jute wash" }] },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "What it is made of." },
+    { "type": "image_picker", "id": "image", "label": "Foam close-up image" }
+  ],
+  "presets": [{ "name": "Safety" }]
+}
+{% endschema %}

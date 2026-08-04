@@ -1,0 +1,143 @@
+[
+  {
+    "name": "theme_info",
+    "theme_name": "MamaJoy",
+    "theme_version": "2.0.0",
+    "theme_author": "MamaJoy",
+    "theme_documentation_url": "https://mamajoy.in",
+    "theme_support_url": "https://mamajoy.in"
+  },
+  {
+    "name": "Brand",
+    "settings": [
+      {
+        "type": "header",
+        "content": "Brand identity"
+      },
+      {
+        "type": "text",
+        "id": "brand_name",
+        "label": "Brand name",
+        "default": "MamaJoy",
+        "info": "Used in the header, mobile menu and footer. Independent of the Shopify store name."
+      },
+      {
+        "type": "text",
+        "id": "brand_tagline",
+        "label": "Brand tagline",
+        "default": "Thoughtful essentials for early years"
+      }
+    ]
+  },
+  {
+    "name": "Commerce defaults",
+    "settings": [
+      {
+        "type": "header",
+        "content": "Used when a section has no override"
+      },
+      {
+        "type": "collection",
+        "id": "featured_collection",
+        "label": "Featured collection",
+        "info": "Primary shopping destination for brand-level CTAs."
+      },
+      {
+        "type": "product",
+        "id": "featured_product",
+        "label": "Featured product",
+        "info": "Used by the sticky buy bar on non-product pages. Optional."
+      },
+      {
+        "type": "collection",
+        "id": "new_arrivals_collection",
+        "label": "New arrivals collection"
+      }
+    ]
+  },
+  {
+    "name": "Store contact",
+    "settings": [
+      {
+        "type": "header",
+        "content": "Used in footer and support links"
+      },
+      {
+        "type": "text",
+        "id": "phone",
+        "label": "Support phone",
+        "info": "Include country code"
+      },
+      {
+        "type": "text",
+        "id": "phone_hours",
+        "label": "Support hours",
+        "default": "Mon-Sat, 10am-7pm"
+      },
+      {
+        "type": "text",
+        "id": "email",
+        "label": "Support email"
+      },
+      {
+        "type": "text",
+        "id": "whatsapp",
+        "label": "WhatsApp number (digits only)"
+      },
+      {
+        "type": "richtext",
+        "id": "address",
+        "label": "Registered address"
+      },
+      {
+        "type": "text",
+        "id": "gstin",
+        "label": "GSTIN"
+      },
+      {
+        "type": "text",
+        "id": "legal_entity",
+        "label": "Legal entity name"
+      }
+    ]
+  },
+  {
+    "name": "Social",
+    "settings": [
+      {
+        "type": "text",
+        "id": "social_instagram",
+        "label": "Instagram URL"
+      },
+      {
+        "type": "text",
+        "id": "social_facebook",
+        "label": "Facebook URL"
+      }
+    ]
+  },
+  {
+    "name": "Checkout",
+    "settings": [
+      {
+        "type": "header",
+        "content": "Set in Shopify admin, not theme code"
+      },
+      {
+        "type": "paragraph",
+        "content": "Payments, COD and tracking are configured in Settings."
+      },
+      {
+        "type": "text",
+        "id": "prepaid_discount_code",
+        "label": "Prepaid discount code"
+      },
+      {
+        "type": "text",
+        "id": "prepaid_discount_label",
+        "label": "Prepaid discount label",
+        "default": "Save 5% paying online"
+      }
+    ]
+  }
+]

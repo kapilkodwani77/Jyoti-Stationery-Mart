@@ -1,0 +1,51 @@
+<footer class="ftr">
+  <div class="wrap">
+    <div class="ftr-top">
+      <div class="ftr-brand">
+        <span class="ftr-mark">{{ settings.brand_name | default: shop.name }}</span>
+        <p class="ftr-tag">{{ settings.brand_tagline | default: 'Thoughtfully designed for modern families.' }}</p>
+      </div>
+
+      <div class="ftr-grid">
+        <div>
+          <h3>Support</h3>
+          <a href="/pages/support">Shipping</a>
+          <a href="/pages/support#returns">Returns</a>
+          <a href="/pages/support#contact">Contact</a>
+        </div>
+        <div>
+          <h3>Company</h3>
+          <a href="/pages/about">About</a>
+          <a href="{{ routes.all_products_collection_url }}">Shop all</a>
+          {%- if settings.social_instagram != blank -%}
+            <a href="{{ settings.social_instagram }}" target="_blank" rel="noopener">Instagram</a>
+          {%- endif -%}
+        </div>
+        <div>
+          <h3>Legal</h3>
+          <a href="{{ shop.policies.privacy_policy.url | default: '/policies/privacy-policy' }}">Privacy</a>
+          <a href="{{ shop.policies.terms_of_service.url | default: '/policies/terms-of-service' }}">Terms</a>
+          <a href="{{ shop.policies.refund_policy.url | default: '/policies/refund-policy' }}">Refunds</a>
+        </div>
+      </div>
+    </div>
+
+    {%- if settings.phone != blank or settings.email != blank -%}
+      <address style="margin-top:32px">
+        {%- if settings.phone != blank -%}
+          <a href="tel:{{ settings.phone | replace: ' ', '' }}" style="display:inline;padding:0">{{ settings.phone }}</a>
+          {%- if settings.phone_hours != blank %} &middot; {{ settings.phone_hours }}{% endif -%}
+        {%- endif -%}
+      </address>
+    {%- endif -%}
+
+    <p class="ftr-base">
+      <span>&copy; {{ 'now' | date: '%Y' }} {{ settings.legal_entity | default: shop.name }}</span>
+      {%- if settings.gstin != blank -%}<span>GSTIN {{ settings.gstin }}</span>{%- endif -%}
+    </p>
+  </div>
+</footer>
+
+{% schema %}
+{ "name": "Footer" }
+{% endschema %}

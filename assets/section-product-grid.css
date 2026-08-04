@@ -1,0 +1,28 @@
+/* Collection page chrome only — heading, pagination, empty state.
+   The cards themselves are component-product-card.css, shared with the
+   homepage showcase. Everything that used to duplicate .ps-* here has been
+   removed rather than kept in sync by hand. */
+
+.pg-head{ max-width:640px; margin-bottom:var(--s-6); }
+.pg-head .lede{ margin-top:var(--s-4); }
+.pg-count{ margin-top:var(--s-2); }
+@media(min-width:700px){ .pg-head{ margin-bottom:var(--s-7); } }
+
+.pg-pagination{
+  display:flex; align-items:center; justify-content:center; gap:var(--s-5);
+  margin-top:var(--s-7); padding-top:var(--s-5); border-top:1px solid var(--jute);
+}
+.pg-pagination a{
+  text-decoration:none; color:var(--indigo);
+  border-bottom:1px solid var(--indigo); padding-bottom:2px;
+  display:inline-flex; align-items:center; min-height:var(--tap);
+}
+
+.pg-empty{ max-width:520px; margin-inline:auto; text-align:center; padding:var(--s-7) var(--s-4); }
+.pg-empty-badge{
+  display:inline-block; background:var(--jute); border-radius:100px;
+  font-size:11px; font-weight:500; letter-spacing:.08em; text-transform:uppercase;
+  padding:var(--s-2) var(--s-4); margin-bottom:var(--s-4);
+}
+.pg-empty .body-copy{ margin-top:var(--s-2); margin-inline:auto; color:var(--ink-2); }
+.pg-empty-actions{ margin-top:var(--s-5); }

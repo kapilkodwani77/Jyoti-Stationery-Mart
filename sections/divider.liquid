@@ -1,0 +1,11 @@
+{%- comment -%}
+  Minimal visual pause between sections. Reuses the existing .crease
+  primitive from theme.css - no new CSS required.
+{%- endcomment -%}
+<div class="wrap" style="padding-block:var(--s-6)">
+  <div class="crease"></div>
+</div>
+
+{% schema %}
+{ "name": "Divider", "presets": [{ "name": "Divider" }] }
+{% endschema %}

@@ -1,0 +1,24 @@
+/* The fold — scroll-scrub sequence — split out of the former theme-sections-*.css bundles. */
+@layer sections {
+  /* ---- 04 fold -------------------------------------------------------- */
+  .fold-track{ position:relative; }
+  .fold-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .fold-fig{ position:relative; margin:0; }
+  .fold-img{ position:relative; aspect-ratio:4/3; border-radius:8px; overflow:hidden; background:var(--jute); }
+  .fold-cap{ margin-top:12px; font-size:12px; font-weight:500; letter-spacing:.08em; text-transform:uppercase; }
+  .fold-cap b{ color:var(--indigo); font-weight:500; margin-right:8px; }
+  .fold-rail{ display:none; }
+
+  .fold-track.is-scrub{ height:320vh; }
+  .is-scrub .fold-pin{ position:sticky; top:0; height:100svh; display:flex; flex-direction:column; justify-content:center; }
+  .is-scrub .fold-grid{ display:block; position:relative; aspect-ratio:4/3; max-height:62svh; margin-inline:auto; width:100%; }
+  @media(min-width:900px){ .is-scrub .fold-grid{ max-width:900px; border-radius:12px; overflow:hidden; } }
+  .is-scrub .fold-fig{ position:absolute; inset:0; opacity:0; transition:opacity 260ms var(--ease); }
+  .is-scrub .fold-fig.on{ opacity:1; }
+  .is-scrub .fold-img{ aspect-ratio:auto; height:100%; border-radius:0; }
+  .is-scrub .fold-cap{ position:absolute; left:16px; bottom:16px; color:var(--chalk); text-shadow:0 1px 10px rgba(20,22,26,.6); margin:0; }
+  .is-scrub .fold-cap b{ color:var(--chalk); opacity:.75; }
+  .is-scrub .fold-rail{ display:flex; gap:8px; justify-content:center; margin-top:24px; }
+  .fold-rail span{ width:24px; height:2px; background:var(--jute); transition:background var(--dur-fast) var(--ease); }
+  .fold-rail span.on{ background:var(--indigo); }
+}

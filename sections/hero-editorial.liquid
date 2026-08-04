@@ -1,0 +1,54 @@
+{%- comment -%}
+  CTA priority, in order:
+    1. section.settings.cta_url (explicit editor override, optional)
+    2. settings.featured_collection.url
+    3. routes.all_products_collection_url (never fails - core Shopify route)
+{%- endcomment -%}
+{%- liquid
+  assign dest = section.settings.cta_url
+  if dest == blank and settings.featured_collection != blank
+    assign dest = settings.featured_collection.url
+  endif
+  if dest == blank
+    assign dest = routes.all_products_collection_url
+  endif
+-%}
+{{ 'section-hero.css' | asset_url | stylesheet_tag }}
+<section class="hero" data-buybar-anchor>
+  <div class="plate">
+    {% render 'responsive-image',
+       img: section.settings.image,
+       alt: section.settings.image_alt,
+       widths: '750,1200,1800',
+       sizes: '100vw',
+       loading: 'eager',
+       priority: true %}
+  </div>
+  <div class="scrim{% if section.settings.image %} scrim--side{% endif %}" aria-hidden="true"></div>
+
+  <div class="hero-copy">
+    <h1 class="h1 hero-anim hero-d1">{{ section.settings.heading }}</h1>
+    <p class="hero-sub hero-anim hero-d2">{{ section.settings.subheading }}</p>
+    <a class="cta hero-anim hero-d3" href="{{ dest }}">{{ section.settings.cta_label }}</a>
+    {%- if section.settings.trust_line != blank -%}
+      <p class="micro hero-anim hero-d3" style="color:var(--chalk);opacity:.78;margin-top:var(--s-4)">{{ section.settings.trust_line }}</p>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Hero",
+  "settings": [
+    { "type": "image_picker", "id": "image", "label": "Hero image" },
+    { "type": "text", "id": "image_alt", "label": "Alt text", "default": "A baby playing on a soft mat in a sunlit living room" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Safe beginnings." },
+    { "type": "textarea", "id": "subheading", "label": "Subheading", "default": "Thoughtfully designed baby essentials, built for modern families." },
+    { "type": "header", "content": "Call to action" },
+    { "type": "url", "id": "cta_url", "label": "Button link (optional override)", "info": "Leave blank to use the theme Featured collection automatically. This never 404s." },
+    { "type": "text", "id": "cta_label", "label": "Button label", "default": "Shop MamaJoy" },
+    { "type": "text", "id": "trust_line", "label": "Trust line", "default": "Cash on delivery \u00b7 Free shipping \u00b7 30-day returns" }
+  ],
+  "presets": [{ "name": "Hero" }]
+}
+{% endschema %}

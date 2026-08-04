@@ -1,0 +1,55 @@
+<div class="sec">
+  <div class="wrap">
+    <h1 class="h2">Support</h1>
+
+    <div id="shipping" style="margin-top:var(--s-8)">
+      <h2 class="h3">Shipping</h2>
+      {%- if shop.policies.shipping_policy.body != blank -%}
+        <div class="body-copy" style="margin-top:var(--s-4)">{{ shop.policies.shipping_policy.body }}</div>
+      {%- else -%}
+        <p class="body-copy" style="margin-top:var(--s-4)">
+          <span class="bc-todo" data-todo="shipping_policy">Add shipping policy text in Settings → Policies → Shipping policy</span>
+        </p>
+      {%- endif -%}
+    </div>
+
+    <div class="crease" style="margin-top:var(--s-8)"></div>
+
+    <div id="returns" style="margin-top:var(--s-8)">
+      <h2 class="h3">Returns</h2>
+      {%- if shop.policies.refund_policy.body != blank -%}
+        <div class="body-copy" style="margin-top:var(--s-4)">{{ shop.policies.refund_policy.body }}</div>
+      {%- else -%}
+        <p class="body-copy" style="margin-top:var(--s-4)">
+          <span class="bc-todo" data-todo="refund_policy">Add refund policy text in Settings → Policies → Refund policy</span>
+        </p>
+      {%- endif -%}
+    </div>
+
+    <div class="crease" style="margin-top:var(--s-8)"></div>
+
+    <div id="contact" style="margin-top:var(--s-8);max-width:520px">
+      <h2 class="h3">Contact</h2>
+      <p class="body-copy" style="margin-top:var(--s-4)">
+        {%- if settings.phone != blank -%}<a class="tok" href="tel:{{ settings.phone | replace: ' ', '' }}">{{ settings.phone }}</a> · {{ settings.phone_hours }}<br>{%- endif -%}
+        {%- if settings.whatsapp != blank -%}<a class="tok" href="https://wa.me/{{ settings.whatsapp }}" target="_blank" rel="noopener">WhatsApp</a><br>{%- endif -%}
+      </p>
+
+      {%- form 'contact' -%}
+        {%- if form.posted_successfully? -%}
+          <p class="body-copy" style="margin-top:var(--s-5)">Thanks — we'll get back to you shortly.</p>
+        {%- endif -%}
+        <div style="margin-top:var(--s-6);display:grid;gap:var(--s-4)">
+          <input type="text" name="contact[name]" placeholder="Name" required class="search-input" style="width:100%">
+          <input type="email" name="contact[email]" placeholder="Email" required class="search-input" style="width:100%">
+          <textarea name="contact[body]" placeholder="Message" required rows="4" class="search-input" style="width:100%;height:auto;padding-block:var(--s-3)"></textarea>
+          <button type="submit" class="cta cta-block">Send</button>
+        </div>
+      {%- endform -%}
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{ "name": "Support" }
+{% endschema %}

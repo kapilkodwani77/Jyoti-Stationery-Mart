@@ -1,0 +1,31 @@
+/* PDP gallery + two-column grid — split out of the former theme-sections-*.css bundles. */
+@layer sections {
+  /* ---- gallery (PDP) --------------------------------------------------------- */
+  .gallery{ display:grid; gap:12px; }
+  .gallery-main{
+    display:flex; overflow-x:auto; scroll-snap-type:x mandatory; border-radius:12px;
+    background:var(--jute); scrollbar-width:none;
+  }
+  .gallery-main::-webkit-scrollbar{ display:none; }
+  /* 4:5 portrait - matches the approved product photography and the
+     homepage/collection card image ratio exactly. */
+  .gallery-slide{ flex:0 0 100%; aspect-ratio:4/5; scroll-snap-align:start; position:relative; }
+  .gallery-thumbs{ display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; padding-bottom:2px; }
+  .gallery-thumbs::-webkit-scrollbar{ display:none; }
+  .gallery-thumb{
+    flex:0 0 auto; width:64px; aspect-ratio:1; border-radius:6px; overflow:hidden;
+    border:1.5px solid var(--jute); scroll-snap-align:start; opacity:.72;
+    transition:opacity var(--dur-fast), border-color var(--dur-fast); padding:0; background:var(--jute);
+  }
+  .gallery-thumb.is-active{ opacity:1; border-color:var(--indigo); }
+  .gallery-thumb:hover{ opacity:.9; }
+  .gallery-dots{ display:flex; gap:8px; justify-content:center; margin-top:12px; }
+  .gallery-dots span{ width:6px; height:6px; border-radius:50%; background:var(--jute); }
+  .gallery-dots span.is-active{ background:var(--indigo); }
+  @media(max-width:899px){ .gallery-dots{ display:flex; } .gallery-thumbs{ display:none; } }
+  @media(min-width:900px){ .gallery-dots{ display:none; } .gallery-thumbs{ display:flex; } }
+  @media(min-width:900px){
+    .pdp-grid{ display:grid; grid-template-columns:1.15fr .85fr; gap:64px; align-items:start; }
+    .buybox{ position:sticky; top:calc(var(--header-h) + 24px); }
+  }
+}

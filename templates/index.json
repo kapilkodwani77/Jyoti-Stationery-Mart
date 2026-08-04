@@ -1,0 +1,235 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "hero": {
+      "type": "hero-editorial",
+      "settings": {
+        "image": "shopify://shop_images/IMG_0143.png",
+        "image_alt": "A baby playing on a soft MamaJoy mat in a sunlit living room",
+        "heading": "Safe beginnings.",
+        "subheading": "Thoughtfully designed baby essentials for modern families.",
+        "cta_url": "",
+        "cta_label": "Shop MamaJoy",
+        "trust_line": "Cash on delivery · Free shipping · 30-day returns"
+      }
+    },
+    "emotional": {
+      "type": "brand-imagery",
+      "settings": {
+        "layout": "side",
+        "compact": true,
+        "surface": "chalk",
+        "image": "shopify://shop_images/IMG_0144.png",
+        "image_alt": "A mother holding her baby close, warm natural light",
+        "eyebrow": "",
+        "heading": "Every milestone begins somewhere.",
+        "body": "MamaJoy helps parents create safe spaces where little moments become lifelong memories."
+      }
+    },
+    "products": {
+      "type": "product-showcase",
+      "settings": {
+        "compact": true,
+        "surface": "jute",
+        "heading": "Our products",
+        "collection": "",
+        "max_products": 8
+      }
+    },
+    "divider": {
+      "type": "divider",
+      "settings": {}
+    },
+    "trusted": {
+      "type": "trust-bar",
+      "blocks": {
+        "t1": {
+          "type": "highlight",
+          "settings": {
+            "icon": "leaf",
+            "label": "Baby-safe materials",
+            "description": "Non-toxic, BPA and phthalate free."
+          }
+        },
+        "t2": {
+          "type": "highlight",
+          "settings": {
+            "icon": "truck",
+            "label": "Free shipping",
+            "description": "Across India, on every order."
+          }
+        },
+        "t3": {
+          "type": "highlight",
+          "settings": {
+            "icon": "wallet",
+            "label": "Cash on delivery",
+            "description": "Pay when it reaches your door."
+          }
+        },
+        "t4": {
+          "type": "highlight",
+          "settings": {
+            "icon": "return",
+            "label": "30-day returns",
+            "description": "Use it properly before deciding."
+          }
+        }
+      },
+      "block_order": [
+        "t1",
+        "t2",
+        "t3",
+        "t4"
+      ],
+      "settings": {
+        "surface": "chalk",
+        "heading": "Trusted by parents across India."
+      }
+    },
+    "why": {
+      "type": "features-grid",
+      "blocks": {
+        "w1": {
+          "type": "card",
+          "settings": {
+            "icon": "shield",
+            "title": "Safe by default",
+            "description": "Materials checked before anything ships."
+          }
+        },
+        "w2": {
+          "type": "card",
+          "settings": {
+            "icon": "home",
+            "title": "Made for real homes",
+            "description": "Designed for the room you live in."
+          }
+        },
+        "w3": {
+          "type": "card",
+          "settings": {
+            "icon": "droplet",
+            "title": "Easy to clean",
+            "description": "Spills wipe away in seconds."
+          }
+        },
+        "w4": {
+          "type": "card",
+          "settings": {
+            "icon": "cushion",
+            "title": "Built to last",
+            "description": "Survives toddlers without looking like it."
+          }
+        },
+        "w5": {
+          "type": "card",
+          "settings": {
+            "icon": "moon",
+            "title": "Everyday parenting",
+            "description": "Made for real routines, not ideal ones."
+          }
+        },
+        "w6": {
+          "type": "card",
+          "settings": {
+            "icon": "leaf",
+            "title": "Honest materials",
+            "description": "We tell you exactly what things are made of."
+          }
+        }
+      },
+      "block_order": [
+        "w1",
+        "w2",
+        "w3",
+        "w4",
+        "w5",
+        "w6"
+      ],
+      "settings": {
+        "compact": true,
+        "surface": "jute",
+        "heading": "Why choose MamaJoy.",
+        "subheading": ""
+      }
+    },
+    "faq": {
+      "type": "faq-accordion",
+      "blocks": {
+        "q1": {
+          "type": "faq",
+          "settings": {
+            "question": "Do you deliver to my area?",
+            "answer": "<p>We ship across India. Free shipping on every order, no minimum. Most orders arrive within 2 to 5 business days.</p>"
+          }
+        },
+        "q2": {
+          "type": "faq",
+          "settings": {
+            "question": "Can I pay cash on delivery?",
+            "answer": "<p>Yes. Cash on delivery is available on every order. If you prefer to pay online, there is a small discount for doing so.</p>"
+          }
+        },
+        "q3": {
+          "type": "faq",
+          "settings": {
+            "question": "What if it is not right for us?",
+            "answer": "<p>30-day returns from the date of delivery. Use it properly first. If it is not right, contact us and we will arrange a pickup.</p>"
+          }
+        },
+        "q4": {
+          "type": "faq",
+          "settings": {
+            "question": "Are your products safe for newborns?",
+            "answer": "<p>Everything we make is chosen with the youngest users in mind. Product pages list exact materials and age suitability so you can decide for yourself.</p>"
+          }
+        },
+        "q5": {
+          "type": "faq",
+          "settings": {
+            "question": "Who are you?",
+            "answer": "<p>A small team in Raipur, India. You can reach us directly by phone or WhatsApp during working hours.</p>"
+          }
+        },
+        "q6": {
+          "type": "faq",
+          "settings": {
+            "question": "What is coming next?",
+            "answer": "<p>We are working through learning toys, nursery and feeding. Categories marked coming soon are genuinely in development, not placeholders.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "q1",
+        "q2",
+        "q3",
+        "q4",
+        "q5",
+        "q6"
+      ],
+      "settings": {
+        "compact": true,
+        "surface": "chalk",
+        "heading": "Questions we actually get."
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "emotional",
+    "products",
+    "divider",
+    "trusted",
+    "why",
+    "faq"
+  ]
+}

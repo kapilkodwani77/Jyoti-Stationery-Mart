@@ -1,0 +1,90 @@
+{%- comment -%}
+  Fallback chain, in order, so this section can never render empty:
+    1. section.settings.product (explicit editor choice)
+    2. settings.featured_collection.products.first
+    3. collections.all.products.first (first available product, store-wide)
+{%- endcomment -%}
+{%- liquid
+  assign p = section.settings.product
+  if p == blank and settings.featured_collection != blank
+    assign p = settings.featured_collection.products.first
+  endif
+  if p == blank
+    assign p = collections.all.products.first
+  endif
+  assign v = p.selected_or_first_available_variant
+  assign img = section.settings.image | default: p.featured_image
+-%}
+{{ 'section-featured-product.css' | asset_url | stylesheet_tag }}
+{%- if p != blank -%}
+<section class="sec {% render 'surface-class', s: section.settings.surface %}">
+  <div class="wrap">
+    <div class="fp-grid">
+      <a class="fp-media" href="{{ p.url }}" tabindex="-1" aria-hidden="true" data-reveal>
+        {% render 'responsive-image', img: img, alt: p.title, widths: '600,900,1200', sizes: '(min-width:900px) 50vw, 100vw' %}
+        {%- if p.images.size > 1 -%}
+          <span class="fp-count">{{ p.images.size }} photos</span>
+        {%- endif -%}
+      </a>
+
+      <div class="fp-copy" data-reveal>
+        {%- if section.settings.eyebrow != blank -%}
+          <p class="eyebrow">{{ section.settings.eyebrow }}</p>
+        {%- elsif p.type != blank -%}
+          <p class="eyebrow">{{ p.type }}</p>
+        {%- endif -%}
+
+        <h2 class="h2">{{ section.settings.heading | default: p.title }}</h2>
+
+        {%- assign short_desc = section.settings.body | default: p.description | strip_html | truncatewords: 28 -%}
+        {%- if short_desc != blank -%}
+          <p class="lede body-copy">{{ short_desc }}</p>
+        {%- endif -%}
+
+        <div class="fp-price-row">
+          {% render 'price', variant: v %}
+          {%- if v.compare_at_price and v.compare_at_price > v.price -%}
+            <span class="price-compare">{{ v.compare_at_price | money }}</span>
+          {%- endif -%}
+          {%- unless v.available -%}<span class="fp-sold">Sold out</span>{%- endunless -%}
+        </div>
+
+        {%- if p.options.size > 0 and p.options.first != 'Title' -%}
+          <div class="fp-options">
+            {%- for opt in p.options_with_values -%}
+              <span class="fp-opt-label">{{ opt.name }}:</span>
+              <span class="fp-opt-values">{{ opt.values | join: ', ' }}</span>
+            {%- endfor -%}
+          </div>
+        {%- endif -%}
+
+        <div class="fp-actions">
+          <a class="cta" href="{{ p.url }}">{{ section.settings.cta_label | default: 'Shop now' }}</a>
+        </div>
+
+        <ul class="fp-trust" aria-label="Trust signals">
+          <li>{% render 'icon', name: 'check', size: 14 %} Cash on delivery</li>
+          <li>{% render 'icon', name: 'check', size: 14 %} Free shipping</li>
+          <li>{% render 'icon', name: 'check', size: 14 %} 30-day returns</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Featured product",
+  "settings": [
+    { "type": "select", "id": "surface", "label": "Surface", "default": "jute", "options": [{ "value": "chalk", "label": "Chalk" }, { "value": "jute", "label": "Jute wash" }] },
+    { "type": "product", "id": "product", "label": "Product", "info": "Falls back to the first product in the theme Featured collection, then the first available product store-wide. Never renders empty." },
+    { "type": "image_picker", "id": "image", "label": "Override image", "info": "Falls back to the product featured image." },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "info": "Falls back to the product type." },
+    { "type": "text", "id": "heading", "label": "Heading", "info": "Leave blank to use the product title." },
+    { "type": "textarea", "id": "body", "label": "Short description", "info": "Leave blank to use the first ~28 words of the product description." },
+    { "type": "text", "id": "cta_label", "label": "Button label", "default": "Shop now" }
+  ],
+  "presets": [{ "name": "Featured product" }]
+}
+{% endschema %}

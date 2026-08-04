@@ -1,0 +1,11 @@
+{{ 'section-state.css' | asset_url | stylesheet_tag }}
+<div class="state-page">
+  <p class="eyebrow">404</p>
+  <h1 class="h2">That page has folded away.</h1>
+  <p class="lede body-copy" style="margin-inline:auto">The link may be old, or the page may have moved. Here's the mat.</p>
+  <a class="cta" style="margin-top:var(--s-7)" href="{{ settings.featured_product.url | default: routes.root_url }}">Shop the mat</a>
+</div>
+
+{% schema %}
+{ "name": "404" }
+{% endschema %}

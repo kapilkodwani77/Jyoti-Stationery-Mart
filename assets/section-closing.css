@@ -1,0 +1,8 @@
+/* Closing CTA — split out of the former theme-sections-*.css bundles. */
+@layer sections {
+  /* ---- 10 closing --------------------------------------------------------- */
+  .close{ position:relative; overflow:hidden; height:min(70svh,620px); min-height:440px; display:flex; align-items:center; justify-content:center; text-align:center; }
+  .close-copy{ position:relative; z-index:10; color:var(--chalk); padding-inline:var(--s-5); max-width:640px; }
+  .close-line{ font-family:var(--font-display); font-weight:300; font-size:clamp(2rem,5.5vw,3.5rem); line-height:1.05; letter-spacing:-.02em; margin-bottom:var(--s-6); text-wrap:balance; }
+  .close .cta:focus-visible{ outline-color:var(--chalk); }
+}

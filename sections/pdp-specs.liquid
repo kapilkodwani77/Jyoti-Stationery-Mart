@@ -1,0 +1,68 @@
+{{ 'section-pdp-specs.css' | asset_url | stylesheet_tag }}
+<section class="sec sec--tight {% render 'surface-class', s: section.settings.surface %}">
+  <div class="wrap">
+    <div class="pdp-accordions">
+      {%- for block in section.blocks -%}
+        <details class="pdp-accord" {{ block.shopify_attributes }}>
+          <summary class="pdp-accord-head">
+            <span>{{ block.settings.title }}</span>
+            <svg class="accord-chev" width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 4.5l6 5.5-6 5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </summary>
+          <div class="pdp-accord-body">
+            {%- case block.settings.content_type -%}
+              {%- when 'specs' -%}
+                <table class="accord-specs">
+                  <tbody>
+                    {%- for i in (1..8) -%}
+                      {%- liquid
+                        assign key_id = 'row_' | append: i | append: '_key'
+                        assign val_id = 'row_' | append: i | append: '_val'
+                        assign k = block.settings[key_id]
+                        assign v = block.settings[val_id]
+                      -%}
+                      {%- if k != blank and v != blank -%}
+                        <tr><th scope="row">{{ k }}</th><td>{{ v }}</td></tr>
+                      {%- endif -%}
+                    {%- endfor -%}
+                  </tbody>
+                </table>
+              {%- when 'text' -%}
+                <div class="accord-text">{{ block.settings.text_content }}</div>
+            {%- endcase -%}
+          </div>
+        </details>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Product accordions",
+  "settings": [
+    { "type": "select", "id": "surface", "label": "Surface", "default": "jute", "options": [{ "value": "chalk", "label": "Chalk" }, { "value": "jute", "label": "Jute wash" }] }
+  ],
+  "blocks": [
+    {
+      "type": "accordion",
+      "name": "Accordion",
+      "settings": [
+        { "type": "text", "id": "title", "label": "Title", "default": "Details" },
+        { "type": "select", "id": "content_type", "label": "Content type", "default": "text", "options": [{ "value": "text", "label": "Rich text" }, { "value": "specs", "label": "Spec table" }] },
+        { "type": "richtext", "id": "text_content", "label": "Text content" },
+        { "type": "header", "content": "Spec table rows" },
+        { "type": "text", "id": "row_1_key", "label": "Row 1 label" }, { "type": "text", "id": "row_1_val", "label": "Row 1 value" },
+        { "type": "text", "id": "row_2_key", "label": "Row 2 label" }, { "type": "text", "id": "row_2_val", "label": "Row 2 value" },
+        { "type": "text", "id": "row_3_key", "label": "Row 3 label" }, { "type": "text", "id": "row_3_val", "label": "Row 3 value" },
+        { "type": "text", "id": "row_4_key", "label": "Row 4 label" }, { "type": "text", "id": "row_4_val", "label": "Row 4 value" },
+        { "type": "text", "id": "row_5_key", "label": "Row 5 label" }, { "type": "text", "id": "row_5_val", "label": "Row 5 value" },
+        { "type": "text", "id": "row_6_key", "label": "Row 6 label" }, { "type": "text", "id": "row_6_val", "label": "Row 6 value" },
+        { "type": "text", "id": "row_7_key", "label": "Row 7 label" }, { "type": "text", "id": "row_7_val", "label": "Row 7 value" },
+        { "type": "text", "id": "row_8_key", "label": "Row 8 label" }, { "type": "text", "id": "row_8_val", "label": "Row 8 value" }
+      ]
+    }
+  ],
+  "max_blocks": 5,
+  "presets": [{ "name": "Product accordions" }]
+}
+{% endschema %}

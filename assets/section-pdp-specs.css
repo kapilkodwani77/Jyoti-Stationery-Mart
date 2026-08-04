@@ -1,0 +1,14 @@
+/* PDP accordions — Section 5b */
+.pdp-accordions{ max-width:680px; }
+.pdp-accord{ border-bottom:1px solid var(--jute); }
+.pdp-accord-head{ list-style:none; min-height:52px; display:flex; align-items:center; justify-content:space-between; gap:var(--s-4); font-weight:500; font-size:16px; padding-block:var(--s-3); cursor:pointer; }
+.pdp-accord-head::-webkit-details-marker{ display:none; }
+.accord-chev{ flex:0 0 auto; transition:transform var(--dur-fast) var(--ease); }
+.pdp-accord[open] .accord-chev{ transform:rotate(90deg); }
+.pdp-accord-body{ padding-bottom:var(--s-5); animation:faqIn 200ms var(--ease); }
+.accord-specs{ border-collapse:collapse; width:100%; font-size:15px; }
+.accord-specs th,.accord-specs td{ text-align:left; padding:var(--s-3) 0; border-bottom:1px solid var(--jute); vertical-align:top; }
+.accord-specs th{ width:40%; font-weight:400; color:var(--ink-2); padding-right:var(--s-4); }
+.accord-text{ font-size:15px; line-height:1.65; color:var(--ink-2); }
+.accord-text p{ margin:0 0 var(--s-3); }
+.accord-text p:last-child{ margin-bottom:0; }

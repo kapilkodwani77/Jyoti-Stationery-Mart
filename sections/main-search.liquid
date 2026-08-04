@@ -1,0 +1,50 @@
+{{ 'section-state.css' | asset_url | stylesheet_tag }}
+{{ 'component-product-card.css' | asset_url | stylesheet_tag }}
+<div class="sec">
+  <div class="wrap">
+    <h1 class="h2">Search</h1>
+
+    <form action="{{ routes.search_url }}" method="get" role="search" class="search-form">
+      <input class="search-input" type="search" name="q" value="{{ search.terms | escape }}" placeholder="Search" aria-label="Search">
+      <button type="submit" class="cta">{% render 'icon', name: 'chevron' %}<span class="visually-hidden">Search</span></button>
+    </form>
+
+    <div class="search-results">
+      {%- if search.performed -%}
+        {%- if search.results_count > 0 -%}
+          <p class="micro">{{ search.results_count }} result{% if search.results_count != 1 %}s{% endif %}</p>
+          {%- comment -%}
+            Results previously borrowed the reviews grid's classes (.rev-card,
+            .rev-photo, .rev-quote), which meant search depended on a stylesheet
+            owned by an unrelated section and rendered products as if they were
+            testimonials. They are products, so they use the product card.
+          {%- endcomment -%}
+          <div class="pc-grid" style="margin-top:var(--s-6)">
+            {%- for item in search.results -%}
+              {%- if item.object_type == 'product' -%}
+                {% render 'product-card',
+                   product: item,
+                   quick_add: false,
+                   sizes: '(min-width:1100px) 25vw, (min-width:700px) 30vw, 45vw' %}
+              {%- else -%}
+                <article class="pc">
+                  <div class="pc-body">
+                    <h3 class="pc-title">
+                      <a class="pc-link" href="{{ item.url }}"><span class="pc-title-text">{{ item.title }}</span></a>
+                    </h3>
+                  </div>
+                </article>
+              {%- endif -%}
+            {%- endfor -%}
+          </div>
+        {%- else -%}
+          <p class="body-copy" style="margin-top:var(--s-6)">Nothing matched "{{ search.terms }}". Try <a class="tok" href="{{ settings.featured_product.url | default: routes.root_url }}">the mat</a> or <a class="tok" href="/pages/support">support</a>.</p>
+        {%- endif -%}
+      {%- endif -%}
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{ "name": "Search" }
+{% endschema %}

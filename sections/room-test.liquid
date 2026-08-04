@@ -1,0 +1,41 @@
+{%- liquid
+  assign ctx_product = product | default: settings.featured_product
+-%}
+{{ 'section-room-test.css' | asset_url | stylesheet_tag }}
+<section class="sec {% render 'surface-class', s: section.settings.surface %}">
+  <div class="wrap">
+    <h2 class="h2">{{ section.settings.heading }}</h2>
+    <p class="lede body-copy">{{ section.settings.body }}</p>
+
+    <div class="rt" data-room-test data-reveal>
+      <div class="rt-a">
+        {% render 'responsive-image', img: section.settings.image_with, alt: 'Living room with the play mat down', widths: '900,1200,1600', sizes: '(min-width:900px) 1100px, 100vw' %}
+      </div>
+      <div class="rt-b">
+        {% render 'responsive-image', img: section.settings.image_away, alt: 'The same room with the mat folded away', widths: '900,1200,1600', sizes: '(min-width:900px) 1100px, 100vw' %}
+      </div>
+      <div class="rt-line" aria-hidden="true"></div>
+      <div class="rt-knob" aria-hidden="true">{% render 'icon', name: 'drag' %}</div>
+      <input class="rt-range" data-rt-range type="range" min="0" max="100" value="50" step="1"
+             aria-label="Reveal the room without the mat" aria-valuetext="50% with the mat">
+      <span class="rt-lab l">With the mat</span>
+      <span class="rt-lab r">Put away</span>
+    </div>
+    <p class="micro" style="margin-top:var(--s-3)">Drag to compare</p>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "The room test",
+  "settings": [
+    { "type": "select", "id": "surface", "label": "Surface", "default": "jute", "options": [{ "value": "chalk", "label": "Chalk" }, { "value": "jute", "label": "Jute wash" }] },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Down for the day. Gone by dinner." },
+    { "type": "textarea", "id": "body", "label": "Body", "default": "A play mat is the largest thing a baby adds to a room you also live in. This one is quiet on both sides, and it is behind the door in seconds." },
+    { "type": "header", "content": "Frames — identical camera position" },
+    { "type": "image_picker", "id": "image_with", "label": "Room, mat down" },
+    { "type": "image_picker", "id": "image_away", "label": "Room, mat away" }
+  ],
+  "presets": [{ "name": "The room test" }]
+}
+{% endschema %}

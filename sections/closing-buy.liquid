@@ -1,0 +1,39 @@
+{%- liquid
+  assign dest = section.settings.cta_url
+  if dest == blank and settings.featured_collection != blank
+    assign dest = settings.featured_collection.url
+  endif
+  if dest == blank
+    assign dest = routes.all_products_collection_url
+  endif
+-%}
+{{ 'section-closing.css' | asset_url | stylesheet_tag }}
+<section class="close" data-buybar-hide>
+  <div class="plate">
+    {% render 'responsive-image', img: section.settings.image, alt: section.settings.image_alt, widths: '900,1400,1800', sizes: '100vw', loading: 'lazy' %}
+  </div>
+  <div class="scrim" style="background:rgba(20,22,26,.5)" aria-hidden="true"></div>
+
+  <div class="close-copy">
+    <p class="close-line">{{ section.settings.heading }}</p>
+    <a class="cta" href="{{ dest }}">{{ section.settings.cta_label }}</a>
+    {%- if section.settings.trust_line != blank -%}
+      <p class="micro" style="color:var(--chalk);opacity:.78;margin-top:var(--s-4)">{{ section.settings.trust_line }}</p>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Closing CTA",
+  "settings": [
+    { "type": "image_picker", "id": "image", "label": "Background image" },
+    { "type": "text", "id": "image_alt", "label": "Alt text", "default": "A calm living room at the end of the day" },
+    { "type": "text", "id": "heading", "label": "Line", "default": "Built for the years that move fastest." },
+    { "type": "url", "id": "cta_url", "label": "Button link (optional override)", "info": "Leave blank to use the theme Featured collection automatically." },
+    { "type": "text", "id": "cta_label", "label": "Button label", "default": "Shop MamaJoy" },
+    { "type": "text", "id": "trust_line", "label": "Trust line", "default": "Cash on delivery \u00b7 Free shipping \u00b7 30-day returns" }
+  ],
+  "presets": [{ "name": "Closing CTA" }]
+}
+{% endschema %}

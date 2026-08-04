@@ -1,0 +1,61 @@
+{{ 'component-product-card.css' | asset_url | stylesheet_tag }}
+{{ 'section-product-grid.css' | asset_url | stylesheet_tag }}
+<section class="sec">
+  <div class="wrap">
+    <header class="pg-head">
+      <h1 class="h2">{{ collection.title | default: 'Shop' }}</h1>
+      {%- if collection.description != blank -%}
+        <div class="lede body-copy">{{ collection.description }}</div>
+      {%- endif -%}
+      {%- if collection.products_count > 0 -%}
+        <p class="micro pg-count">{{ collection.products_count }} {% if collection.products_count == 1 %}product{% else %}products{% endif %}</p>
+      {%- endif -%}
+    </header>
+
+    {%- if collection.products.size > 0 -%}
+      {%- paginate collection.products by 24 -%}
+        <div class="pc-grid">
+          {%- for p in collection.products -%}
+            {%- comment -%}
+              The first two cards are the mobile above-the-fold row, so their
+              images load eagerly — they are the LCP candidate on this template.
+              Everything below stays lazy. No [data-reveal] here either: 24
+              staggered reveals on a paginated grid reads as stutter, not craft.
+            {%- endcomment -%}
+            {%- liquid
+              assign card_loading = 'lazy'
+              if forloop.index <= 2
+                assign card_loading = 'eager'
+              endif
+            -%}
+            {% render 'product-card',
+               product: p,
+               show_type: true,
+               sizes: '(min-width:1100px) 25vw, (min-width:700px) 30vw, 45vw',
+               loading: card_loading %}
+          {%- endfor -%}
+        </div>
+        {%- if paginate.pages > 1 -%}
+          <nav class="pg-pagination" aria-label="Pagination">
+            {%- if paginate.previous -%}<a href="{{ paginate.previous.url }}">Previous</a>{%- endif -%}
+            <span class="micro">Page {{ paginate.current_page }} of {{ paginate.pages }}</span>
+            {%- if paginate.next -%}<a href="{{ paginate.next.url }}">Next</a>{%- endif -%}
+          </nav>
+        {%- endif -%}
+      {%- endpaginate -%}
+    {%- else -%}
+      <div class="pg-empty">
+        <p class="pg-empty-badge">Coming soon</p>
+        <h2 class="h3">We are still working on this one.</h2>
+        <p class="body-copy">This collection is part of what we are building next. In the meantime, here is what is ready today.</p>
+        <div class="pg-empty-actions">
+          <a class="cta" href="{{ routes.all_products_collection_url }}">Shop what is available</a>
+        </div>
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Collection" }
+{% endschema %}

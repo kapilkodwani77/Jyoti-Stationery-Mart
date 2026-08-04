@@ -1,0 +1,36 @@
+{%- comment -%}
+  Mobile sticky buy bar. Appears once the main buy section scrolls out of
+  view, fixed at the bottom with safe-area inset respect for iPhone.
+  Hidden on desktop (desktop uses the in-page sticky buybox instead).
+
+  On PDP: performs a real Add to Cart via the same [data-buybox-form] handler
+  already in theme.js - no new JS. On non-PDP pages: links to the product.
+{%- endcomment -%}
+{%- liquid
+  assign p = product | default: settings.featured_product
+  assign on_pdp = false
+  if template.name == 'product'
+    assign on_pdp = true
+  endif
+  assign v = p.selected_or_first_available_variant
+-%}
+{%- if p -%}
+<div class="buybar" data-buybar role="region" aria-label="Quick purchase">
+  <span class="buybar-price">{% render 'price', variant: v %}</span>
+  {%- if on_pdp -%}
+    <form data-buybox-form style="flex:1;display:flex;margin:0">
+      <input type="hidden" name="id" value="{{ v.id }}">
+      <input type="hidden" name="quantity" value="1">
+      <button type="submit" class="buybar-cta" data-add-to-cart {% unless v.available %}disabled{% endunless %}>
+        {%- if v.available -%}Add to Cart{%- else -%}Sold out{%- endif -%}
+      </button>
+    </form>
+  {%- else -%}
+    <a class="buybar-cta" href="{{ p.url }}" style="text-decoration:none">View product</a>
+  {%- endif -%}
+</div>
+{%- endif -%}
+
+{% schema %}
+{ "name": "Sticky buy bar" }
+{% endschema %}

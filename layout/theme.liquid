@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="{{ request.locale.iso_code }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  {% render 'meta-tags' %}
+
+  <link rel="preload" as="font" type="font/woff2" href="{{ 'gambetta-light.woff2' | asset_url }}" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="{{ 'switzer-regular.woff2' | asset_url }}" crossorigin>
+  <style>
+    @font-face{ font-family:'Gambetta'; font-weight:300; font-style:normal; font-display:swap;
+      src:url('{{ "gambetta-light.woff2" | asset_url }}') format('woff2'); }
+    @font-face{ font-family:'Gambetta'; font-weight:400; font-style:normal; font-display:swap;
+      src:url('{{ "gambetta-regular.woff2" | asset_url }}') format('woff2'); }
+    @font-face{ font-family:'Switzer'; font-weight:400; font-style:normal; font-display:swap;
+      src:url('{{ "switzer-regular.woff2" | asset_url }}') format('woff2'); }
+    @font-face{ font-family:'Switzer'; font-weight:500; font-style:normal; font-display:swap;
+      src:url('{{ "switzer-medium.woff2" | asset_url }}') format('woff2'); }
+    @font-face{ font-family:'Switzer'; font-weight:600; font-style:normal; font-display:swap;
+      src:url('{{ "switzer-semibold.woff2" | asset_url }}') format('woff2'); }
+  </style>
+
+  {%- comment -%}
+    theme.css is the only global stylesheet: tokens, reset, base, layout
+    primitives and the handful of components shared across templates (buttons,
+    price, quantity stepper, photography plates, reduced-motion).
+
+    Everything else is loaded by the section that uses it. This replaced five
+    theme-sections-*.css files that were linked here unconditionally — they
+    were one @layer block sliced across five files, so they had to load in
+    order on every page, shipping hero, fold-sequence, safety-panel and
+    fit-comparator CSS to /cart, /search and every content page.
+  {%- endcomment -%}
+  <link rel="stylesheet" href="{{ 'theme.css' | asset_url }}">
+  <link rel="icon" href="{{ 'favicon.png' | asset_url }}" type="image/png">
+
+  {{ content_for_header }}
+</head>
+<body class="template-{{ template.name }}">
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  {% sections 'header-group' %}
+
+  <main id="main">
+    {{ content_for_layout }}
+  </main>
+
+  {% sections 'footer-group' %}
+
+  {% section 'sticky-buy-bar' %}
+  {% section 'cart-drawer' %}
+
+  <script>
+    window.themeRoutes = {
+      cartAdd: {{ routes.cart_add_url | json }},
+      cartChange: {{ routes.cart_change_url | json }},
+      cart: {{ routes.cart_url | append: '.js' | json }},
+      root: {{ routes.root_url | json }}
+    };
+  </script>
+  <script src="{{ 'theme.js' | asset_url }}" defer></script>
+</body>
+</html>

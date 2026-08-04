@@ -1,0 +1,48 @@
+{%- comment -%}
+  Usage:
+  {% render 'responsive-image',
+     img: section.settings.image,
+     alt: 'Description',
+     widths: '400,600,900,1200,1800',
+     sizes: '100vw',
+     loading: 'lazy',        <!-- 'lazy' | 'eager' -->
+     priority: false,        <!-- true sets fetchpriority=high -->
+     fit: 'cover',           <!-- 'cover' (fill, may crop) | 'contain' (whole image, may letterbox) -->
+     class: 'my-class' %}    <!-- optional. class is nil on every call site that omits it -->
+
+  Pair with a wrapper that sets aspect-ratio + position:relative.
+  fit defaults to 'cover'. Pass 'contain' when the whole subject must stay
+  visible regardless of source aspect ratio.
+{%- endcomment -%}
+{%- liquid
+  assign w = widths | default: '400,600,900,1200,1800'
+  assign sz = sizes | default: '100vw'
+  assign ld = loading | default: 'lazy'
+  assign fit_mode = fit | default: 'cover'
+  if fit_mode == 'contain'
+    assign fit_class = 'img-contain'
+  else
+    assign fit_class = 'img-cover'
+  endif
+  
+  
+  assign base_class = class | default: ''
+  assign final_class = base_class | append: ' ' | append: fit_class | strip
+-%}
+{%- if img != blank -%}
+  {{ img
+     | image_url: width: 1800
+     | image_tag:
+         widths: w,
+         sizes: sz,
+         loading: ld,
+         fetchpriority: priority,
+         decoding: 'async',
+         alt: alt,
+         class: final_class
+  }}
+{%- else -%}
+  <div class="img-missing {{ class }}" role="img" aria-label="{{ alt }}">
+    <span>{{ alt | default: 'Image pending' }}</span>
+  </div>
+{%- endif -%}

@@ -1,0 +1,26 @@
+/* Buy box — PDP and the standalone buy module.
+   Extracted from the former theme-sections-1..5.css, which were a single
+   @layer sections block sliced across five files: individually invalid CSS,
+   strictly order-dependent, and loaded on every page regardless of use.
+   The price display and quantity stepper are NOT here — they are shared with
+   the cart drawer, cart page and sticky bar, so they live in theme.css. */
+@layer sections {
+  .buybox-title{
+    font-family:var(--font-display); font-weight:300;
+    font-size:clamp(1.625rem,4vw,2.25rem); line-height:1.12;
+    margin-top:var(--s-2); letter-spacing:-.015em;
+  }
+  .buybox-price-row{ display:flex; align-items:baseline; gap:var(--s-3); margin-top:var(--s-4); flex-wrap:wrap; }
+  .buybox .price{ font-size:22px; font-weight:500; letter-spacing:.01em; }
+  .buybox-tax-note{ font-size:12px; color:var(--ink-2); }
+  .buybox-price-row + p{ font-size:12px; color:var(--ink-2); margin-top:var(--s-1); }
+
+  .qty-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--s-4); margin-top:var(--s-5); }
+  .qty-label{ font-size:14px; font-weight:500; }
+
+  .buybox form{ margin-top:var(--s-5); }
+  .btn-spinner{ display:none !important; }
+  .buybox-error{ margin-top:var(--s-3); font-size:14px; color:var(--danger); }
+  .buybox-trust{ margin-top:var(--s-5); font-size:13px; color:var(--ink-2); }
+  .buybox--compact .buybox-trust{ margin-top:var(--s-4); }
+}

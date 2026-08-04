@@ -1,0 +1,97 @@
+{%- comment -%}
+  The single product card for the whole theme. Replaces the three parallel
+  implementations that used to live in product-showcase (.ps-card),
+  main-collection (.pg-card) and their two duplicate stylesheets.
+
+  Usage:
+    {% render 'product-card', product: p, sizes: '(min-width:900px) 25vw, 45vw' %}
+
+  Params:
+    product      (required)
+    sizes        image sizes attribute for the grid this card sits in
+    show_type    show the product.type eyebrow above the title (default false)
+    quick_add    render the add-to-cart form (default true)
+    reveal       attach [data-reveal] scroll animation (default false — leave
+                 off for long paginated grids, where 24 staggered reveals read
+                 as jank rather than polish)
+    loading      'lazy' (default) | 'eager' for the first row above the fold
+
+  Link semantics: the <a> wraps the actual title text and is stretched over the
+  whole card with ::after. The old pattern used an empty <a aria-label> layered
+  on top, which gave screen readers a link whose name duplicated the visible
+  title sitting next to it. The quick-add form is raised above the ::after so
+  the button stays independently clickable.
+{%- endcomment -%}
+
+{%- liquid
+  assign v = product.selected_or_first_available_variant
+  assign card_sizes = sizes | default: '(min-width:900px) 25vw, 45vw'
+  assign img_loading = loading | default: 'lazy'
+  assign do_quick_add = true
+  if quick_add == false
+    assign do_quick_add = false
+  endif
+  assign on_sale = false
+  if v.compare_at_price > v.price
+    assign on_sale = true
+  endif
+-%}
+
+<article class="pc" {% if reveal %}data-reveal{% endif %}>
+  <div class="pc-media">
+    {% render 'responsive-image',
+       img: product.featured_image,
+       alt: product.featured_image.alt | default: product.title,
+       widths: '400,600,900',
+       sizes: card_sizes,
+       loading: img_loading,
+       fit: 'cover' %}
+
+    {%- if v.available == false -%}
+      <span class="pc-badge pc-badge--out">Sold out</span>
+    {%- elsif on_sale -%}
+      {%- assign pct = v.compare_at_price | minus: v.price | times: 100 | divided_by: v.compare_at_price -%}
+      <span class="pc-badge pc-badge--sale">{{ pct }}% off</span>
+    {%- endif -%}
+  </div>
+
+  <div class="pc-body">
+    {%- if show_type and product.type != blank -%}
+      <p class="pc-type">{{ product.type }}</p>
+    {%- endif -%}
+
+    {%- comment -%}
+      The clamp lives on the inner span, not on the <a>. Putting overflow
+      on the link would clip its own stretched ::after and silently shrink
+      the card's click target back down to the text.
+    {%- endcomment -%}
+    <h3 class="pc-title">
+      <a class="pc-link" href="{{ product.url }}"><span class="pc-title-text">{{ product.title }}</span></a>
+    </h3>
+
+    <p class="pc-price">
+      <span class="pc-price-now">{{ v.price | money }}</span>
+      {%- if on_sale -%}
+        <s class="pc-price-was">{{ v.compare_at_price | money }}</s>
+        <span class="visually-hidden">, reduced from {{ v.compare_at_price | money }}</span>
+      {%- endif -%}
+    </p>
+
+    {%- if do_quick_add -%}
+      <form class="pc-add" data-buybox-form>
+        <input type="hidden" name="id" value="{{ v.id }}">
+        <input type="hidden" name="quantity" value="1">
+        <button type="submit" class="cta-outline cta-block pc-add-btn"
+                data-add-to-cart
+                {% unless v.available %}disabled{% endunless %}>
+          {%- if v.available -%}
+            Add to cart<span class="visually-hidden"> — {{ product.title }}</span>
+          {%- else -%}
+            Sold out
+          {%- endif -%}
+        </button>
+        <p class="pc-add-error" data-buybox-error role="alert" hidden></p>
+      </form>
+    {%- endif -%}
+  </div>
+</article>

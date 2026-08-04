@@ -1,0 +1,57 @@
+{%- liquid
+  assign ctx_product = product | default: settings.featured_product
+  assign surf = section.settings.surface
+-%}
+{{ 'section-fold.css' | asset_url | stylesheet_tag }}
+<section class="sec {% render 'surface-class', s: surf %}">
+  <div class="wrap">
+    <h2 class="h2">{{ section.settings.heading }}</h2>
+    <p class="lede body-copy">{{ section.settings.body }}</p>
+  </div>
+
+  <div class="wrap" style="margin-top:var(--s-7)">
+    <div class="fold-track" data-fold-track>
+      <div class="fold-pin">
+        <div class="fold-grid" role="group" aria-label="How the mat folds">
+          <figure class="fold-fig on" data-fold-fig>
+            <div class="fold-img">{% render 'responsive-image', img: section.settings.frame_1, alt: 'The mat flat, in situ', widths: '600,900,1200', sizes: '(min-width:900px) 450px, 90vw' %}</div>
+            <figcaption class="fold-cap"><b>01</b>Flat</figcaption>
+          </figure>
+          <figure class="fold-fig" data-fold-fig>
+            <div class="fold-img">{% render 'responsive-image', img: section.settings.frame_2, alt: 'First fold closing', widths: '600,900,1200', sizes: '(min-width:900px) 450px, 90vw' %}</div>
+            <figcaption class="fold-cap"><b>02</b>Halved</figcaption>
+          </figure>
+          <figure class="fold-fig" data-fold-fig>
+            <div class="fold-img">{% render 'responsive-image', img: section.settings.frame_3, alt: 'Fully folded', widths: '600,900,1200', sizes: '(min-width:900px) 450px, 90vw' %}</div>
+            <figcaption class="fold-cap"><b>03</b>Folded</figcaption>
+          </figure>
+          <figure class="fold-fig" data-fold-fig>
+            <div class="fold-img">{% render 'responsive-image', img: section.settings.frame_4, alt: 'Carried in one hand', widths: '600,900,1200', sizes: '(min-width:900px) 450px, 90vw' %}</div>
+            <figcaption class="fold-cap"><b>04</b>Carried</figcaption>
+          </figure>
+        </div>
+        <div class="fold-rail" data-fold-rail aria-hidden="true"><span class="on"></span><span></span><span></span><span></span></div>
+      </div>
+    </div>
+    <p class="micro" style="margin-top:var(--s-5)">
+      {% render 'spec', product: ctx_product, key: 'dimensions_folded' %} folded. {% render 'spec', product: ctx_product, key: 'weight_kg', suffix: ' kg' %} in one hand.
+    </p>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "The fold",
+  "settings": [
+    { "type": "select", "id": "surface", "label": "Surface", "default": "chalk", "options": [{ "value": "chalk", "label": "Chalk" }, { "value": "jute", "label": "Jute wash" }] },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Folds in seconds. Fits behind a door." },
+    { "type": "textarea", "id": "body", "label": "Body", "default": "One motion. No rolling, no straps, no wrestling it back into a bag it never fitted in." },
+    { "type": "header", "content": "Fold frames" },
+    { "type": "image_picker", "id": "frame_1", "label": "01 Flat" },
+    { "type": "image_picker", "id": "frame_2", "label": "02 Halved" },
+    { "type": "image_picker", "id": "frame_3", "label": "03 Folded" },
+    { "type": "image_picker", "id": "frame_4", "label": "04 Carried" }
+  ],
+  "presets": [{ "name": "The fold" }]
+}
+{% endschema %}

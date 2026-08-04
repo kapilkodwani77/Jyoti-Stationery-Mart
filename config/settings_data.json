@@ -1,0 +1,23 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "current": {},
+  "presets": {},
+  "content_for_index": [],
+  "settings": {
+    "brand_name": "MamaJoy",
+    "brand_tagline": "Thoughtful essentials for early years",
+    "featured_collection": "play-mats",
+    "featured_product": "gid://shopify/Product/8179064406125",
+    "new_arrivals_collection": "new-arrivals",
+    "prepaid_discount_code": "CARE5",
+    "prepaid_discount_label": "Save 5% paying online"
+  }
+}

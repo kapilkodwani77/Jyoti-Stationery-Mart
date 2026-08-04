@@ -1,0 +1,49 @@
+{{ 'section-gallery.css' | asset_url | stylesheet_tag }}
+{{ 'component-buy-box.css' | asset_url | stylesheet_tag }}
+<section class="sec sec--tight">
+  <div class="wrap pdp-grid">
+
+    <div class="gallery" data-gallery>
+      <div class="gallery-main" data-gallery-main>
+        {%- for image in product.images -%}
+          <div class="gallery-slide" data-gallery-slide>
+            {%- if forloop.first -%}
+              {% render 'responsive-image', img: image, alt: image.alt | default: product.title, widths: '600,900,1200', sizes: '(min-width:900px) 55vw, 100vw', loading: 'eager', priority: true %}
+            {%- else -%}
+              {% render 'responsive-image', img: image, alt: image.alt | default: product.title, widths: '600,900,1200', sizes: '(min-width:900px) 55vw, 100vw', loading: 'lazy' %}
+            {%- endif -%}
+          </div>
+        {%- else -%}
+          <div class="gallery-slide"><div class="img-missing"><span>Product photography pending — approved library not yet uploaded to this product</span></div></div>
+        {%- endfor -%}
+      </div>
+
+      {%- if product.images.size > 1 -%}
+        <div class="gallery-thumbs" role="tablist" aria-label="Product images">
+          {%- for image in product.images -%}
+            <button type="button" class="gallery-thumb {% if forloop.first %}is-active{% endif %}" data-gallery-thumb aria-label="Show image {{ forloop.index }}">
+              {% render 'responsive-image', img: image, alt: '', widths: '150', sizes: '76px' %}
+            </button>
+          {%- endfor -%}
+        </div>
+        <div class="gallery-dots" aria-hidden="true">
+          {%- for image in product.images -%}
+            <span data-gallery-dot class="{% if forloop.first %}is-active{% endif %}"></span>
+          {%- endfor -%}
+        </div>
+      {%- endif -%}
+    </div>
+
+    <div id="buybox">
+      {% render 'buy-box', product: product, compact: false %}
+    </div>
+
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Product",
+  "settings": []
+}
+{% endschema %}

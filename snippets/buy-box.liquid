@@ -1,0 +1,54 @@
+{%- comment -%}
+  Usage: {% render 'buy-box', product: product, compact: false %}
+  compact: true  -> tighter spacing, no product title repeat
+  Product-agnostic: eyebrow reads product.type, no hardcoded fallbacks.
+  Button says only "Add to Cart" - no price, no spinner.
+{%- endcomment -%}
+{%- liquid
+  assign v = product.selected_or_first_available_variant
+  assign prepaid_code = settings.prepaid_discount_code
+  assign prepaid_label = settings.prepaid_discount_label
+-%}
+<div class="buybox {% if compact %}buybox--compact{% endif %}" data-buybox id="buybox">
+
+  {%- unless compact -%}
+    {%- if product.type != blank -%}
+      <p class="eyebrow">{{ product.type }}</p>
+    {%- endif -%}
+    <h1 class="buybox-title">{{ product.title }}</h1>
+  {%- endunless -%}
+
+  <div class="buybox-price-row">
+    {% render 'price', variant: v %}
+    <span class="buybox-tax-note">Inclusive of taxes</span>
+  </div>
+
+  {%- form 'product', product, data-buybox-form: '' -%}
+    <input type="hidden" name="id" value="{{ v.id }}" data-variant-id>
+
+    <div class="qty-row">
+      <span class="qty-label" id="qtyLabel-{{ section.id }}">Quantity</span>
+      <div class="stepper" data-qty-stepper>
+        <button type="button" class="qty-btn" data-qty-minus aria-label="Decrease quantity">{% render 'icon', name: 'minus', size: 16 %}</button>
+        <input type="number" class="qty-input" name="quantity" value="1" min="1" max="10" step="1" inputmode="numeric" data-qty-input aria-labelledby="qtyLabel-{{ section.id }}">
+        <button type="button" class="qty-btn" data-qty-plus aria-label="Increase quantity">{% render 'icon', name: 'plus', size: 16 %}</button>
+      </div>
+    </div>
+
+    <button type="submit" class="cta cta-block" data-add-to-cart {% unless v.available %}disabled{% endunless %}>
+      {%- if v.available -%}Add to Cart{%- else -%}Sold out{%- endif -%}
+    </button>
+
+    {%- if prepaid_code != blank and v.available -%}
+      <button type="button" class="cta-outline cta-block" data-buy-prepaid data-discount-code="{{ prepaid_code }}">
+        {{ prepaid_label | default: 'Save 5% paying online' }}
+      </button>
+    {%- endif -%}
+
+    <p class="buybox-error" data-buybox-error role="alert" hidden></p>
+  {%- endform -%}
+
+  <p class="buybox-trust">
+    Cash on delivery &middot; 30-day returns &middot; Free shipping
+  </p>
+</div>

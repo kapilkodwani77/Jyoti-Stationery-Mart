@@ -1,0 +1,83 @@
+{%- liquid
+  assign ctx_product = product | default: settings.featured_product
+-%}
+{{ 'section-fit.css' | asset_url | stylesheet_tag }}
+<section class="sec {% render 'surface-class', s: section.settings.surface %}">
+  <div class="wrap" data-fit-comparator>
+    <h2 class="h2">It is {% render 'spec', product: ctx_product, key: 'dimensions_unfolded', label: 'the size' %} of floor. Here is what that looks like.</h2>
+
+    <div class="chips" role="radiogroup" aria-label="Compare the mat against">
+      <button class="chip" type="button" role="radio" aria-checked="true" data-fit-chip="g1"
+              data-fit-caption="{{ section.settings.caption_1 }}"
+              data-fit-label="Scale diagram: the mat shown beside a three-seater sofa.">Against a sofa</button>
+      <button class="chip" type="button" role="radio" aria-checked="false" data-fit-chip="g2"
+              data-fit-caption="{{ section.settings.caption_2 }}"
+              data-fit-label="Scale diagram: the mat inside a 10 by 12 foot room.">In a 10 × 12 room</button>
+      <button class="chip" type="button" role="radio" aria-checked="false" data-fit-chip="g3"
+              data-fit-caption="{{ section.settings.caption_3 }}"
+              data-fit-label="Scale diagram: the mat shown beside a cot.">Next to a cot</button>
+    </div>
+
+    <div class="diagram" data-reveal>
+      <svg data-fit-svg viewBox="0 0 400 300" role="img" aria-label="Scale diagram: the mat shown beside a three-seater sofa.">
+        <g class="dg on" data-fit-group="g1">
+          <rect class="d-ref" x="40" y="46" width="210" height="90" rx="6"/>
+          <text class="d-lab" x="40" y="34">Sofa · ~210 × 90 cm</text>
+          <rect class="d-mat" x="40" y="160" width="180" height="120" rx="6"/>
+          <text class="d-lab mat" x="40" y="150">The mat</text>
+        </g>
+        <g class="dg" data-fit-group="g2">
+          <rect class="d-ref" x="40" y="30" width="229" height="252" rx="4"/>
+          <text class="d-lab" x="40" y="20">Room · 10 × 12 ft</text>
+          <rect class="d-mat" x="70" y="120" width="135" height="90" rx="4"/>
+          <text class="d-lab mat" x="70" y="112">The mat</text>
+        </g>
+        <g class="dg" data-fit-group="g3">
+          <rect class="d-ref" x="248" y="60" width="120" height="60" rx="6"/>
+          <text class="d-lab" x="248" y="48">Cot · ~120 × 60 cm</text>
+          <rect class="d-mat" x="40" y="60" width="180" height="120" rx="6"/>
+          <text class="d-lab mat" x="40" y="48">The mat</text>
+        </g>
+      </svg>
+    </div>
+    <p class="fit-cap" data-fit-caption>{{ section.settings.caption_1 }}</p>
+
+    <table class="specs">
+      <caption class="eyebrow" style="text-align:left;margin-top:var(--s-7)">The numbers</caption>
+      <tbody>
+        <tr><th scope="row">Unfolded</th><td>{% render 'spec', product: ctx_product, key: 'dimensions_unfolded' %}</td></tr>
+        <tr><th scope="row">Folded</th><td>{% render 'spec', product: ctx_product, key: 'dimensions_folded' %}</td></tr>
+        <tr><th scope="row">Thickness</th><td>{% render 'spec', product: ctx_product, key: 'thickness_mm', suffix: ' mm' %}</td></tr>
+        <tr><th scope="row">Weight</th><td>{% render 'spec', product: ctx_product, key: 'weight_kg', suffix: ' kg' %}</td></tr>
+        <tr><th scope="row">Panels</th><td>{% render 'spec', product: ctx_product, key: 'panel_count' %}</td></tr>
+        <tr><th scope="row">Material</th><td>{% render 'spec', product: ctx_product, key: 'material' %}</td></tr>
+        <tr><th scope="row">Reversible</th><td>{% render 'spec', product: ctx_product, key: 'reversible' %}</td></tr>
+        <tr><th scope="row">Care</th><td>{% render 'spec', product: ctx_product, key: 'care_note', label: 'care instructions' %}</td></tr>
+      </tbody>
+    </table>
+
+    <dl class="fit-dl">
+      <div><dt>Unfolded</dt><dd>{% render 'spec', product: ctx_product, key: 'dimensions_unfolded' %}</dd></div>
+      <div><dt>Folded</dt><dd>{% render 'spec', product: ctx_product, key: 'dimensions_folded' %}</dd></div>
+      <div><dt>Thickness</dt><dd>{% render 'spec', product: ctx_product, key: 'thickness_mm', suffix: ' mm' %}</dd></div>
+      <div><dt>Weight</dt><dd>{% render 'spec', product: ctx_product, key: 'weight_kg', suffix: ' kg' %}</dd></div>
+      <div><dt>Panels</dt><dd>{% render 'spec', product: ctx_product, key: 'panel_count' %}</dd></div>
+      <div><dt>Material</dt><dd>{% render 'spec', product: ctx_product, key: 'material' %}</dd></div>
+      <div><dt>Reversible</dt><dd>{% render 'spec', product: ctx_product, key: 'reversible' %}</dd></div>
+      <div><dt>Care</dt><dd>{% render 'spec', product: ctx_product, key: 'care_note', label: 'care instructions' %}</dd></div>
+    </dl>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Will it fit",
+  "settings": [
+    { "type": "select", "id": "surface", "label": "Surface", "default": "jute", "options": [{ "value": "chalk", "label": "Chalk" }, { "value": "jute", "label": "Jute wash" }] },
+    { "type": "text", "id": "caption_1", "label": "Caption — sofa", "default": "Roughly the footprint of a three-seater, laid flat." },
+    { "type": "text", "id": "caption_2", "label": "Caption — room", "default": "About a third of a standard 10 x 12 living room." },
+    { "type": "text", "id": "caption_3", "label": "Caption — cot", "default": "Wider than a standard cot, about the same depth." }
+  ],
+  "presets": [{ "name": "Will it fit" }]
+}
+{% endschema %}

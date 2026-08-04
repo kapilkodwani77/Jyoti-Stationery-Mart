@@ -1,0 +1,10 @@
+/* PDP benefits - Section 5a */
+.pdp-ben-heading{ font-family:var(--font-display); font-weight:300; font-size:clamp(1.5rem,3.5vw,2rem); margin-bottom:var(--s-7); }
+.pdp-ben-grid{ display:grid; grid-template-columns:1fr; gap:var(--s-5); }
+@media(min-width:560px){ .pdp-ben-grid{ grid-template-columns:1fr 1fr; } }
+@media(min-width:900px){ .pdp-ben-grid{ grid-template-columns:1fr 1fr 1fr; } }
+.pdp-ben-item{ display:flex; gap:var(--s-4); align-items:flex-start; }
+.pdp-ben-icon{ color:var(--indigo); flex:0 0 auto; margin-top:2px; }
+.pdp-ben-icon svg{ width:24px; height:24px; }
+.pdp-ben-title{ font-weight:500; font-size:15px; margin:0 0 var(--s-2); }
+.pdp-ben-text{ font-size:14px; color:var(--ink-2); line-height:1.55; margin:0; }

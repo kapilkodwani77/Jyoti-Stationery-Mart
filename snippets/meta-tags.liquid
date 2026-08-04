@@ -1,0 +1,22 @@
+{%- comment -%} Canonical + noindex rules per Vol II §10.4. Include once in <head>. {%- endcomment -%}
+<title>{{ page_title }}{% unless page_title contains shop.name %} · {{ shop.name }}{% endunless %}</title>
+{%- if page_description -%}<meta name="description" content="{{ page_description | escape }}">{%- endif -%}
+
+{%- if template.name == 'page' and page.metafields.custom.lp_canonical_product != blank -%}
+  <link rel="canonical" href="{{ shop.url }}{{ page.metafields.custom.lp_canonical_product.value.url }}">
+  <meta name="robots" content="noindex,follow">
+{%- elsif template.name == 'collection' or template.name == 'search' or template.name == 'cart' -%}
+  <link rel="canonical" href="{{ canonical_url }}">
+  <meta name="robots" content="noindex,follow">
+{%- else -%}
+  <link rel="canonical" href="{{ canonical_url }}">
+{%- endif -%}
+
+<meta property="og:site_name" content="{{ shop.name }}">
+<meta property="og:title" content="{{ page_title | escape }}">
+{%- if page_description -%}<meta property="og:description" content="{{ page_description | escape }}">{%- endif -%}
+<meta property="og:type" content="{% if template.name == 'product' %}product{% else %}website{% endif %}">
+<meta property="og:url" content="{{ canonical_url }}">
+{%- if template.name == 'product' and product.featured_image -%}
+  <meta property="og:image" content="https:{{ product.featured_image | image_url: width: 1200 }}">
+{%- endif -%}

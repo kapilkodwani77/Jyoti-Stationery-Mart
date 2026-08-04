@@ -1,0 +1,571 @@
+@layer reset, tokens, base, layout, sections, utilities;
+
+/* ===================================================================
+   TOKENS - Volume I S3, S4, S5. Locked. Not merchant-editable by design.
+=================================================================== */
+@layer tokens {
+  :root{
+    --chalk:#F1F0EC; --jute:#DED8CC; --ink:#14161A;
+    --indigo:#2F4260; --indigo-wash:#A9B6C6;
+
+    /* Secondary text. Replaces per-component `opacity` on small copy, which
+       silently failed WCAG AA (an opacity of .5 on --ink lands at 3.3:1).
+       #5A5C60 keeps --ink's slight blue tint and clears 4.5:1 on BOTH
+       surfaces: 5.9:1 on chalk, 5.4:1 on the jute wash.
+       Hierarchy below this level comes from size/weight/letter-spacing,
+       NOT from lighter colour - anything lighter cannot pass AA at 12-14px. */
+    --ink-2:#5A5C60;
+
+    /* Was hard-coded 3x as #9A3B2E across three stylesheets. Value unchanged
+       (it already passes AA at 6.1:1) - only centralised. */
+    --danger:#9A3B2E;
+
+    /* Divider/hairline that is actually visible. --indigo-wash is 1.8:1 on
+       chalk, below the 3:1 WCAG 1.4.11 floor for meaningful UI boundaries. */
+    --edge:rgba(20,22,26,.13);
+    --edge-strong:rgba(47,66,96,.32);
+
+    --font-display:'Gambetta','Iowan Old Style',Georgia,serif;
+    --font-body:'Switzer',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+
+    --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:24px;
+    --s-6:32px; --s-7:48px; --s-8:64px; --s-9:96px; --s-10:128px;
+
+    --r-sm:4px; --r-md:8px; --r-lg:16px;
+
+    /* Minimum comfortable touch target (WCAG 2.5.5 / iOS HIG). */
+    --tap:44px;
+
+    /* Two-part shadows: a tight dark edge for crispness plus a wide soft one
+       for atmosphere. A single large blur reads as haze, not elevation. */
+    --sh-1:0 1px 2px rgba(20,22,26,.06), 0 2px 8px rgba(20,22,26,.05);
+    --sh-2:0 2px 4px rgba(20,22,26,.07), 0 12px 32px rgba(20,22,26,.10);
+    --sh-3:0 4px 8px rgba(20,22,26,.09), 0 24px 56px rgba(20,22,26,.16);
+
+    --ease:cubic-bezier(.22,.61,.36,1);
+    --dur-fast:180ms;
+    --dur-slow:520ms;
+
+    --rhythm:var(--s-8);
+    --header-h:56px;
+    --announce-h:32px;
+  }
+
+  /* BREAKPOINTS - the canonical set. CSS cannot use custom properties inside
+     a media query, so these are documented rather than tokenised; use ONLY
+     these four values so components never shift at mismatched widths:
+       700px   two-col  -> three-col grids, footer columns
+       900px   mobile   -> desktop (nav, PDP split, sticky bar off)
+      1100px   three-col -> four-col grids
+      1200px   widest rhythm
+     Legacy one-off widths (399/559/560/640/768/769/899) are being migrated. */
+  @media(min-width:700px){ :root{ --rhythm:80px; } }
+  @media(min-width:900px){ :root{ --rhythm:var(--s-9); } }
+  @media(min-width:900px){ :root{ --header-h:72px; --announce-h:36px; } }
+  @media(min-width:1200px){ :root{ --rhythm:var(--s-10); } }
+}
+
+/* ===================================================================
+   RESET
+=================================================================== */
+@layer reset {
+  *,*::before,*::after{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; scroll-behavior:smooth; }
+  body{ margin:0; }
+  img,svg{ display:block; max-width:100%; }
+  button,input,textarea,select{ font:inherit; color:inherit; }
+  button{ background:none; border:0; cursor:pointer; }
+  fieldset{ border:0; margin:0; padding:0; }
+  ul{ margin:0; padding:0; list-style:none; }
+  a{ color:inherit; }
+
+  /* Removes the legacy 300ms tap delay mobile browsers add while waiting to
+     see if a tap is a double-tap. Every control on the site felt ~a third of
+     a second behind without this. */
+  a,button,summary,label,input,select,textarea,[role="button"],[role="radio"]{
+    touch-action:manipulation;
+  }
+}
+
+/* ===================================================================
+   BASE
+=================================================================== */
+@layer base {
+  body{
+    background:var(--chalk); color:var(--ink);
+    font-family:var(--font-body); font-size:17px; line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+    /* Sticky buy bar clearance. The bar is 10 + 48 + 10 = 68px plus the iOS
+       home-indicator inset; the previous 56px was 12px short, so the last of
+       the page content sat underneath it — worst on the PDP, where the thing
+       being clipped was the end of the FAQ. */
+    padding-bottom:calc(68px + env(safe-area-inset-bottom));
+  }
+  @media(min-width:900px){ body{ padding-bottom:0; } }
+  body.nav-open,body.cart-open{ overflow:hidden; }
+
+  h1,h2,h3,p,dl,dd,figure,table{ margin:0; }
+  :focus-visible{ outline:2px solid var(--indigo); outline-offset:2px; border-radius:2px; }
+
+  /* Any panel that scrolls independently (cart drawer, nav overlay, gallery
+     strip) must not chain its scroll to the page behind it, or reaching the
+     end of the panel starts scrolling the body underneath. */
+  .cart-drawer-body,.nav-overlay,.gallery-main,.gallery-thumbs{ overscroll-behavior:contain; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0; z-index:99;
+    background:var(--indigo); color:var(--chalk);
+    padding:var(--s-3) var(--s-4); border-radius:0 0 var(--r-sm) 0;
+  }
+  .skip-link:focus{ left:0; }
+
+  ::selection{ background:var(--indigo-wash); color:var(--ink); }
+}
+
+/* ===================================================================
+   LAYOUT PRIMITIVES
+=================================================================== */
+@layer layout {
+  .wrap{ max-width:1240px; margin-inline:auto; padding-inline:var(--s-5); }
+  @media(min-width:900px){ .wrap{ padding-inline:var(--s-6); } }
+
+  .sec{ padding-block:var(--rhythm); }
+  .sec--tight{ padding-block:var(--s-7); }
+  @media(min-width:700px){ .sec--tight{ padding-block:var(--s-8); } }
+  .sec--none{ padding-block:0; }
+  .surf-jute{ background:rgba(222,216,204,.42); }
+
+  .crease{ height:1px; background:var(--jute); position:relative; }
+  .crease::after{
+    content:''; position:absolute; inset:auto 0 0 0; height:12px;
+    background:linear-gradient(to bottom,rgba(20,22,26,.045),transparent);
+    pointer-events:none;
+  }
+
+  .eyebrow{
+    font-size:12px; font-weight:500; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--indigo); margin-bottom:var(--s-4);
+  }
+  .h1{
+    font-family:var(--font-display); font-weight:300;
+    font-size:clamp(2.75rem,9vw,5.5rem); line-height:.98; letter-spacing:-.025em;
+    text-wrap:balance;
+  }
+  .h2{
+    font-family:var(--font-display); font-weight:300;
+    font-size:clamp(2rem,5.5vw,3.5rem); line-height:1.05; letter-spacing:-.02em;
+    max-width:18ch; text-wrap:balance;
+  }
+  .h3{ font-weight:500; font-size:clamp(1.375rem,3vw,1.75rem); line-height:1.25; letter-spacing:-.01em; }
+  .lede{ font-size:clamp(1.0625rem,2.2vw,1.3125rem); line-height:1.55; max-width:45ch; margin-top:var(--s-5); }
+  .body-copy{ max-width:65ch; text-wrap:pretty; }
+  /* colour, not opacity - see --ink-2 note in the tokens layer */
+  .micro{ font-size:13px; color:var(--ink-2); }
+  .tok{ color:var(--indigo); }
+
+  /* Guarantees a 44px hit area on a control that must stay visually smaller
+     (icon buttons, inline text links in dense rows). The element keeps its
+     painted size; only the touch surface grows. */
+  .u-tap{ position:relative; }
+  .u-tap::after{
+    content:''; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:100%; height:100%; min-width:var(--tap); min-height:var(--tap);
+  }
+
+  .bc-todo{
+    display:none;
+    color:#B0158A; background:rgba(176,21,138,.1); border:1px dashed #B0158A;
+    padding:0 4px; border-radius:3px; font-size:.85em;
+  }
+  html[data-design-mode] .bc-todo{ display:inline; }
+
+  .img-cover{ width:100%; height:100%; object-fit:cover; display:block; }
+  .img-missing{
+    width:100%; height:100%; min-height:160px; display:flex; align-items:center; justify-content:center;
+    background:repeating-linear-gradient(45deg,var(--jute),var(--jute) 10px,var(--chalk) 10px,var(--chalk) 20px);
+    color:var(--ink); font-size:12px; text-align:center; padding:var(--s-4);
+  }
+
+  [data-reveal]{
+    opacity:0; transform:translateY(16px) rotateX(-4deg); transform-origin:top center;
+    transition:opacity var(--dur-slow) var(--ease), transform var(--dur-slow) var(--ease);
+  }
+  [data-reveal].in{ opacity:1; transform:none; }
+
+  .cta{
+    display:inline-flex; align-items:center; justify-content:center; gap:var(--s-3);
+    background:var(--indigo); color:var(--chalk);
+    font-weight:500; font-size:16px; text-decoration:none; border-radius:var(--r-md);
+    min-height:52px; padding-inline:var(--s-6);
+    box-shadow:var(--sh-1);
+    transition:background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease),
+               box-shadow var(--dur-fast) var(--ease), opacity var(--dur-fast);
+  }
+  .cta:hover{ background:#263852; box-shadow:var(--sh-2); }
+  /* Press feedback is the one motion that must survive reduced-motion: it is
+     confirmation of input, not decoration. Kept to a transform so it never
+     triggers layout. */
+  .cta:active{ transform:scale(.985); box-shadow:var(--sh-1); }
+  .cta:disabled,.cta[disabled]{ opacity:.45; cursor:not-allowed; box-shadow:none; }
+  .cta:disabled:hover,.cta[disabled]:hover{ background:var(--indigo); }
+  .cta-block{ width:100%; }
+  .cta-outline{
+    display:inline-flex; align-items:center; justify-content:center; gap:var(--s-3);
+    background:transparent; color:var(--indigo); border:1px solid var(--indigo);
+    font-weight:500; font-size:16px; text-decoration:none;
+    border-radius:var(--r-md); min-height:52px; padding-inline:var(--s-6);
+    transition:background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  }
+  .cta-outline:hover{ background:rgba(47,66,96,.06); }
+  .cta-outline:active{ transform:scale(.985); }
+  .cta-block + .cta-block{ margin-top:var(--s-3); }
+
+  /* ---- shared primitives -------------------------------------------------
+     These are used by more than one section (price by the buy box, sticky bar
+     and product card; the stepper by the buy box, cart drawer AND cart page),
+     so they live here rather than being duplicated into each section file. */
+  .price{ font-size:24px; font-weight:500; font-variant-numeric:tabular-nums; }
+  .price-compare{ font-size:14px; color:var(--ink-2); text-decoration:line-through; margin-left:var(--s-2); }
+
+  .stepper{ display:flex; align-items:center; border:1px solid var(--jute); border-radius:var(--r-md); }
+  .qty-btn{
+    width:var(--tap); height:var(--tap); display:flex; align-items:center; justify-content:center;
+    color:var(--ink); transition:background var(--dur-fast) var(--ease);
+  }
+  .qty-btn:hover{ background:rgba(47,66,96,.06); }
+  .qty-btn:disabled{ opacity:.35; cursor:not-allowed; }
+  .qty-input{
+    width:52px; height:var(--tap); text-align:center; border:0;
+    border-left:1px solid var(--jute); border-right:1px solid var(--jute);
+    -moz-appearance:textfield; appearance:textfield; background:transparent;
+    font-variant-numeric:tabular-nums;
+  }
+  .qty-input::-webkit-outer-spin-button,
+  .qty-input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+
+  .cart-empty{ text-align:center; padding:var(--s-9) var(--s-4); color:var(--ink-2); }
+
+  /* ---- photography plates (hero + closing CTA share these) --------------- */
+  .plate{ position:absolute; inset:0; overflow:hidden; background:var(--jute); }
+  .scrim{ position:absolute; inset:0; background:linear-gradient(to top,rgba(20,22,26,.62),rgba(20,22,26,.28) 38%,transparent 68%); }
+  @media(min-width:900px){
+    .scrim--side{ background:linear-gradient(to right,rgba(20,22,26,.66),rgba(20,22,26,.3) 44%,transparent 74%); }
+  }
+  .slot-tag{
+    position:absolute; z-index:5; right:var(--s-4); bottom:var(--s-4);
+    background:rgba(20,22,26,.55); color:var(--chalk); border:1px solid rgba(241,240,236,.22);
+    border-radius:var(--r-sm); font-size:10px; letter-spacing:.05em; text-transform:uppercase;
+    padding:5px 8px; line-height:1.5; max-width:200px; backdrop-filter:blur(6px);
+  }
+  html:not([data-design-mode]) .slot-tag{ display:none; }
+}
+
+/* ===================================================================
+   UTILITIES
+=================================================================== */
+@layer utilities {
+  .visually-hidden{
+    position:absolute !important; width:1px; height:1px; padding:0; margin:-1px;
+    overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+  }
+}
+
+/* ===================================================================
+   IMAGE FIT UTILITIES - unlayered so callers can rely on them winning
+   over layered defaults. Set by snippets/responsive-image.liquid via
+   the `fit` parameter.
+=================================================================== */
+.img-contain{
+  width:100%; height:100%; object-fit:contain; object-position:center; display:block;
+}
+
+/* ===================================================================
+   REDUCED MOTION - intentionally outside the layer system so it wins.
+   Note the deliberate exception: .cta:active keeps its press scale,
+   because that is input confirmation rather than decoration.
+=================================================================== */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms !important; transition-duration:.01ms !important;
+    scroll-behavior:auto !important;
+  }
+  [data-reveal],.hero-anim{ opacity:1 !important; transform:none !important; }
+}
+
+/* ===================================================================
+   ALWAYS-PRESENT CHROME
+   header, announcement bar, footer, cart drawer and sticky buy bar are
+   rendered by layout/theme.liquid on every single page. Loading them as
+   five separate <link>s cost five requests per page and ~40% of gzip
+   efficiency (small files each compress against their own dictionary),
+   so they are inlined here. Genuinely optional sections stay in their
+   own files and load only when that section is on the page — which is
+   required for OS2.0, where merchants can move sections between
+   templates at will.
+=================================================================== */
+@layer sections {
+  /* ---- announcement bar ------------------------------------------ */
+  .announce{
+    height:var(--announce-h); display:flex; align-items:center; justify-content:center;
+    background:var(--jute); font-size:12px; font-weight:500; letter-spacing:.04em; text-transform:uppercase;
+    padding-inline:var(--s-3); position:relative; z-index:30;
+    white-space:nowrap; overflow:hidden;
+  }
+  .announce .inner{ display:flex; align-items:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+  .announce .sep{ opacity:.5; margin-inline:var(--s-2); flex:0 0 auto; }
+  .announce .wide{ display:none; }
+  @media(min-width:769px){
+    .announce{ padding-inline:var(--s-6); letter-spacing:.03em; }
+    .announce .wide{ display:inline; } .announce .narrow{ display:none; }
+    .announce .sep{ margin-inline:var(--s-3); }
+  }
+}
+.nav-desktop{ display:none; }
+.nav-list{ display:flex; gap:var(--s-6); align-items:center; margin:0; padding:0; list-style:none; }
+.nav-item{ position:relative; }
+.nav-link{ display:inline-flex; align-items:center; min-height:var(--tap); gap:6px; text-decoration:none; font-size:15px; padding-block:var(--s-2); }
+.nav-link:hover{ text-decoration:underline; text-underline-offset:4px; }
+.nav-caret{ transition:transform var(--dur-fast) var(--ease); }
+.nav-has-children:hover .nav-caret,
+.nav-has-children:focus-within .nav-caret{ transform:rotate(180deg); }
+
+.subnav{
+  position:absolute; top:100%; left:0; min-width:200px; margin:0; padding:var(--s-3) 0;
+  list-style:none; background:var(--chalk); border:1px solid var(--jute); border-radius:var(--r-md);
+  box-shadow:0 8px 28px rgba(20,22,26,.10);
+  opacity:0; visibility:hidden; transform:translateY(6px);
+  transition:opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), visibility var(--dur-fast);
+  z-index:30;
+}
+.nav-has-children:hover .subnav,
+.nav-has-children:focus-within .subnav{ opacity:1; visibility:visible; transform:none; }
+.subnav a{
+  display:flex; align-items:center; min-height:var(--tap); padding:var(--s-2) var(--s-5); font-size:14px; text-decoration:none;
+  color:var(--ink); white-space:nowrap;
+}
+.subnav a:hover{ background:rgba(47,66,96,.06); }
+.subnav a[aria-current="page"]{ color:var(--indigo); font-weight:500; }
+
+@media(min-width:900px){
+  .nav-desktop{ display:block; margin-left:var(--s-9); }
+  .hdr .cart-icon{ margin-left:auto; }
+}
+
+/* Mobile overlay groups */
+.nav-m-group{ border-bottom:1px solid var(--jute); }
+.nav-m-group summary{
+  list-style:none; display:flex; align-items:center; justify-content:space-between;
+  font-family:var(--font-display); font-size:28px; padding-block:var(--s-3); cursor:pointer;
+}
+.nav-m-group summary::-webkit-details-marker{ display:none; }
+.nav-m-caret{ transition:transform var(--dur-fast) var(--ease); flex:0 0 auto; }
+.nav-m-group[open] .nav-m-caret{ transform:rotate(90deg); }
+.nav-m-children{ padding:0 0 var(--s-4) var(--s-4); display:flex; flex-direction:column; gap:var(--s-1); }
+.nav-m-children a{ font-family:var(--font-body); font-size:17px; color:var(--ink-2);
+                   display:flex; align-items:center; min-height:var(--tap); padding-block:var(--s-2); }
+
+
+/* Header shell — merged in from the former theme-sections-1.css so the
+   header owns all of its own styling in one file. */
+@layer sections {
+  /* ---- header ------------------------------------------------------ */
+  .hdr{
+    position:absolute; top:var(--announce-h); left:0; right:0; z-index:20;
+    height:var(--header-h); display:flex; align-items:center; padding-inline:var(--s-5);
+    color:var(--chalk); transition:background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast);
+    border-bottom:1px solid transparent;
+  }
+  .hdr.is-solid{ position:fixed; background:var(--chalk); color:var(--ink); border-color:var(--jute); }
+
+  /* The header is transparent by default and only turns solid once theme.js
+     runs, so every template without a hero flashed white-on-white text before
+     the script attached. This resolves it at paint time for those templates.
+     Written as progressive enhancement: where :has() is unsupported the rule
+     is simply dropped and the previous JS-driven behaviour still applies. */
+  body:not(:has(.hero)) .hdr{
+    position:fixed; background:var(--chalk); color:var(--ink); border-color:var(--jute);
+  }
+  body:not(:has(.hero)) .hdr a{ color:var(--ink); text-shadow:none; }
+  body:not(:has(.hero)) .hdr .mark{ color:var(--indigo); }
+
+  /* Search entry point — desktop only. On mobile it lives at the top of the
+     nav overlay so the header keeps its balanced burger / wordmark / cart. */
+  .hdr-search{ display:none; }
+  @media(min-width:900px){
+    .hdr-search{ display:flex; margin-left:auto; }
+    .hdr-search + .cart-icon{ margin-left:0; }
+  }
+
+  /* Current-page indication. aria-current was already emitted by the nav
+     markup but had no visual treatment, so sighted users had no idea where
+     they were in the menu. */
+  .nav-link[aria-current="page"]{ text-decoration:underline; text-underline-offset:6px; text-decoration-thickness:1.5px; }
+  .nav-overlay-links > a[aria-current="page"]{ color:var(--indigo); }
+
+  .nav-overlay-search{
+    position:relative; display:flex; align-items:center;
+    margin-top:var(--s-6); border:1px solid var(--jute); border-radius:var(--r-md);
+    background:var(--chalk);
+  }
+  .nav-overlay-search:focus-within{ border-color:var(--indigo); }
+  .nav-overlay-search-icon{
+    display:flex; align-items:center; justify-content:center;
+    width:var(--tap); height:var(--tap); color:var(--ink-2); flex:0 0 auto;
+  }
+  .nav-overlay-search input{
+    flex:1; min-width:0; height:var(--tap); border:0; background:transparent;
+    padding-inline:0 var(--s-4); font-size:16px; /* 16px stops iOS zooming on focus */
+  }
+  .nav-overlay-search input:focus{ outline:none; }
+  .hdr.is-solid a{ color:var(--ink); text-shadow:none; }
+  .hdr.is-solid .mark{ color:var(--indigo); }
+  .hdr a{ text-decoration:none; text-shadow:0 1px 12px rgba(20,22,26,.34); }
+  .hdr .mark{ font-family:var(--font-display); font-size:20px; letter-spacing:-.03em; margin-inline:auto; }
+  .hdr-icon{
+    width:44px; height:44px; display:flex; align-items:center; justify-content:center;
+    position:relative; flex:0 0 auto;
+  }
+  /* The item count is real information, not decoration — 10px in an 16px
+     circle was the smallest type on the site. */
+  .hdr-icon .badge{
+    position:absolute; top:1px; right:1px; min-width:18px; height:18px; padding:0 4px;
+    border-radius:100px; background:var(--indigo); color:var(--chalk);
+    font-size:11px; line-height:18px; text-align:center; font-weight:500;
+    font-variant-numeric:tabular-nums;
+  }
+  .hdr.is-solid .hdr-icon .badge{ box-shadow:0 0 0 2px var(--chalk); }
+  .hdr nav{ display:none; }
+  .no-flexbox-gap-fallback > * + *{ margin-left:var(--s-6); }
+  @media(min-width:900px){
+    body:not(.template-index):not(.template-page) .hdr,
+    .hdr{ position:absolute; }
+    .hdr{ top:var(--announce-h); height:var(--header-h); padding-inline:var(--s-6); }
+    .hdr .mark{ font-size:22px; margin-inline:0; }
+    .hdr nav{ display:flex; gap:var(--s-6); margin-left:var(--s-9); font-size:15px; }
+    .hdr nav a:hover{ text-decoration:underline; text-underline-offset:4px; }
+    .hdr .cart-icon{ margin-left:auto; }
+    .hdr .burger{ display:none; }
+  }
+
+  /* mobile nav overlay */
+  .nav-overlay{
+    position:fixed; inset:0; z-index:50; background:var(--chalk);
+    display:flex; flex-direction:column; padding:var(--s-5);
+    transform:translateX(-100%); transition:transform var(--dur-slow) var(--ease);
+    visibility:hidden;
+  }
+  .nav-overlay.on{ transform:translateX(0); visibility:visible; }
+  .nav-overlay-top{ display:flex; align-items:center; justify-content:space-between; height:var(--header-h); }
+  .nav-overlay-top .mark{ font-family:var(--font-display); font-size:20px; color:var(--indigo); letter-spacing:-.03em; }
+  .nav-overlay-links{ margin-top:var(--s-8); display:flex; flex-direction:column; gap:var(--s-6); }
+  .nav-overlay-links a{ font-family:var(--font-display); font-size:28px; text-decoration:none; color:var(--ink); }
+  .nav-overlay-foot{ margin-top:auto; padding-top:var(--s-7); border-top:1px solid var(--jute); font-size:14px; }
+  .nav-overlay-foot a{ display:flex; align-items:center; min-height:var(--tap); text-decoration:none; padding-block:var(--s-2); }
+  @media(min-width:900px){ .nav-overlay{ display:none; } }
+}
+@layer sections {
+  /* ---- footer ------------------------------------------------------------- */
+  .ftr{ background:var(--jute); padding-block:48px 24px; }
+  .ftr-brand{ margin-bottom:32px; max-width:280px; }
+  .ftr-mark{ font-family:var(--font-display); font-size:22px; letter-spacing:-.03em; color:var(--indigo); display:block; }
+  .ftr-tag{ font-size:14px; color:var(--ink-2); margin-top:6px; line-height:1.5; }
+  .ftr-grid{ display:grid; grid-template-columns:1fr 1fr; gap:24px 16px; }
+  @media(min-width:700px){ .ftr-grid{ grid-template-columns:repeat(3,1fr); gap:32px; max-width:640px; margin-left:auto; } }
+  @media(min-width:900px){ .ftr-top{ display:flex; justify-content:space-between; gap:64px; align-items:flex-start; } .ftr-brand{ margin-bottom:0; } }
+  .ftr h3{ font-size:11px; font-weight:500; letter-spacing:.09em; text-transform:uppercase; margin:0 0 var(--s-3); color:var(--ink-2); }
+  .ftr a{ color:var(--ink); text-decoration:none; display:block; padding-block:var(--s-3); font-size:14px; min-height:var(--tap); }
+  .ftr a:hover{ color:var(--indigo); text-decoration:underline; text-underline-offset:4px; }
+  .ftr address{ font-style:normal; font-size:14px; line-height:1.6; color:var(--ink-2); }
+  .ftr-base{
+    margin-top:32px; padding-top:16px; border-top:1px solid rgba(20,22,26,.1);
+    font-size:12px; color:var(--ink-2); display:flex; flex-wrap:wrap; gap:var(--s-1) var(--s-4);
+  }
+}
+@layer sections {
+  /* ---- cart drawer --------------------------------------------------------- */
+  .cart-drawer-scrim{
+    position:fixed; inset:0; z-index:55; background:rgba(20,22,26,.4);
+    opacity:0; visibility:hidden; transition:opacity var(--dur-fast) var(--ease), visibility var(--dur-fast);
+  }
+  .cart-drawer-scrim.on{ opacity:1; visibility:visible; }
+  .cart-drawer{
+    position:fixed; top:0; right:0; bottom:0; z-index:56; width:min(420px,100vw);
+    background:var(--chalk); display:flex; flex-direction:column;
+    /* visibility, not just transform. Translating the panel off-screen leaves
+       its links and buttons in the tab order, so keyboard users could Tab into
+       an invisible drawer and lose their place entirely. */
+    transform:translateX(100%); visibility:hidden;
+    transition:transform var(--dur-slow) var(--ease), visibility var(--dur-slow);
+    box-shadow:var(--sh-3);
+    max-width:100vw;
+  }
+  .cart-drawer.on{ transform:translateX(0); visibility:visible; }
+  .cart-drawer-head{ display:flex; align-items:center; justify-content:space-between; padding:var(--s-5); border-bottom:1px solid var(--jute); }
+  .cart-drawer-head h2{ font-family:var(--font-display); font-size:20px; font-weight:400; }
+  .cart-drawer-body{ flex:1; overflow-y:auto; padding:var(--s-5); }
+  .cart-line{ display:grid; grid-template-columns:72px 1fr auto; gap:var(--s-4); padding-block:var(--s-5); border-bottom:1px solid var(--jute); }
+  .cart-line-img{ width:72px; height:72px; border-radius:var(--r-sm); overflow:hidden; background:var(--chalk); border:1px solid var(--jute); }
+  .cart-line-title{ font-size:15px; font-weight:500; }
+  .cart-line-price{ font-size:14px; color:var(--ink-2); margin-top:2px; }
+  .cart-line-stepper{ display:flex; align-items:center; gap:var(--s-3); margin-top:var(--s-3); }
+  .cart-line-remove{ font-size:13px; text-decoration:underline; text-underline-offset:3px;
+                     color:var(--ink-2); margin-top:var(--s-2); min-height:var(--tap);
+                     display:inline-flex; align-items:center; }
+  .cart-line-remove:hover{ color:var(--danger); }
+  /* .cart-empty itself is a shared primitive defined in the layout layer —
+     the cart page uses it too. Only the drawer-specific parts live here. */
+  .cart-empty-title{ font-family:var(--font-display); font-size:20px; color:var(--ink); }
+  .cart-empty-note{ font-size:14px; color:var(--ink-2); margin-top:var(--s-2); }
+  .cart-empty-cta{ margin-top:var(--s-6); }
+
+  .cart-line-variant{ font-size:13px; color:var(--ink-2); margin-top:2px; }
+  /* Rendered by theme.js since the first version of the drawer, but never
+     given a style — it inherited body size and out-weighed the line title. */
+  .cart-line-total{ font-size:14px; font-weight:500; font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+  /* Placeholder shown while /cart.js is in flight, so opening the drawer does
+     not present an empty panel that then pops full. */
+  .cart-skeleton{ display:flex; flex-direction:column; gap:var(--s-5); }
+  .cart-skeleton div{
+    height:72px; border-radius:var(--r-sm);
+    background:linear-gradient(90deg,var(--jute) 25%,rgba(222,216,204,.45) 37%,var(--jute) 63%);
+    background-size:400% 100%; animation:cartShimmer 1.4s ease infinite;
+  }
+  @keyframes cartShimmer{ from{ background-position:100% 0; } to{ background-position:0 0; } }
+  @media(prefers-reduced-motion:reduce){
+    .cart-skeleton div{ animation:none; background:var(--jute); }
+  }
+
+  /* Safe-area inset so the Checkout button clears the iOS home indicator. */
+  .cart-drawer-foot{
+    padding:var(--s-5);
+    padding-bottom:calc(var(--s-5) + env(safe-area-inset-bottom));
+    border-top:1px solid var(--jute);
+  }
+  .cart-subtotal{ display:flex; justify-content:space-between; font-size:16px; font-weight:500; margin-bottom:var(--s-4); }
+  .cart-drawer-note{ font-size:12px; color:var(--ink-2); margin-top:var(--s-3); text-align:center; }
+}
+@layer sections {
+  /* ---- sticky buy bar -------------------------------------------------------- */
+  .buybar{
+    position:fixed; left:0; right:0; bottom:0; z-index:40;
+    display:flex; align-items:center; gap:12px;
+    padding:10px 16px; padding-bottom:calc(10px + env(safe-area-inset-bottom));
+    background:rgba(241,240,236,.96); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border-top:1px solid var(--jute);
+    opacity:0; visibility:hidden; transform:translateY(100%);
+    transition:opacity 220ms var(--ease), transform 220ms var(--ease), visibility 220ms;
+  }
+  .buybar.on{ opacity:1; visibility:visible; transform:translateY(0); }
+  .buybar-price{ font-size:16px; font-weight:500; flex:0 0 auto; font-variant-numeric:tabular-nums; }
+  .buybar-cta{
+    flex:1; min-height:48px; font-size:15px; font-weight:500;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--indigo); color:var(--chalk); border-radius:10px;
+    border:0; cursor:pointer; transition:none;
+  }
+  .buybar-cta:active{ transform:scale(.985); }
+  .buybar-cta:disabled{ opacity:.45; cursor:not-allowed; }
+  /* Hide the bar on desktop - desktop uses the in-page sticky buybox */
+  @media(min-width:900px){ .buybar{ display:none; } }
+}

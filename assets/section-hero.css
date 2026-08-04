@@ -1,0 +1,17 @@
+/* Hero (editorial) — split out of the former theme-sections-*.css bundles. */
+@layer sections {
+  /* ---- hero --------------------------------------------------------- */
+  /* Mobile hero deliberately shorter than 100svh so the CTA and the start of
+     the next section are reachable without a full swipe. */
+  .hero{ position:relative; overflow:hidden; height:min(74svh,600px); min-height:460px; display:flex; align-items:flex-end; }
+  @media(min-width:900px){ .hero{ height:min(88svh,760px); min-height:560px; align-items:center; } }
+  .hero-copy{ position:relative; z-index:10; color:var(--chalk); padding:0 24px 48px; width:100%; }
+  @media(min-width:900px){ .hero-copy{ padding:0 96px; max-width:660px; } }
+  .hero .h1{ margin-bottom:16px; font-size:clamp(2.25rem,8.5vw,5rem); line-height:1.02; }
+  .hero-sub{ font-size:clamp(0.9375rem,3.6vw,1.25rem); line-height:1.5; max-width:34ch; margin-bottom:24px; opacity:.92; }
+  @media(min-width:900px){ .hero-sub{ max-width:42ch; margin-bottom:32px; } }
+  .hero .cta:focus-visible{ outline-color:var(--chalk); }
+  .hero-anim{ opacity:0; transform:translateY(20px); animation:heroIn var(--dur-slow) var(--ease) forwards; }
+  .hero-d1{ animation-delay:180ms; } .hero-d2{ animation-delay:300ms; } .hero-d3{ animation-delay:420ms; }
+  @keyframes heroIn{ to{ opacity:1; transform:none; } }
+}

@@ -1,0 +1,60 @@
+{{ 'section-cart-page.css' | asset_url | stylesheet_tag }}
+<section class="sec">
+  <div class="wrap">
+    <h1 class="h2">Your cart</h1>
+
+    {%- if cart.item_count == 0 -%}
+      <div class="cart-empty">
+        <p class="body-copy">Your cart is empty.</p>
+        <a class="cta" style="margin-top:var(--s-6)" href="{{ settings.featured_product.url | default: routes.root_url }}">Shop the mat</a>
+      </div>
+    {%- else -%}
+      {%- form 'cart', cart -%}
+        <table class="cart-table">
+          <thead>
+            <tr><th>Product</th><th>Quantity</th><th>Total</th></tr>
+          </thead>
+          <tbody>
+            {%- for item in cart.items -%}
+              <tr>
+                <td>
+                  <div class="cart-row-product">
+                    <div class="cart-row-img">
+                      {%- if item.image -%}<img class="img-cover" src="{{ item.image | image_url: width: 200 }}" alt="{{ item.title | escape }}" width="88" height="88" loading="lazy">{%- endif -%}
+                    </div>
+                    <div>
+                      <p class="cart-line-title">{{ item.product.title }}</p>
+                      <p class="cart-line-price">{{ item.final_price | money }}</p>
+                      <a class="cart-remove-link" href="{{ item.url_to_remove }}">Remove</a>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="stepper" data-qty-stepper>
+                    <button type="button" class="qty-btn" data-qty-minus aria-label="Decrease quantity">−</button>
+                    <input class="qty-input" type="number" name="updates[{{ forloop.index0 }}]" value="{{ item.quantity }}" min="0" max="10" data-qty-input aria-label="Quantity for {{ item.product.title | escape }}">
+                    <button type="button" class="qty-btn" data-qty-plus aria-label="Increase quantity">+</button>
+                  </div>
+                </td>
+                <td>{{ item.final_line_price | money }}</td>
+              </tr>
+            {%- endfor -%}
+          </tbody>
+        </table>
+
+        <button type="submit" name="update" class="cta-outline" style="margin-top:var(--s-6)">Update cart</button>
+
+        <div class="cart-summary">
+          <div class="cart-summary-row"><span>Subtotal</span><span>{{ cart.total_price | money }}</span></div>
+          <p class="micro" style="margin-bottom:var(--s-5)">Shipping and any taxes not shown are calculated at checkout.</p>
+          <button type="submit" name="checkout" class="cta cta-block">Checkout</button>
+          <p class="micro" style="margin-top:var(--s-3);text-align:center">Cash on delivery · 30-day returns</p>
+        </div>
+      {%- endform -%}
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Cart" }
+{% endschema %}

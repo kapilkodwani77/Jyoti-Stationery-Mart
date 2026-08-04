@@ -1,0 +1,15 @@
+<div class="announce" role="region" aria-label="Store information">
+  <span class="inner narrow">{{ section.settings.item_1 }}<span class="sep">&middot;</span>{{ section.settings.item_2 }}</span>
+  <span class="inner wide">{{ section.settings.item_1 }}<span class="sep">&middot;</span>{{ section.settings.item_2 }}<span class="sep">&middot;</span>{{ section.settings.item_3 }}</span>
+</div>
+
+{% schema %}
+{
+  "name": "Announcement bar",
+  "settings": [
+    { "type": "text", "id": "item_1", "label": "Item 1 (always shown)", "default": "Free Shipping Across India" },
+    { "type": "text", "id": "item_2", "label": "Item 2 (always shown)", "default": "Cash on Delivery" },
+    { "type": "text", "id": "item_3", "label": "Item 3 (wide screens only)", "default": "Safe & Soft XPE Foam" }
+  ]
+}
+{% endschema %}

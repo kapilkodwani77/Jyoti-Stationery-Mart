@@ -1,0 +1,18 @@
+/* The room test — before/after slider — split out of the former theme-sections-*.css bundles. */
+@layer sections {
+  /* ---- 05 room test ---------------------------------------------------- */
+  .rt{ position:relative; border-radius:12px; overflow:hidden; aspect-ratio:4/3; margin-top:32px; --pos:50; }
+  @media(min-width:900px){ .rt{ aspect-ratio:16/9; max-width:1100px; margin-inline:auto; } }
+  .rt-a,.rt-b{ position:absolute; inset:0; }
+  .rt-b{ clip-path:inset(0 0 0 calc(var(--pos) * 1%)); }
+  .rt-line{ position:absolute; top:0; bottom:0; left:calc(var(--pos) * 1%); width:2px; background:var(--chalk); z-index:4; box-shadow:0 0 12px rgba(20,22,26,.35); pointer-events:none; }
+  .rt-knob{
+    position:absolute; top:50%; left:calc(var(--pos) * 1%); z-index:5; width:40px; height:40px; margin:-20px 0 0 -20px;
+    border-radius:50%; background:var(--chalk); color:var(--indigo); display:flex; align-items:center; justify-content:center;
+    pointer-events:none; box-shadow:0 2px 14px rgba(20,22,26,.3); transition:transform var(--dur-fast) var(--ease);
+  }
+  .rt-range{ position:absolute; inset:0; z-index:6; width:100%; height:100%; margin:0; opacity:0; cursor:ew-resize; touch-action:pan-y; }
+  .rt-range:focus-visible ~ .rt-knob{ transform:scale(1.12); outline:2px solid var(--indigo); outline-offset:3px; }
+  .rt-lab{ position:absolute; bottom:16px; z-index:4; color:var(--chalk); font-size:12px; font-weight:500; letter-spacing:.08em; text-transform:uppercase; text-shadow:0 1px 10px rgba(20,22,26,.7); }
+  .rt-lab.l{ left:16px; } .rt-lab.r{ right:16px; }
+}

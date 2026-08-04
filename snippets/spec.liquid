@@ -1,0 +1,36 @@
+{%- comment -%}
+  Renders a product.metafields.custom.{key} value, or a visible-in-editor /
+  invisible-in-production placeholder if it hasn't been filled in yet.
+
+  Usage: {% render 'spec', product: product, key: 'thickness_mm', suffix: ' mm' %}
+  Params: product (required), key (required), prefix, suffix, label (override todo text)
+{%- endcomment -%}
+{%- liquid
+  assign mf = product.metafields.custom[key]
+  assign todo_label = label
+
+  case key
+    when 'thickness_mm' 
+      assign todo_label = todo_label | default: 'thickness'
+    when 'dimensions_unfolded'
+      assign todo_label = todo_label | default: 'unfolded size'
+    when 'dimensions_folded'
+      assign todo_label = todo_label | default: 'folded size'
+    when 'weight_kg'
+      assign todo_label = todo_label | default: 'weight'
+    when 'panel_count'
+      assign todo_label = todo_label | default: 'panel count'
+    when 'fold_time_seconds'
+      assign todo_label = todo_label | default: 'fold time'
+    when 'material'
+      assign todo_label = todo_label | default: 'material'
+    else
+      assign todo_label = todo_label | default: key | replace: '_', ' '
+  endcase
+-%}
+{%- comment -%}
+  Deliberately checking `mf.value == nil`, not `== blank`: Liquid's `blank`
+  treats boolean false as blank, which would wrongly hide a real
+  "reversible: false" value behind the missing-spec placeholder.
+{%- endcomment -%}
+{%- if mf.value == nil -%}<span class="bc-todo" data-todo="{{ key }}">{{ todo_label }}</span>{%- else -%}{{ prefix }}{% if mf.value == true %}Yes{% elsif mf.value == false %}No{% else %}{{ mf.value }}{% endif %}{{ suffix }}{%- endif -%}

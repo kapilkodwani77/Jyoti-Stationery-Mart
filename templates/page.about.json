@@ -1,0 +1,28 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "proof": {
+      "type": "founder-note",
+      "settings": {
+        "heading": "About BabyCare.",
+        "body": "BabyCare is run from [city]. We made this mat because we could not find one we wanted in our own living room — thick enough for the first crawl, quiet enough for the rest of the house."
+      }
+    },
+    "closing": {
+      "type": "closing-buy",
+      "settings": {}
+    }
+  },
+  "order": [
+    "proof",
+    "closing"
+  ]
+}

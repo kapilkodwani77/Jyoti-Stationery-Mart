@@ -1,0 +1,65 @@
+{%- comment -%}
+  Drawer shell. Line items are rendered client-side by theme.js from /cart.js,
+  but the initial state is server-rendered from the real cart so a slow or
+  failed script never shows "your cart is empty" to someone mid-purchase.
+{%- endcomment -%}
+<div class="cart-drawer-scrim" data-cart-scrim></div>
+
+<aside class="cart-drawer"
+       data-cart-drawer
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="cart-drawer-title"
+       aria-hidden="true">
+
+  <div class="cart-drawer-head">
+    <h2 id="cart-drawer-title">Your cart</h2>
+    <button type="button" class="hdr-icon" data-cart-close aria-label="Close cart">
+      {% render 'icon', name: 'close' %}
+    </button>
+  </div>
+
+  <div class="cart-drawer-body" data-cart-body>
+    {%- if cart.item_count == 0 -%}
+      <div class="cart-empty">
+        <p class="cart-empty-title">Your cart is empty</p>
+        <p class="cart-empty-note">Free shipping and cash on delivery on every order.</p>
+        <a class="cta cart-empty-cta" href="{{ routes.all_products_collection_url }}">Start shopping</a>
+      </div>
+    {%- else -%}
+      {%- for item in cart.items -%}
+        <div class="cart-line" data-line-key="{{ item.key }}">
+          <div class="cart-line-img">
+            {%- if item.image -%}
+              <img class="img-cover" src="{{ item.image | image_url: width: 144 }}"
+                   alt="" width="72" height="72" loading="lazy">
+            {%- endif -%}
+          </div>
+          <div>
+            <p class="cart-line-title">{{ item.product.title }}</p>
+            {%- unless item.variant.title == 'Default Title' -%}
+              <p class="cart-line-variant">{{ item.variant.title }}</p>
+            {%- endunless -%}
+            <p class="cart-line-price">{{ item.final_price | money }}</p>
+            <p class="micro">Qty {{ item.quantity }}</p>
+          </div>
+          <div class="cart-line-total">{{ item.final_line_price | money }}</div>
+        </div>
+      {%- endfor -%}
+    {%- endif -%}
+  </div>
+
+  <div class="cart-drawer-foot" data-cart-foot {% if cart.item_count == 0 %}hidden{% endif %}>
+    <div class="cart-subtotal">
+      <span>Subtotal</span>
+      <span data-cart-subtotal>{{ cart.total_price | money }}</span>
+    </div>
+    <a class="cta cta-block" href="/checkout">Checkout</a>
+    <a class="cta-outline cta-block" href="{{ routes.cart_url }}">View cart</a>
+    <p class="cart-drawer-note">Cash on delivery &middot; 30-day returns</p>
+  </div>
+</aside>
+
+{% schema %}
+{ "name": "Cart drawer" }
+{% endschema %}
