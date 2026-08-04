@@ -28,4 +28,120 @@
     .pdp-grid{ display:grid; grid-template-columns:1.15fr .85fr; gap:64px; align-items:start; }
     .buybox{ position:sticky; top:calc(var(--header-h) + 24px); }
   }
+
+  /* ---- zoom trigger ---------------------------------------------------------
+     The whole slide is the hit area. The magnifier badge is the affordance:
+     without it nobody discovers that the image opens, so it is permanent on
+     touch and appears on hover/focus where a pointer can reveal it. */
+  .gallery-zoom{
+    position:absolute; inset:0; width:100%; height:100%;
+    display:block; padding:0; border:0; background:none; cursor:zoom-in;
+  }
+  .gallery-zoom-hint{
+    position:absolute; right:var(--s-3); bottom:var(--s-3);
+    width:32px; height:32px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(241,240,236,.92); color:var(--ink); box-shadow:var(--sh-1);
+    transition:opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  }
+  @media(hover:hover){
+    .gallery-zoom-hint{ opacity:0; transform:scale(.9); }
+    .gallery-zoom:hover .gallery-zoom-hint,
+    .gallery-zoom:focus-visible .gallery-zoom-hint{ opacity:1; transform:none; }
+  }
+
+  /* ---- full-screen viewer ---------------------------------------------------
+     Sits above the cart drawer (56) and the sticky buy bar (40) — it is the
+     topmost surface on the PDP while open. */
+  .zoom{
+    position:fixed; inset:0; z-index:70;
+    /* Not quite opaque, so the page still reads as being underneath — but
+       close to it, because the site is light and any more than a trace of it
+       shows through as a hard-edged ghost of the gallery rather than depth. */
+    background:rgba(20,22,26,.97);
+    display:flex; flex-direction:column;
+  }
+  .zoom[hidden]{ display:none; }
+  /* The page-wide focus ring is indigo, which all but disappears on this
+     near-black backdrop. */
+  .zoom :focus-visible{ outline:2px solid var(--chalk); outline-offset:2px; }
+
+  .zoom-bar{
+    flex:0 0 auto; display:flex; align-items:center; gap:var(--s-1);
+    padding:var(--s-2) var(--s-3);
+    padding-top:calc(var(--s-2) + env(safe-area-inset-top));
+    color:var(--chalk);
+  }
+  .zoom-count{
+    margin-right:auto; padding-left:var(--s-3);
+    font-size:13px; letter-spacing:.04em; font-variant-numeric:tabular-nums;
+  }
+  .zoom-btn{
+    flex:0 0 auto; width:var(--tap); height:var(--tap); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; color:var(--chalk);
+    transition:background var(--dur-fast) var(--ease);
+  }
+  .zoom-btn:hover{ background:rgba(241,240,236,.14); }
+  /* The toggle carries both icons and shows one. Every rule below has to
+     outweigh the .zoom-btn span default, hence the matching class depth. */
+  .zoom-btn span{ display:flex; }
+  .zoom-btn .zoom-icon-out{ display:none; }
+  [data-zoom-toggle][aria-pressed="true"] .zoom-icon-in{ display:none; }
+  [data-zoom-toggle][aria-pressed="true"] .zoom-icon-out{ display:flex; }
+
+  /* Panning is native overflow scrolling — momentum, rubber-banding and
+     keyboard arrow scrolling all come for free, and there is no transform
+     matrix to keep in sync. */
+  .zoom-stage{
+    flex:1 1 auto; min-height:0; display:flex; overflow:auto;
+    overscroll-behavior:contain; scrollbar-width:none;
+    touch-action:pan-x pan-y pinch-zoom;
+    padding:var(--s-3);
+    padding-bottom:calc(var(--s-3) + env(safe-area-inset-bottom));
+    cursor:zoom-in;
+  }
+  .zoom-stage::-webkit-scrollbar{ display:none; }
+  .zoom-img{
+    /* margin:auto rather than justify-content:center — centring a flex item
+       that overflows makes its leading edge unreachable by scrolling.
+       flex:none because a flex item shrinks to fit by default, which would
+       quietly undo the magnified width the moment it was set. */
+    flex:none; margin:auto; max-width:100%; max-height:100%; object-fit:contain;
+    user-select:none; -webkit-user-drag:none;
+    transition:opacity var(--dur-fast) var(--ease);
+  }
+  .zoom.is-zoomed .zoom-stage{ cursor:zoom-out; }
+  .zoom.is-zoomed .zoom-img{ max-width:none; max-height:none; }
+  .zoom.is-panning .zoom-stage{ cursor:grabbing; }
+
+  /* The 2048px source is fetched on open, so there is a real wait to cover. */
+  .zoom.is-loading .zoom-img{ opacity:0; }
+  .zoom.is-loading::after{
+    content:''; position:absolute; left:50%; top:50%; width:32px; height:32px;
+    margin:-16px 0 0 -16px; border-radius:50%;
+    border:2px solid rgba(241,240,236,.25); border-top-color:var(--chalk);
+    animation:zoomSpin .7s linear infinite;
+  }
+  @keyframes zoomSpin{ to{ transform:rotate(360deg); } }
+  @media(prefers-reduced-motion:reduce){ .zoom.is-loading::after{ animation:none; } }
+
+  .zoom-nav{
+    position:absolute; top:50%; transform:translateY(-50%);
+    width:var(--tap); height:var(--tap); border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--chalk); background:rgba(20,22,26,.55);
+    border:1px solid rgba(241,240,236,.22); backdrop-filter:blur(6px);
+    transition:background var(--dur-fast) var(--ease);
+  }
+  .zoom-nav:hover{ background:rgba(20,22,26,.8); }
+  .zoom-prev{ left:var(--s-3); }
+  .zoom-next{ right:var(--s-3); }
+  .zoom-prev svg{ transform:rotate(180deg); }
+  /* Once magnified the whole surface belongs to panning; the arrows would sit
+     under the drag and steal it. */
+  .zoom.is-zoomed .zoom-nav{ display:none; }
+  @media(min-width:900px){
+    .zoom-prev{ left:var(--s-5); }
+    .zoom-next{ right:var(--s-5); }
+  }
 }

@@ -6,12 +6,26 @@
     <div class="gallery" data-gallery>
       <div class="gallery-main" data-gallery-main>
         {%- for image in product.images -%}
+          {%- comment -%}
+            The slide image is a button, not a plain img: tapping it opens the
+            full-screen viewer. The 2048px source is only referenced here as a
+            data attribute — nothing fetches it until the viewer opens, so the
+            PDP still ships the same bytes it did before.
+          {%- endcomment -%}
           <div class="gallery-slide" data-gallery-slide>
-            {%- if forloop.first -%}
-              {% render 'responsive-image', img: image, alt: image.alt | default: product.title, widths: '600,900,1200', sizes: '(min-width:900px) 55vw, 100vw', loading: 'eager', priority: true %}
-            {%- else -%}
-              {% render 'responsive-image', img: image, alt: image.alt | default: product.title, widths: '600,900,1200', sizes: '(min-width:900px) 55vw, 100vw', loading: 'lazy' %}
-            {%- endif -%}
+            <button type="button" class="gallery-zoom"
+                    data-zoom-open
+                    aria-haspopup="dialog"
+                    aria-label="Zoom image {{ forloop.index }} of {{ product.images.size }}"
+                    data-zoom-src="{{ image | image_url: width: 2048 }}"
+                    data-zoom-alt="{{ image.alt | default: product.title | escape }}">
+              {%- if forloop.first -%}
+                {% render 'responsive-image', img: image, alt: image.alt | default: product.title, widths: '600,900,1200', sizes: '(min-width:900px) 55vw, 100vw', loading: 'eager', priority: true %}
+              {%- else -%}
+                {% render 'responsive-image', img: image, alt: image.alt | default: product.title, widths: '600,900,1200', sizes: '(min-width:900px) 55vw, 100vw', loading: 'lazy' %}
+              {%- endif -%}
+              <span class="gallery-zoom-hint" aria-hidden="true">{% render 'icon', name: 'search', size: 16 %}</span>
+            </button>
           </div>
         {%- else -%}
           <div class="gallery-slide"><div class="img-missing"><span>Product photography pending — approved library not yet uploaded to this product</span></div></div>
@@ -40,6 +54,49 @@
 
   </div>
 </section>
+
+{%- comment -%}
+  Full-screen image viewer. One <img> that gets its source swapped, rather than
+  a copy of every slide, so opening the viewer costs exactly one image.
+  Rendered outside <section> so nothing in the PDP grid can become a containing
+  block for the fixed positioning. Inert (hidden) until theme.js opens it, and
+  entirely absent when the product has no photography.
+{%- endcomment -%}
+{%- if product.images.size > 0 -%}
+  <div class="zoom" data-zoom hidden role="dialog" aria-modal="true" aria-labelledby="zoom-title">
+    <h2 id="zoom-title" class="visually-hidden">Product image viewer</h2>
+
+    <div class="zoom-bar">
+      <p class="zoom-count" data-zoom-count aria-live="polite"></p>
+      <button type="button" class="zoom-btn" data-zoom-toggle aria-pressed="false" aria-label="Zoom in">
+        <span class="zoom-icon-in">{% render 'icon', name: 'plus' %}</span>
+        <span class="zoom-icon-out">{% render 'icon', name: 'minus' %}</span>
+      </button>
+      <button type="button" class="zoom-btn" data-zoom-close aria-label="Close image viewer">
+        {% render 'icon', name: 'close' %}
+      </button>
+    </div>
+
+    {%- comment -%}
+      Panning is native overflow scrolling, so the stage is a real scroll
+      container: tabindex makes it reachable and arrow-key scrollable for
+      keyboard users once the image is magnified.
+    {%- endcomment -%}
+    <div class="zoom-stage" data-zoom-stage tabindex="0" role="group"
+         aria-label="Product image. When zoomed in, drag or use the arrow keys to pan.">
+      <img class="zoom-img" data-zoom-img alt="" draggable="false">
+    </div>
+
+    {%- if product.images.size > 1 -%}
+      <button type="button" class="zoom-nav zoom-prev" data-zoom-prev aria-label="Previous image">
+        {% render 'icon', name: 'chevron', size: 24 %}
+      </button>
+      <button type="button" class="zoom-nav zoom-next" data-zoom-next aria-label="Next image">
+        {% render 'icon', name: 'chevron', size: 24 %}
+      </button>
+    {%- endif -%}
+  </div>
+{%- endif -%}
 
 {% schema %}
 {

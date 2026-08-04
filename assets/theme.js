@@ -212,7 +212,8 @@
   })();
 
   /* ---------------------------------------------------------------
-     PDP gallery: scroll-snap strip synced to thumbs/dots
+     PDP gallery: scroll-snap strip synced to thumbs/dots, plus the
+     full-screen zoom viewer the slides open into.
   --------------------------------------------------------------- */
   (function gallery() {
     document.querySelectorAll('[data-gallery]').forEach(function (root) {
@@ -220,22 +221,233 @@
       var slides = Array.prototype.slice.call(root.querySelectorAll('[data-gallery-slide]'));
       var thumbs = Array.prototype.slice.call(root.querySelectorAll('[data-gallery-thumb]'));
       var dots = Array.prototype.slice.call(root.querySelectorAll('[data-gallery-dot]'));
-      if (!main || slides.length < 2) return;
+      if (!main) return;
 
-      function setActive(i) {
-        thumbs.forEach(function (t, idx) { t.classList.toggle('is-active', idx === i); });
-        dots.forEach(function (d, idx) { d.classList.toggle('is-active', idx === i); });
+      var goTo = function () {};
+
+      if (slides.length > 1) {
+        var setActive = function (i) {
+          thumbs.forEach(function (t, idx) { t.classList.toggle('is-active', idx === i); });
+          dots.forEach(function (d, idx) { d.classList.toggle('is-active', idx === i); });
+        };
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) setActive(slides.indexOf(e.target));
+          });
+        }, { root: main, threshold: 0.6 });
+        slides.forEach(function (s) { io.observe(s); });
+
+        goTo = function (i) {
+          if (!slides[i]) return;
+          slides[i].scrollIntoView({ behavior: RM ? 'auto' : 'smooth', inline: 'start', block: 'nearest' });
+        };
+        thumbs.forEach(function (t, i) { t.addEventListener('click', function () { goTo(i); }); });
+        dots.forEach(function (d, i) { d.addEventListener('click', function () { goTo(i); }); });
       }
-      var io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (e) {
-          if (e.isIntersecting) setActive(slides.indexOf(e.target));
-        });
-      }, { root: main, threshold: 0.6 });
-      slides.forEach(function (s) { io.observe(s); });
 
-      function goTo(i) { slides[i].scrollIntoView({ behavior: RM ? 'auto' : 'smooth', inline: 'start', block: 'nearest' }); }
-      thumbs.forEach(function (t, i) { t.addEventListener('click', function () { goTo(i); }); });
-      dots.forEach(function (d, i) { d.addEventListener('click', function () { goTo(i); }); });
+      /* ---- full-screen zoom viewer ------------------------------------
+         Product photography is the whole argument on a PDP and the slide
+         is barely 55vw wide — stitching, print quality and safety marks
+         are all below the resolution the page ships. The viewer is the
+         one place the 2048px source is worth its bytes, so nothing
+         fetches it until someone actually asks. */
+      var triggers = Array.prototype.slice.call(root.querySelectorAll('[data-zoom-open]'));
+      var lb = (root.closest('.shopify-section') || document).querySelector('[data-zoom]');
+      if (!lb || !triggers.length) return;
+
+      var stage = lb.querySelector('[data-zoom-stage]');
+      var img = lb.querySelector('[data-zoom-img]');
+      var countEl = lb.querySelector('[data-zoom-count]');
+      var toggleBtn = lb.querySelector('[data-zoom-toggle]');
+      var closeBtn = lb.querySelector('[data-zoom-close]');
+      var prevBtn = lb.querySelector('[data-zoom-prev]');
+      var nextBtn = lb.querySelector('[data-zoom-next]');
+      if (!stage || !img) return;
+
+      var index = 0;
+      var zoomed = false;
+      var lastFocus = null;
+
+      img.addEventListener('load', function () { lb.classList.remove('is-loading'); });
+      /* A dead source must not leave the spinner turning forever. */
+      img.addEventListener('error', function () { lb.classList.remove('is-loading'); });
+
+      function unzoom() {
+        zoomed = false;
+        lb.classList.remove('is-zoomed', 'is-panning');
+        img.style.width = '';
+        img.style.height = '';
+        stage.scrollLeft = 0;
+        stage.scrollTop = 0;
+        toggleBtn.setAttribute('aria-pressed', 'false');
+        toggleBtn.setAttribute('aria-label', 'Zoom in');
+      }
+
+      /* Magnify far enough to reach the pixels the source actually has, but
+         stay inside a 2x-3x band so the step is always a visible change and
+         never a wall of blur. */
+      function factor() {
+        var fitted = img.getBoundingClientRect().width;
+        if (!fitted) return 2;
+        return Math.min(3, Math.max(2, (img.naturalWidth || fitted * 2) / fitted));
+      }
+
+      /* cx/cy is the point that must not move: the pixel under the finger,
+         or the centre of the stage when the toolbar button is used. */
+      function zoomTo(cx, cy) {
+        var r = img.getBoundingClientRect();
+        if (!r.width || !r.height) return;
+        var ox = (cx - r.left) / r.width;
+        var oy = (cy - r.top) / r.height;
+        var f = factor();
+
+        zoomed = true;
+        lb.classList.add('is-zoomed');
+        toggleBtn.setAttribute('aria-pressed', 'true');
+        toggleBtn.setAttribute('aria-label', 'Zoom out');
+        img.style.width = r.width * f + 'px';
+        img.style.height = r.height * f + 'px';
+
+        /* Re-measure rather than predicting the new geometry: the stage has
+           padding and the image is centred with auto margins until it
+           outgrows the stage, and reading the real rect back is exact where
+           arithmetic over those would not be. Overscroll clamps itself. */
+        var r2 = img.getBoundingClientRect();
+        stage.scrollLeft += (r2.left + ox * r2.width) - cx;
+        stage.scrollTop += (r2.top + oy * r2.height) - cy;
+      }
+
+      function preload(i) {
+        var t = triggers[(i + triggers.length) % triggers.length];
+        var url = t && t.getAttribute('data-zoom-src');
+        if (url) { var p = new Image(); p.src = url; }
+      }
+
+      function show(i) {
+        index = (i + triggers.length) % triggers.length;
+        var t = triggers[index];
+        unzoom();
+        lb.classList.add('is-loading');
+        /* Deliberately no width/height attributes: those map to CSS width and
+           height, and once both axes are set explicitly max-width and
+           max-height clamp them independently rather than as a ratio — the
+           image ends up stretched to the stage. Letting the loaded source
+           supply the intrinsic size keeps the contain behaviour honest, and
+           the spinner covers the gap. */
+        img.alt = t.getAttribute('data-zoom-alt') || '';
+        img.src = t.getAttribute('data-zoom-src');
+        if (countEl) countEl.textContent = (index + 1) + ' of ' + triggers.length;
+        if (triggers.length > 1) { preload(index + 1); preload(index - 1); }
+      }
+
+      function focusables() {
+        return Array.prototype.slice.call(lb.querySelectorAll('button,[tabindex]'))
+          .filter(function (el) { return el.offsetWidth > 0 || el.offsetHeight > 0; });
+      }
+      function trap(e) {
+        var f = focusables();
+        if (!f.length) return;
+        var first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); }
+        else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
+      }
+      function onKey(e) {
+        if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+        if (e.key === 'Tab') { trap(e); return; }
+        /* While magnified the arrows belong to the pan surface — the stage is
+           a real scroll container, so leaving the event alone pans it. */
+        if (zoomed || triggers.length < 2) return;
+        if (e.key === 'ArrowRight') { e.preventDefault(); show(index + 1); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); show(index - 1); }
+      }
+
+      function open(i) {
+        lastFocus = document.activeElement;
+        lb.hidden = false;
+        document.body.classList.add('zoom-open');
+        show(i);
+        closeBtn.focus();
+        document.addEventListener('keydown', onKey);
+      }
+      function close() {
+        document.removeEventListener('keydown', onKey);
+        unzoom();
+        lb.hidden = true;
+        document.body.classList.remove('zoom-open');
+        /* Drop the 2048px bitmap and abandon any load still in flight. */
+        img.removeAttribute('src');
+        lb.classList.remove('is-loading');
+        /* Land the strip on whichever image was last being viewed, so closing
+           never teleports you back to where you started. */
+        goTo(index);
+        var back = triggers[index] || lastFocus;
+        if (back && back.focus) back.focus({ preventScroll: true });
+      }
+
+      triggers.forEach(function (t, i) {
+        var px = 0, py = 0;
+        t.addEventListener('pointerdown', function (e) { px = e.clientX; py = e.clientY; });
+        t.addEventListener('click', function (e) {
+          /* A swipe across the strip ends on whichever slide it started from;
+             that is navigation, not a request to open it. detail === 0 marks
+             a keyboard activation, which has no coordinates to compare. */
+          if (e.detail !== 0 && (Math.abs(e.clientX - px) > 10 || Math.abs(e.clientY - py) > 10)) return;
+          e.preventDefault();
+          open(i);
+        });
+      });
+
+      closeBtn.addEventListener('click', close);
+      toggleBtn.addEventListener('click', function () {
+        if (zoomed) { unzoom(); return; }
+        var s = stage.getBoundingClientRect();
+        zoomTo(s.left + s.width / 2, s.top + s.height / 2);
+      });
+      if (prevBtn) prevBtn.addEventListener('click', function () { show(index - 1); });
+      if (nextBtn) nextBtn.addEventListener('click', function () { show(index + 1); });
+
+      /* Mouse drag panning. Touch is left to native overflow scrolling —
+         capturing the pointer there would trade momentum and rubber-banding
+         for a worse hand-rolled copy of both. */
+      var dragging = false, sx = 0, sy = 0, sl = 0, st = 0, moved = false;
+      stage.addEventListener('pointerdown', function (e) {
+        moved = false;
+        if (e.pointerType !== 'mouse' || !zoomed) return;
+        dragging = true;
+        sx = e.clientX; sy = e.clientY;
+        sl = stage.scrollLeft; st = stage.scrollTop;
+        lb.classList.add('is-panning');
+        stage.setPointerCapture(e.pointerId);
+      });
+      stage.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        var dx = e.clientX - sx, dy = e.clientY - sy;
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+        stage.scrollLeft = sl - dx;
+        stage.scrollTop = st - dy;
+      });
+      function endDrag(e) {
+        if (!dragging) return;
+        dragging = false;
+        lb.classList.remove('is-panning');
+        if (stage.hasPointerCapture(e.pointerId)) stage.releasePointerCapture(e.pointerId);
+      }
+      stage.addEventListener('pointerup', endDrag);
+      stage.addEventListener('pointercancel', endDrag);
+
+      stage.addEventListener('click', function (e) {
+        /* The click that ends a drag is the drag, not a separate tap. */
+        if (moved) { moved = false; return; }
+        if (e.target === img) {
+          if (zoomed) unzoom(); else zoomTo(e.clientX, e.clientY);
+        } else {
+          close();
+        }
+      });
+
+      /* The magnified size is stored in pixels, so a rotation or a resized
+         window would leave it describing a viewport that no longer exists. */
+      window.addEventListener('resize', function () { if (!lb.hidden && zoomed) unzoom(); });
     });
   })();
 

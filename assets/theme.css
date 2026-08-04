@@ -102,7 +102,7 @@
     padding-bottom:calc(68px + env(safe-area-inset-bottom));
   }
   @media(min-width:900px){ body{ padding-bottom:0; } }
-  body.nav-open,body.cart-open{ overflow:hidden; }
+  body.nav-open,body.cart-open,body.zoom-open{ overflow:hidden; }
 
   h1,h2,h3,p,dl,dd,figure,table{ margin:0; }
   :focus-visible{ outline:2px solid var(--indigo); outline-offset:2px; border-radius:2px; }
