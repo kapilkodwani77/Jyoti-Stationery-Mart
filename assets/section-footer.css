@@ -1,0 +1,48 @@
+/* Footer email signup — loaded from sections/footer.liquid, following the
+   same per-section stylesheet_tag pattern the other section styles use.
+
+   NOTE: the older .ftr / .ftr-grid / .ftr-base rules still live in theme.css
+   under @layer sections. Footer styling is therefore split across two files
+   until that block is moved here — a mechanical copy, worth doing next time
+   theme.css is open. New footer work belongs in this file. */
+@layer sections {
+  /* List-building had no surface anywhere on the site. It sits above the link
+     columns rather than tucked beside them because for a pre-launch brand this
+     is the footer's most valuable job, not an afterthought next to the legal
+     links. */
+  .ftr-signup{
+    display:grid; gap:var(--s-4);
+    padding-bottom:var(--s-6); margin-bottom:var(--s-6);
+    border-bottom:1px solid var(--edge);
+  }
+  .ftr-signup-head{
+    font-family:var(--font-display); font-size:20px;
+    letter-spacing:-.02em; color:var(--ink);
+  }
+  .ftr-signup-sub{
+    font-size:14px; color:var(--ink-2); margin-top:6px;
+    line-height:1.5; max-width:46ch;
+  }
+  .ftr-signup-row{ display:flex; flex-wrap:wrap; gap:var(--s-2); }
+  .ftr-signup-input{
+    /* A flex-basis this large means the button wraps to its own line before the
+       field collapses to an unusable sliver on a narrow phone. */
+    flex:1 1 220px; min-width:0; height:52px;
+    border:1px solid var(--jute); border-radius:var(--r-md);
+    padding-inline:var(--s-4); background:var(--chalk); color:var(--ink);
+    /* 16px is deliberate: anything smaller and iOS zooms the page on focus. */
+    font-size:16px; font-family:inherit;
+  }
+  .ftr-signup-input::placeholder{ color:var(--ink-2); opacity:.75; }
+  .ftr-signup-input:focus-visible{ border-color:var(--indigo); }
+  /* .cta lives in @layer layout, so this wins on layer order, not specificity. */
+  .ftr-signup-form .cta{ flex:0 0 auto; height:52px; }
+
+  .ftr-signup-note{ font-size:13px; margin-top:var(--s-2); line-height:1.5; }
+  .ftr-signup-note--ok{ color:var(--indigo); }
+  .ftr-signup-note--err{ color:var(--danger); }
+
+  @media(min-width:900px){
+    .ftr-signup{ grid-template-columns:1fr minmax(300px,400px); gap:var(--s-7); align-items:center; }
+  }
+}

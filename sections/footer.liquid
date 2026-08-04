@@ -1,5 +1,58 @@
+{{ 'section-footer.css' | asset_url | stylesheet_tag }}
 <footer class="ftr">
   <div class="wrap">
+
+    {%- comment -%}
+      Email capture. Shopify's native customer form, so it works with JavaScript
+      disabled and needs no third-party script — the address lands in Customers
+      tagged "newsletter", which is what Shopify Email and Klaviyo both segment
+      on. It sits above the link columns because for a pre-launch brand this is
+      the footer's most valuable job, not an afterthought beside the legal links.
+    {%- endcomment -%}
+    {%- if section.settings.signup_show -%}
+      <div class="ftr-signup">
+        <div>
+          <h2 class="ftr-signup-head">{{ section.settings.signup_heading }}</h2>
+          {%- if section.settings.signup_body != blank -%}
+            <p class="ftr-signup-sub">{{ section.settings.signup_body }}</p>
+          {%- endif -%}
+        </div>
+
+        {%- form 'customer', id: 'ftr-signup', class: 'ftr-signup-form' -%}
+          <input type="hidden" name="contact[tags]" value="newsletter">
+
+          {%- if form.posted_successfully? -%}
+            {%- comment -%}
+              role="status" rather than a bare paragraph: the page has reloaded,
+              so a screen reader would otherwise give no sign the signup worked.
+            {%- endcomment -%}
+            <p class="ftr-signup-note ftr-signup-note--ok" role="status">
+              {{ section.settings.signup_thanks }}
+            </p>
+          {%- else -%}
+            <div class="ftr-signup-row">
+              <label class="visually-hidden" for="ftr-signup-email">Email address</label>
+              <input id="ftr-signup-email"
+                     class="ftr-signup-input"
+                     type="email"
+                     name="contact[email]"
+                     value="{{ form.email | escape }}"
+                     placeholder="you@example.com"
+                     autocomplete="email"
+                     required
+                     {% if form.errors %}aria-invalid="true" aria-describedby="ftr-signup-err"{% endif %}>
+              <button type="submit" class="cta">{{ section.settings.signup_cta }}</button>
+            </div>
+            {%- if form.errors -%}
+              <p class="ftr-signup-note ftr-signup-note--err" id="ftr-signup-err" role="alert">
+                {{ form.errors.messages.email | default: 'That address did not look right. Try again?' }}
+              </p>
+            {%- endif -%}
+          {%- endif -%}
+        {%- endform -%}
+      </div>
+    {%- endif -%}
+
     <div class="ftr-top">
       <div class="ftr-brand">
         <span class="ftr-mark">{{ settings.brand_name | default: shop.name }}</span>
@@ -40,12 +93,26 @@
     {%- endif -%}
 
     <p class="ftr-base">
-      <span>&copy; {{ 'now' | date: '%Y' }} {{ settings.legal_entity | default: shop.name }}</span>
+      {%- comment -%}
+        Falls through to the brand before the account name: no legal entity is
+        set yet, and the account is still called "Baby Products".
+      {%- endcomment -%}
+      <span>&copy; {{ 'now' | date: '%Y' }} {{ settings.legal_entity | default: settings.brand_name | default: shop.name }}</span>
       {%- if settings.gstin != blank -%}<span>GSTIN {{ settings.gstin }}</span>{%- endif -%}
     </p>
   </div>
 </footer>
 
 {% schema %}
-{ "name": "Footer" }
+{
+  "name": "Footer",
+  "settings": [
+    { "type": "header", "content": "Email signup" },
+    { "type": "checkbox", "id": "signup_show", "label": "Show email signup", "default": true },
+    { "type": "text", "id": "signup_heading", "label": "Heading", "default": "Be first to know." },
+    { "type": "textarea", "id": "signup_body", "label": "Supporting line", "default": "We are still setting up. Leave your email and we will tell you the day the mat is ready. Nothing else." },
+    { "type": "text", "id": "signup_cta", "label": "Button label", "default": "Notify me" },
+    { "type": "text", "id": "signup_thanks", "label": "Thank-you message", "default": "You are on the list. We will be in touch." }
+  ]
+}
 {% endschema %}

@@ -1,4 +1,4 @@
-/* BabyCare theme.js — vanilla, no dependencies, deferred load.
+/* MamaJoy theme.js — vanilla, no dependencies, deferred load.
    Every module guards on element existence so this one file is safe
    to include on every template. Scoped by data-attribute, not id,
    so nothing breaks if a section is ever duplicated. */

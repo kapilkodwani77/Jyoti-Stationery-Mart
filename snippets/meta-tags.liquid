@@ -1,5 +1,22 @@
 {%- comment -%} Canonical + noindex rules per Vol II §10.4. Include once in <head>. {%- endcomment -%}
-<title>{{ page_title }}{% unless page_title contains shop.name %} · {{ shop.name }}{% endunless %}</title>
+
+{%- comment -%}
+  Titles key off the brand setting, not shop.name. The Shopify account is still
+  named "Baby Products", and shop.name is what Shopify feeds page_title on the
+  homepage — so reading it directly put the account name in every tab and every
+  shared link. Same fallback chain the header and footer already use.
+{%- endcomment -%}
+{%- assign brand = settings.brand_name | default: shop.name -%}
+
+{%- if template.name == 'index' -%}
+  {%- comment -%}
+    The homepage's page_title is the account name, which no amount of appending
+    fixes — it has to be replaced outright.
+  {%- endcomment -%}
+  <title>{{ brand }}{% if settings.brand_tagline != blank %} · {{ settings.brand_tagline }}{% endif %}</title>
+{%- else -%}
+  <title>{{ page_title }}{% unless page_title contains brand %} · {{ brand }}{% endunless %}</title>
+{%- endif -%}
 {%- if page_description -%}<meta name="description" content="{{ page_description | escape }}">{%- endif -%}
 
 {%- if template.name == 'page' and page.metafields.custom.lp_canonical_product != blank -%}
@@ -12,7 +29,7 @@
   <link rel="canonical" href="{{ canonical_url }}">
 {%- endif -%}
 
-<meta property="og:site_name" content="{{ shop.name }}">
+<meta property="og:site_name" content="{{ brand | escape }}">
 <meta property="og:title" content="{{ page_title | escape }}">
 {%- if page_description -%}<meta property="og:description" content="{{ page_description | escape }}">{%- endif -%}
 <meta property="og:type" content="{% if template.name == 'product' %}product{% else %}website{% endif %}">
