@@ -624,6 +624,10 @@
   /* Label and amount were both 16px/500, so the word "Subtotal" carried the
      same weight as the number beside it. The label steps back; the figure gets
      the size and tabular digits so it stays put as quantities change. */
+  /* Sits above the subtotal so the reason arrives before the number it
+     explains. Same size and ink as the buy box's error line. */
+  .cart-drawer-error{ font-size:13px; color:var(--danger); margin-bottom:var(--s-3); }
+  .cart-drawer-error[hidden]{ display:none; }
   .cart-subtotal{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:var(--s-4); }
   .cart-subtotal-label{ font-size:13px; color:var(--ink-2); }
   .cart-subtotal-value{ font-size:18px; font-weight:500; font-variant-numeric:tabular-nums; }

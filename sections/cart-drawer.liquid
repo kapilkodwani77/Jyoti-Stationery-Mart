@@ -68,6 +68,15 @@
       with the number a customer actually came here to read. The label is now
       secondary and the amount carries the weight.
     {%- endcomment -%}
+    {%- comment -%}
+      A rejected quantity change used to reach the shopper only through the
+      visually-hidden live region, so a sighted customer who stepped past the
+      available stock saw the number go up, the totals stay put, and no reason
+      given. Same element and same role as the buy box's error line, placed
+      above the subtotal it explains.
+    {%- endcomment -%}
+    <p class="cart-drawer-error" data-cart-error role="alert" hidden></p>
+
     <div class="cart-subtotal">
       <span class="cart-subtotal-label">Subtotal</span>
       <span class="cart-subtotal-value" data-cart-subtotal>{{ cart.total_price | money }}</span>

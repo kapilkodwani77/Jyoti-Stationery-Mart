@@ -542,9 +542,14 @@
     var wrap = e.target.closest('[data-qty-stepper]');
     var input = wrap.querySelector('[data-qty-input],input[type="number"]');
     if (!input) return;
-    var min = parseInt(input.min, 10) || 1;
-    var max = parseInt(input.max, 10) || 99;
-    var val = parseInt(input.value, 10) || min;
+    /* isNaN rather than `|| fallback`: every one of these is a number for
+       which 0 is a legitimate value, and `parseInt("0") || 1` is 1. Both the
+       drawer line and the cart page declare min="0" so the last unit can be
+       stepped away, and this quietly clamped them to 1 — the minus button
+       contradicted the range its own markup advertised. */
+    var min = parseInt(input.min, 10); if (isNaN(min)) min = 1;
+    var max = parseInt(input.max, 10); if (isNaN(max)) max = 99;
+    var val = parseInt(input.value, 10); if (isNaN(val)) val = min;
     val = minus ? Math.max(min, val - 1) : Math.min(max, val + 1);
     input.value = val;
     input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -708,6 +713,7 @@
         '<div></div><div></div><div></div></div>';
     }
     drawer.setAttribute('aria-busy', 'true');
+    showCartError('');
     fetchCart()
       .then(function (cart) { renderDrawer(cart); updateBadges(cart.item_count); })
       .catch(function () {
@@ -768,10 +774,40 @@
     });
   }
 
+  /* One place decides how a cart response reaches the drawer: patch the
+     numbers where the line-up is unchanged, re-render where it is not. Both
+     the success path and the recovery path below need exactly this, and having
+     them share it is what keeps the two from drifting apart. */
+  function applyCart(cart) {
+    updateBadges(cart.item_count);
+    var shown = drawer ? drawer.querySelectorAll('.cart-line').length : 0;
+    if (shown && shown === cart.items.length) patchTotals(cart);
+    else renderDrawer(cart);
+  }
+
+  /* Errors are shown, not just announced. The failure this exists for is
+     "you can only add 2 of that", which a sighted shopper had no way to learn:
+     it went to the visually-hidden live region and nowhere else. */
+  function showCartError(msg) {
+    var el = drawer && drawer.querySelector('[data-cart-error]');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.hidden = !msg;
+  }
+
   /* Quantity edits were fired one request per click with no sequencing, so
      tapping + three times raced three /cart/change calls and whichever
      response landed last won — which is not necessarily the last click.
-     Requests are queued so the final state always reflects the final tap. */
+     Requests are queued so the final state always reflects the final tap.
+
+     The response is checked before it is believed. /cart/change.js answers a
+     rejected quantity with 422 and a Cart Error object, not a cart — and this
+     used to pipe r.json() straight into the success path. updateBadges then
+     read item_count off an error, blanking the header count, and the next line
+     threw on cart.items, so the catch swallowed it and every price in the
+     drawer kept the value it had while the input kept the number the shopper
+     had tapped. Stock ran out and the drawer quietly lied until a refresh.
+     Same shape as the add-to-cart handler, which has always checked r.ok. */
   var cartQueue = Promise.resolve();
   function changeLine(key, quantity, label) {
     cartQueue = cartQueue.then(function () {
@@ -780,17 +816,26 @@
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ id: key, quantity: quantity })
       })
-        .then(function (r) { return r.json(); })
-        .then(function (cart) {
-          updateBadges(cart.item_count);
-          var shown = drawer ? drawer.querySelectorAll('.cart-line').length : 0;
-          if (shown && shown === cart.items.length) patchTotals(cart);
-          else renderDrawer(cart);
+        .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+        .then(function (res) {
+          if (!res.ok) throw new Error(res.data.description || res.data.message || 'Could not update your cart');
+          var cart = res.data;
+          showCartError('');
+          applyCart(cart);
           if (quantity === 0) announce((label ? label + ' removed' : 'Item removed') + ' from cart.');
           else announce('Cart updated. Subtotal ' + money(cart.total_price) + '.');
           return cart;
         })
-        .catch(function () { announce('Could not update your cart. Please try again.'); });
+        .catch(function (err) {
+          showCartError(err.message);
+          announce(err.message);
+          /* Whatever went wrong, the drawer is now showing a quantity the cart
+             may not hold. Re-read the real cart and put the drawer back on it,
+             through the same path a successful change takes — a failed edit
+             should leave the shopper looking at the truth, not at their own
+             optimistic tap. */
+          return fetchCart().then(applyCart).catch(function () {});
+        });
     });
     return cartQueue;
   }
