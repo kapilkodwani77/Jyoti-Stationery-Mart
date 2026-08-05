@@ -30,9 +30,22 @@
       {%- for item in cart.items -%}
         <div class="cart-line" data-line-key="{{ item.key }}">
           <div class="cart-line-img">
+            {%- comment -%}
+              Through the shared snippet, like the cart page and every other
+              image in the theme. Empty alt because the product title is right
+              next to it — naming the image only makes a screen reader say the
+              product twice. The presence check stays so .img-missing, which
+              carries a 160px min-height for full-size plates, never lands in
+              a 72px box.
+            {%- endcomment -%}
             {%- if item.image -%}
-              <img class="img-cover" src="{{ item.image | image_url: width: 144 }}"
-                   alt="" width="72" height="72" loading="lazy">
+              {% render 'responsive-image',
+                 img: item.image,
+                 alt: '',
+                 widths: '72,144,216',
+                 sizes: '72px',
+                 base_width: 144,
+                 loading: 'lazy' %}
             {%- endif -%}
           </div>
           <div>
@@ -50,12 +63,37 @@
   </div>
 
   <div class="cart-drawer-foot" data-cart-foot {% if cart.item_count == 0 %}hidden{% endif %}>
+    {%- comment -%}
+      Label and value were the same size and weight, so "Subtotal" competed
+      with the number a customer actually came here to read. The label is now
+      secondary and the amount carries the weight.
+    {%- endcomment -%}
     <div class="cart-subtotal">
-      <span>Subtotal</span>
-      <span data-cart-subtotal>{{ cart.total_price | money }}</span>
+      <span class="cart-subtotal-label">Subtotal</span>
+      <span class="cart-subtotal-value" data-cart-subtotal>{{ cart.total_price | money }}</span>
     </div>
+
+    {%- comment -%}
+      One primary action, one secondary, one tertiary. Checkout and View cart
+      were previously both full-width buttons of near-equal weight, which made
+      the customer choose between two things that look equally like the way
+      forward. View cart is a quieter text link now.
+
+      The prepaid nudge already existed in the buy box and stopped there, so a
+      customer who added from a card and opened the drawer never saw the offer
+      at all — the one moment with the most intent behind it.
+    {%- endcomment -%}
     <a class="cta cta-block" href="/checkout">Checkout</a>
-    <a class="cta-outline cta-block" href="{{ routes.cart_url }}">View cart</a>
+
+    {%- if settings.prepaid_discount_code != blank -%}
+      <button type="button" class="cta-outline cta-block cart-prepaid"
+              data-buy-prepaid data-discount-code="{{ settings.prepaid_discount_code }}">
+        {{ settings.prepaid_discount_label | default: 'Save 5% paying online' }}
+      </button>
+    {%- endif -%}
+
+    <a class="cart-view-link" href="{{ routes.cart_url }}">View cart</a>
+
     <p class="cart-drawer-note">Cash on delivery &middot; 30-day returns</p>
   </div>
 </aside>

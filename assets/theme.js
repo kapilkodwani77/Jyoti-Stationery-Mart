@@ -112,6 +112,78 @@
   })();
 
   /* ---------------------------------------------------------------
+     PDP in-page nav. Built from whatever sections below carry
+     data-jump, so it always matches the sections a merchant actually
+     placed rather than a list hardcoded against one template.
+  --------------------------------------------------------------- */
+  (function pdpJump() {
+    var nav = document.querySelector('[data-pdp-jump]');
+    if (!nav) return;
+
+    var targets = Array.prototype.slice.call(document.querySelectorAll('[data-jump]'))
+      .filter(function (el) { return el.id && el.dataset.jump.trim(); });
+    /* One chip is not a nav, it is a stray button — the page has to be long
+       enough for orientation to be worth the row. */
+    if (targets.length < 2) return;
+
+    var list = document.createElement('ul');
+    list.className = 'pdp-jump-list';
+
+    var links = targets.map(function (el) {
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      a.className = 'pdp-jump-link';
+      a.href = '#' + el.id;
+      a.textContent = el.dataset.jump.trim();
+      li.appendChild(a);
+      list.appendChild(li);
+      return a;
+    });
+
+    nav.appendChild(list);
+    nav.hidden = false;
+
+    /* Which section you are in, marked as you scroll. aria-current rather than
+       a class alone, so the state is available to a screen reader running the
+       nav rather than only to someone watching it. */
+    var current = null;
+    var mark = function (el) {
+      if (el === current) return;
+      current = el;
+      links.forEach(function (a) {
+        var on = a.getAttribute('href') === '#' + el.id;
+        a.classList.toggle('is-current', on);
+        if (on) {
+          a.setAttribute('aria-current', 'true');
+          /* Keep the active chip in view on mobile, where the row scrolls.
+             Deliberately not scrollIntoView: the nav sits in the flow rather
+             than pinned, so once the reader is deep in the page that call
+             would drag the whole document back up to it. Scrolling the strip
+             directly can only ever move the strip. */
+          if (list.scrollWidth > list.clientWidth) {
+            var want = a.offsetLeft - (list.clientWidth - a.offsetWidth) / 2;
+            var max = list.scrollWidth - list.clientWidth;
+            list.scrollTo({
+              left: Math.max(0, Math.min(want, max)),
+              behavior: RM ? 'auto' : 'smooth'
+            });
+          }
+        } else {
+          a.removeAttribute('aria-current');
+        }
+      });
+    };
+
+    /* Top band only: a section counts as current once its start crosses under
+       the header, which is what a reader means by "where am I" — not whichever
+       section happens to occupy the most pixels. */
+    var jumpObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) mark(e.target); });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    targets.forEach(function (t) { jumpObserver.observe(t); });
+  })();
+
+  /* ---------------------------------------------------------------
      04 — Fold scroll-scrub, degrades to static 2x2 grid
   --------------------------------------------------------------- */
   (function fold() {
@@ -227,8 +299,17 @@
 
       if (slides.length > 1) {
         var setActive = function (i) {
-          thumbs.forEach(function (t, idx) { t.classList.toggle('is-active', idx === i); });
-          dots.forEach(function (d, idx) { d.classList.toggle('is-active', idx === i); });
+          /* aria-current alongside the class: the active state was purely
+             visual, so a screen reader running down the thumb or dot buttons
+             heard six identical-sounding controls with nothing marking which
+             image is actually on screen. */
+          var mark = function (el, on) {
+            el.classList.toggle('is-active', on);
+            if (on) el.setAttribute('aria-current', 'true');
+            else el.removeAttribute('aria-current');
+          };
+          thumbs.forEach(function (t, idx) { mark(t, idx === i); });
+          dots.forEach(function (d, idx) { mark(d, idx === i); });
         };
         var io = new IntersectionObserver(function (entries) {
           entries.forEach(function (e) {
@@ -746,7 +827,9 @@
 
   if (drawer) {
     drawer.addEventListener('pointerdown', function (e) {
-      if (e.target.closest('[data-cart-foot] a')) flushQty();
+      /* Every way out of the footer, not just the links: the prepaid button is
+         a <button> and navigates the same as Checkout does. */
+      if (e.target.closest('[data-cart-foot] a, [data-cart-foot] button')) flushQty();
     });
     drawer.addEventListener('click', function (e) {
       var rm = e.target.closest('[data-cart-remove]');
@@ -820,12 +903,28 @@
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-buy-prepaid]');
     if (!btn) return;
-    var form = btn.closest('[data-buybox-form]');
     var code = btn.dataset.discountCode;
-    if (!form || !code) return;
+    if (!code) return;
+
+    /* Two callers now. In the buy box the button sits inside a product form and
+       has to add the item before it can send anyone to checkout. In the cart
+       drawer the goods are already in the cart, so adding again would silently
+       double the order — there, the button only applies the code. */
+    var form = btn.closest('[data-buybox-form]');
+
     btn.disabled = true;
     var originalText = btn.textContent;
     btn.textContent = 'Redirecting…';
+
+    var go = function () {
+      window.location.href = routes.root + 'discount/' + encodeURIComponent(code) + '?redirect=/checkout';
+    };
+    var recover = function () {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    };
+
+    if (!form) { go(); return; }
 
     fetch(routes.cartAdd, {
       method: 'POST',
@@ -834,12 +933,7 @@
         id: form.querySelector('[name="id"]').value,
         quantity: parseInt(form.querySelector('[name="quantity"]').value, 10) || 1
       })
-    }).then(function () {
-      window.location.href = routes.root + 'discount/' + encodeURIComponent(code) + '?redirect=/checkout';
-    }).catch(function () {
-      btn.disabled = false;
-      btn.textContent = originalText;
-    });
+    }).then(go).catch(recover);
   });
 
 })();

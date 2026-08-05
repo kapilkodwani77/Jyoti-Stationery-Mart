@@ -1,5 +1,7 @@
 {{ 'section-pdp-specs.css' | asset_url | stylesheet_tag }}
-<section class="sec sec--tight {% render 'surface-class', s: section.settings.surface %}">
+<section class="sec sec--tight {% render 'surface-class', s: section.settings.surface %}"
+         id="jump-{{ section.id }}"
+         {% if section.settings.jump_label != blank %}data-jump="{{ section.settings.jump_label | escape }}"{% endif %}>
   <div class="wrap">
     <div class="pdp-accordions">
       {%- for block in section.blocks -%}
@@ -40,6 +42,7 @@
 {
   "name": "Product accordions",
   "settings": [
+    { "type": "text", "id": "jump_label", "label": "Jump-nav label", "default": "Specs", "info": "Short label for the in-page nav at the top of the product page. Clear it to leave this section out of the nav." },
     { "type": "select", "id": "surface", "label": "Surface", "default": "jute", "options": [{ "value": "chalk", "label": "Chalk" }, { "value": "jute", "label": "Jute wash" }] }
   ],
   "blocks": [

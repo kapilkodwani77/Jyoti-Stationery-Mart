@@ -101,6 +101,19 @@
   overflow:hidden;
 }
 
+/* Supporting evidence for the title, not a competitor to it: one step down in
+   size and set in the secondary ink, so the card still reads title → price.
+   The stars carry the brand indigo because that is the one thing here worth
+   a glance; the count beside them stays quiet. */
+.pc-rating{
+  margin:var(--s-2) 0 0;
+  display:flex; align-items:center; gap:var(--s-2);
+  font-size:12px; color:var(--ink-2);
+}
+.pc-rating-stars{ color:var(--indigo); letter-spacing:.08em; font-size:11px; }
+.pc-rating-avg{ font-weight:500; color:var(--ink); font-variant-numeric:tabular-nums; }
+.pc-rating-count{ font-variant-numeric:tabular-nums; }
+
 .pc-price{
   margin:var(--s-2) 0 0;
   font-size:15px; font-weight:500; color:var(--ink);

@@ -69,6 +69,14 @@
       <a class="pc-link" href="{{ product.url }}"><span class="pc-title-text">{{ product.title }}</span></a>
     </h3>
 
+    {%- comment -%}
+      Social proof sits between the name and the price, which is the order the
+      question actually gets asked in: what is it, is it any good, what does it
+      cost. The snippet renders nothing until reviews exist, so the card keeps
+      its current spacing exactly until there is something true to say.
+    {%- endcomment -%}
+    {% render 'product-rating', product: product, compact: true %}
+
     <p class="pc-price">
       <span class="pc-price-now">{{ v.price | money }}</span>
       {%- if on_sale -%}

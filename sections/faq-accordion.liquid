@@ -1,5 +1,7 @@
 {{ 'section-faq.css' | asset_url | stylesheet_tag }}
-<section class="sec {% if section.settings.compact %}sec--tight{% endif %} {% render 'surface-class', s: section.settings.surface %}">
+<section class="sec {% if section.settings.compact %}sec--tight{% endif %} {% render 'surface-class', s: section.settings.surface %}"
+         id="jump-{{ section.id }}"
+         {% if section.settings.jump_label != blank %}data-jump="{{ section.settings.jump_label | escape }}"{% endif %}>
   <div class="wrap">
     <h2 class="h2">{{ section.settings.heading }}</h2>
 
@@ -32,6 +34,7 @@
 {
   "name": "FAQ",
   "settings": [
+    { "type": "text", "id": "jump_label", "label": "Jump-nav label", "default": "FAQ", "info": "Short label for the in-page nav at the top of the product page. Clear it to leave this section out of the nav." },
     { "type": "checkbox", "id": "compact", "label": "Reduce vertical padding", "default": false },
     { "type": "select", "id": "surface", "label": "Surface", "default": "jute", "options": [{ "value": "chalk", "label": "Chalk" }, { "value": "jute", "label": "Jute wash" }] },
     { "type": "text", "id": "heading", "label": "Heading", "default": "Questions we actually get." }

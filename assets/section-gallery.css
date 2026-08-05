@@ -19,14 +19,65 @@
   }
   .gallery-thumb.is-active{ opacity:1; border-color:var(--indigo); }
   .gallery-thumb:hover{ opacity:.9; }
-  .gallery-dots{ display:flex; gap:8px; justify-content:center; margin-top:12px; }
-  .gallery-dots span{ width:6px; height:6px; border-radius:50%; background:var(--jute); }
-  .gallery-dots span.is-active{ background:var(--indigo); }
+
+  /* The dot is 6px; the button around it is 44px. Gap is 0 because the targets
+     now carry their own breathing room — spacing them further would only push
+     the row wider without making anything easier to hit. margin-top drops from
+     12px for the same reason: the button already contributes 19px above the
+     dot, so the old value read as a gap twice the size of the design's. */
+  .gallery-dots{ display:flex; gap:0; justify-content:center; margin-top:0; }
+  .gallery-dot{
+    width:var(--tap); height:var(--tap); padding:0; border:0; background:none;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .gallery-dot::before{
+    content:''; width:6px; height:6px; border-radius:50%; background:var(--jute);
+    transition:background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  }
+  .gallery-dot.is-active::before{ background:var(--indigo); transform:scale(1.25); }
+  /* The ring belongs around the dot, not around 44px of empty space. */
+  .gallery-dot:focus-visible{ outline:none; }
+  .gallery-dot:focus-visible::before{ outline:2px solid var(--indigo); outline-offset:3px; }
+
   @media(max-width:899px){ .gallery-dots{ display:flex; } .gallery-thumbs{ display:none; } }
   @media(min-width:900px){ .gallery-dots{ display:none; } .gallery-thumbs{ display:flex; } }
   @media(min-width:900px){
     .pdp-grid{ display:grid; grid-template-columns:1.15fr .85fr; gap:64px; align-items:start; }
     .buybox{ position:sticky; top:calc(var(--header-h) + 24px); }
+  }
+
+  /* ---- in-page nav ----------------------------------------------------------
+     Built by theme.js from the sections that opt in, and hidden until it is. */
+  .pdp-jump{
+    border-block:1px solid var(--edge);
+    padding-block:var(--s-2);
+  }
+  .pdp-jump[hidden]{ display:none; }
+  .pdp-jump-list{
+    display:flex; gap:var(--s-1); list-style:none; margin:0; padding:0 var(--s-5);
+    /* Scrolls rather than wraps: a wrapped second row on a phone doubles the
+       height of a bar whose whole job is to take up almost none. */
+    overflow-x:auto; scrollbar-width:none; scroll-snap-type:x proximity;
+  }
+  .pdp-jump-list::-webkit-scrollbar{ display:none; }
+  .pdp-jump-link{
+    display:flex; align-items:center; white-space:nowrap; scroll-snap-align:start;
+    /* Inline padding sets the visual size; min-height carries the tap target,
+       so a 13px label still gets the same 44px as everything else. */
+    min-height:var(--tap); padding-inline:var(--s-3);
+    font-size:13px; color:var(--ink-2); text-decoration:none;
+    border-bottom:2px solid transparent;
+    transition:color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  }
+  .pdp-jump-link:hover{ color:var(--ink); }
+  .pdp-jump-link.is-current{ color:var(--ink); border-bottom-color:var(--indigo); }
+
+  /* Jump targets clear the pinned header instead of landing under it. */
+  [data-jump]{ scroll-margin-top:calc(var(--header-h) + var(--s-4)); }
+
+  @media(min-width:900px){
+    .pdp-jump-list{ justify-content:center; padding-inline:var(--s-6); }
+    .pdp-jump-link{ font-size:14px; padding-inline:var(--s-4); }
   }
 
   /* ---- zoom trigger ---------------------------------------------------------

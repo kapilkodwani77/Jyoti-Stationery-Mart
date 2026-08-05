@@ -1,10 +1,7 @@
-{%- liquid
-  assign ctx_product = product | default: settings.featured_product
--%}
 {{ 'section-fit.css' | asset_url | stylesheet_tag }}
 <section class="sec {% render 'surface-class', s: section.settings.surface %}">
   <div class="wrap" data-fit-comparator>
-    <h2 class="h2">It is {% render 'spec', product: ctx_product, key: 'dimensions_unfolded', label: 'the size' %} of floor. Here is what that looks like.</h2>
+    <h2 class="h2">It is {% render 'spec', product: product, key: 'dimensions_unfolded', label: 'the size' %} of floor. Here is what that looks like.</h2>
 
     <div class="chips" role="radiogroup" aria-label="Compare the mat against">
       <button class="chip" type="button" role="radio" aria-checked="true" data-fit-chip="g1"
@@ -40,31 +37,39 @@
         </g>
       </svg>
     </div>
-    <p class="fit-cap" data-fit-caption>{{ section.settings.caption_1 }}</p>
+    {%- comment -%}
+      Picking a chip swaps this caption and redraws the diagram above it. The
+      radio itself announces which chip is now checked, but the answer — what
+      the mat actually looks like against that thing — lives here, and a screen
+      reader had no reason to come back and re-read it. role="status" makes the
+      caption announce itself when it changes, which covers the diagram too:
+      this sentence is the readable equivalent of what the drawing shows.
+    {%- endcomment -%}
+    <p class="fit-cap" data-fit-caption role="status">{{ section.settings.caption_1 }}</p>
 
     <table class="specs">
       <caption class="eyebrow" style="text-align:left;margin-top:var(--s-7)">The numbers</caption>
       <tbody>
-        <tr><th scope="row">Unfolded</th><td>{% render 'spec', product: ctx_product, key: 'dimensions_unfolded' %}</td></tr>
-        <tr><th scope="row">Folded</th><td>{% render 'spec', product: ctx_product, key: 'dimensions_folded' %}</td></tr>
-        <tr><th scope="row">Thickness</th><td>{% render 'spec', product: ctx_product, key: 'thickness_mm', suffix: ' mm' %}</td></tr>
-        <tr><th scope="row">Weight</th><td>{% render 'spec', product: ctx_product, key: 'weight_kg', suffix: ' kg' %}</td></tr>
-        <tr><th scope="row">Panels</th><td>{% render 'spec', product: ctx_product, key: 'panel_count' %}</td></tr>
-        <tr><th scope="row">Material</th><td>{% render 'spec', product: ctx_product, key: 'material' %}</td></tr>
-        <tr><th scope="row">Reversible</th><td>{% render 'spec', product: ctx_product, key: 'reversible' %}</td></tr>
-        <tr><th scope="row">Care</th><td>{% render 'spec', product: ctx_product, key: 'care_note', label: 'care instructions' %}</td></tr>
+        <tr><th scope="row">Unfolded</th><td>{% render 'spec', product: product, key: 'dimensions_unfolded' %}</td></tr>
+        <tr><th scope="row">Folded</th><td>{% render 'spec', product: product, key: 'dimensions_folded' %}</td></tr>
+        <tr><th scope="row">Thickness</th><td>{% render 'spec', product: product, key: 'thickness_mm', suffix: ' mm' %}</td></tr>
+        <tr><th scope="row">Weight</th><td>{% render 'spec', product: product, key: 'weight_kg', suffix: ' kg' %}</td></tr>
+        <tr><th scope="row">Panels</th><td>{% render 'spec', product: product, key: 'panel_count' %}</td></tr>
+        <tr><th scope="row">Material</th><td>{% render 'spec', product: product, key: 'material' %}</td></tr>
+        <tr><th scope="row">Reversible</th><td>{% render 'spec', product: product, key: 'reversible' %}</td></tr>
+        <tr><th scope="row">Care</th><td>{% render 'spec', product: product, key: 'care_note', label: 'care instructions' %}</td></tr>
       </tbody>
     </table>
 
     <dl class="fit-dl">
-      <div><dt>Unfolded</dt><dd>{% render 'spec', product: ctx_product, key: 'dimensions_unfolded' %}</dd></div>
-      <div><dt>Folded</dt><dd>{% render 'spec', product: ctx_product, key: 'dimensions_folded' %}</dd></div>
-      <div><dt>Thickness</dt><dd>{% render 'spec', product: ctx_product, key: 'thickness_mm', suffix: ' mm' %}</dd></div>
-      <div><dt>Weight</dt><dd>{% render 'spec', product: ctx_product, key: 'weight_kg', suffix: ' kg' %}</dd></div>
-      <div><dt>Panels</dt><dd>{% render 'spec', product: ctx_product, key: 'panel_count' %}</dd></div>
-      <div><dt>Material</dt><dd>{% render 'spec', product: ctx_product, key: 'material' %}</dd></div>
-      <div><dt>Reversible</dt><dd>{% render 'spec', product: ctx_product, key: 'reversible' %}</dd></div>
-      <div><dt>Care</dt><dd>{% render 'spec', product: ctx_product, key: 'care_note', label: 'care instructions' %}</dd></div>
+      <div><dt>Unfolded</dt><dd>{% render 'spec', product: product, key: 'dimensions_unfolded' %}</dd></div>
+      <div><dt>Folded</dt><dd>{% render 'spec', product: product, key: 'dimensions_folded' %}</dd></div>
+      <div><dt>Thickness</dt><dd>{% render 'spec', product: product, key: 'thickness_mm', suffix: ' mm' %}</dd></div>
+      <div><dt>Weight</dt><dd>{% render 'spec', product: product, key: 'weight_kg', suffix: ' kg' %}</dd></div>
+      <div><dt>Panels</dt><dd>{% render 'spec', product: product, key: 'panel_count' %}</dd></div>
+      <div><dt>Material</dt><dd>{% render 'spec', product: product, key: 'material' %}</dd></div>
+      <div><dt>Reversible</dt><dd>{% render 'spec', product: product, key: 'reversible' %}</dd></div>
+      <div><dt>Care</dt><dd>{% render 'spec', product: product, key: 'care_note', label: 'care instructions' %}</dd></div>
     </dl>
   </div>
 </section>

@@ -1,8 +1,7 @@
-{%- liquid
-  assign ctx_product = product | default: settings.featured_product
--%}
 {{ 'section-room-test.css' | asset_url | stylesheet_tag }}
-<section class="sec {% render 'surface-class', s: section.settings.surface %}">
+<section class="sec {% render 'surface-class', s: section.settings.surface %}"
+         id="jump-{{ section.id }}"
+         {% if section.settings.jump_label != blank %}data-jump="{{ section.settings.jump_label | escape }}"{% endif %}>
   <div class="wrap">
     <h2 class="h2">{{ section.settings.heading }}</h2>
     <p class="lede body-copy">{{ section.settings.body }}</p>
@@ -29,6 +28,7 @@
 {
   "name": "The room test",
   "settings": [
+    { "type": "text", "id": "jump_label", "label": "Jump-nav label", "default": "Room test", "info": "Short label for the in-page nav at the top of the product page. Clear it to leave this section out of the nav." },
     { "type": "select", "id": "surface", "label": "Surface", "default": "jute", "options": [{ "value": "chalk", "label": "Chalk" }, { "value": "jute", "label": "Jute wash" }] },
     { "type": "text", "id": "heading", "label": "Heading", "default": "Down for the day. Gone by dinner." },
     { "type": "textarea", "id": "body", "label": "Body", "default": "A play mat is the largest thing a baby adds to a room you also live in. This one is quiet on both sides, and it is behind the door in seconds." },

@@ -38,15 +38,11 @@
       "type": "product-showcase",
       "settings": {
         "compact": true,
-        "surface": "jute",
+        "surface": "mist",
         "heading": "Our products",
         "collection": "",
         "max_products": 8
       }
-    },
-    "divider": {
-      "type": "divider",
-      "settings": {}
     },
     "trusted": {
       "type": "trust-bar",
@@ -169,21 +165,21 @@
           "type": "faq",
           "settings": {
             "question": "Do you deliver to my area?",
-            "answer": "<p>We ship across India. Free shipping on every order, no minimum. Most orders arrive within 2 to 5 business days.</p>"
+            "answer": "<p>Anywhere in India. Most orders arrive within 2 to 5 business days of dispatch.</p>"
           }
         },
         "q2": {
           "type": "faq",
           "settings": {
             "question": "Can I pay cash on delivery?",
-            "answer": "<p>Yes. Cash on delivery is available on every order. If you prefer to pay online, there is a small discount for doing so.</p>"
+            "answer": "<p>Yes, with nothing to pay until it reaches you. If you would rather pay online, the discount for doing so is offered in your cart.</p>"
           }
         },
         "q3": {
           "type": "faq",
           "settings": {
             "question": "What if it is not right for us?",
-            "answer": "<p>30-day returns from the date of delivery. Use it properly first. If it is not right, contact us and we will arrange a pickup.</p>"
+            "answer": "<p>Use it properly first — that is what the 30 days are for. If it still is not right, contact us and we will arrange a pickup from your address.</p>"
           }
         },
         "q4": {
@@ -227,7 +223,6 @@
     "hero",
     "emotional",
     "products",
-    "divider",
     "trusted",
     "why",
     "faq"

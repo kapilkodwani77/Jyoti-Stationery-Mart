@@ -1,9 +1,10 @@
 {%- liquid
-  assign ctx_product = product | default: settings.featured_product
   assign surf = section.settings.surface
 -%}
 {{ 'section-fold.css' | asset_url | stylesheet_tag }}
-<section class="sec {% render 'surface-class', s: surf %}">
+<section class="sec {% render 'surface-class', s: surf %}"
+         id="jump-{{ section.id }}"
+         {% if section.settings.jump_label != blank %}data-jump="{{ section.settings.jump_label | escape }}"{% endif %}>
   <div class="wrap">
     <h2 class="h2">{{ section.settings.heading }}</h2>
     <p class="lede body-copy">{{ section.settings.body }}</p>
@@ -34,7 +35,7 @@
       </div>
     </div>
     <p class="micro" style="margin-top:var(--s-5)">
-      {% render 'spec', product: ctx_product, key: 'dimensions_folded' %} folded. {% render 'spec', product: ctx_product, key: 'weight_kg', suffix: ' kg' %} in one hand.
+      {% render 'spec', product: product, key: 'dimensions_folded' %} folded. {% render 'spec', product: product, key: 'weight_kg', suffix: ' kg' %} in one hand.
     </p>
   </div>
 </section>
@@ -43,6 +44,7 @@
 {
   "name": "The fold",
   "settings": [
+    { "type": "text", "id": "jump_label", "label": "Jump-nav label", "default": "The fold", "info": "Short label for the in-page nav at the top of the product page. Clear it to leave this section out of the nav." },
     { "type": "select", "id": "surface", "label": "Surface", "default": "chalk", "options": [{ "value": "chalk", "label": "Chalk" }, { "value": "jute", "label": "Jute wash" }] },
     { "type": "text", "id": "heading", "label": "Heading", "default": "Folds in seconds. Fits behind a door." },
     { "type": "textarea", "id": "body", "label": "Body", "default": "One motion. No rolling, no straps, no wrestling it back into a bag it never fitted in." },

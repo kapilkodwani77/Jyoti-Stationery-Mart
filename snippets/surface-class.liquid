@@ -1,4 +1,14 @@
 {%- comment -%}
   Usage: class="sec {% render 'surface-class', s: section.settings.surface %}"
+
+  chalk is the page default and needs no class. jute is the warm alternate that
+  most sections swap to. mist is the cool one, and it exists for a different
+  job: chalk and jute are both warm neutrals, so alternating them reads as
+  texture rather than structure, and a reader scrolling a long single-product
+  page gets no signal about where storytelling ends and shopping begins.
+
+  mist is deliberately offered on fewer sections than the other two. Its whole
+  value is being the one temperature change on the page — put it on four
+  sections and it stops marking anything.
 {%- endcomment -%}
-{%- if s == 'jute' -%}surf-jute{%- endif -%}
+{%- if s == 'jute' -%}surf-jute{%- elsif s == 'mist' -%}surf-mist{%- endif -%}

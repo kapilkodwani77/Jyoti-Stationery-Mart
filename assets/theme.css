@@ -141,6 +141,17 @@
   .sec--none{ padding-block:0; }
   .surf-jute{ background:rgba(222,216,204,.42); }
 
+  /* The chapter marker. chalk and jute are both warm, so alternating them
+     changes the texture of a section without ever telling the reader they have
+     moved to a different part of the page — which on a long single-product
+     homepage left a 1px divider doing all the structural work.
+
+     This shifts temperature rather than lightness: cooler than either neutral,
+     but sitting between them in value, so nothing in the foreground needs a
+     second treatment. --ink lands at 15:1 here and --ink-2 at 5.5:1, in line
+     with the 5.9 and 5.4 those two already hold on chalk and jute. */
+  .surf-mist{ background:#E9ECF1; }
+
   .crease{ height:1px; background:var(--jute); position:relative; }
   .crease::after{
     content:''; position:absolute; inset:auto 0 0 0; height:12px;
@@ -397,6 +408,24 @@
   body:not(:has(.hero)) .hdr a{ color:var(--ink); text-shadow:none; }
   body:not(:has(.hero)) .hdr .mark{ color:var(--indigo); }
 
+  /* Where :has() is missing the rule above evaporates and the flash comes back,
+     which on this traffic is not a rare corner — older Android WebViews are a
+     real share of India mobile. So the same result is derived from the body
+     class the layout already prints, which needs no selector support at all.
+
+     Scoped to @supports so the two can never both apply: the template name is
+     exact today because hero-editorial ships on templates/index.json alone, but
+     it would be wrong the day a merchant drops a hero onto another template.
+     Browsers with :has() judge by the hero actually being there and stay right
+     through that change; the rest get the answer that is correct today. */
+  @supports not selector(:has(*)) {
+    body:not(.template-index) .hdr{
+      position:fixed; background:var(--chalk); color:var(--ink); border-color:var(--jute);
+    }
+    body:not(.template-index) .hdr a{ color:var(--ink); text-shadow:none; }
+    body:not(.template-index) .hdr .mark{ color:var(--indigo); }
+  }
+
   /* Search entry point — desktop only. On mobile it lives at the top of the
      nav overlay so the header keeps its balanced burger / wordmark / cart. */
   .hdr-search{ display:none; }
@@ -446,8 +475,9 @@
   .hdr nav{ display:none; }
   .no-flexbox-gap-fallback > * + *{ margin-left:var(--s-6); }
   @media(min-width:900px){
-    body:not(.template-index):not(.template-page) .hdr,
-    .hdr{ position:absolute; }
+    /* position:absolute is already the base value and the non-hero rules above
+       deliberately override it to fixed. Restating it here only re-fought that
+       decision at 900px. */
     .hdr{ top:var(--announce-h); height:var(--header-h); padding-inline:var(--s-6); }
     .hdr .mark{ font-size:22px; margin-inline:0; }
     .hdr nav{ display:flex; gap:var(--s-6); margin-left:var(--s-9); font-size:15px; }
@@ -551,7 +581,25 @@
     padding-bottom:calc(var(--s-5) + env(safe-area-inset-bottom));
     border-top:1px solid var(--jute);
   }
-  .cart-subtotal{ display:flex; justify-content:space-between; font-size:16px; font-weight:500; margin-bottom:var(--s-4); }
+  /* Label and amount were both 16px/500, so the word "Subtotal" carried the
+     same weight as the number beside it. The label steps back; the figure gets
+     the size and tabular digits so it stays put as quantities change. */
+  .cart-subtotal{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:var(--s-4); }
+  .cart-subtotal-label{ font-size:13px; color:var(--ink-2); }
+  .cart-subtotal-value{ font-size:18px; font-weight:500; font-variant-numeric:tabular-nums; }
+
+  /* Secondary action, so it sits closer to the primary than a new block would
+     and does not read as a third separate decision. */
+  .cart-prepaid{ margin-top:var(--s-3); }
+
+  /* Tertiary: the way back to a full page, not a competing way forward. */
+  .cart-view-link{
+    display:flex; align-items:center; justify-content:center;
+    min-height:var(--tap); margin-top:var(--s-2);
+    font-size:14px; color:var(--ink-2); text-decoration:none;
+  }
+  .cart-view-link:hover{ color:var(--ink); text-decoration:underline; text-underline-offset:4px; }
+
   .cart-drawer-note{ font-size:12px; color:var(--ink-2); margin-top:var(--s-3); text-align:center; }
 }
 @layer sections {

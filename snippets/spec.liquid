@@ -3,10 +3,43 @@
   invisible-in-production placeholder if it hasn't been filled in yet.
 
   Usage: {% render 'spec', product: product, key: 'thickness_mm', suffix: ' mm' %}
-  Params: product (required), key (required), prefix, suffix, label (override todo text)
+  Params: product (optional), key (required), prefix, suffix, label (override todo text)
+
+  product falls back to settings.featured_product here rather than at each call
+  site. Four storytelling sections each opened with their own copy of that same
+  assign so they would work on the homepage as well as the PDP; resolving it in
+  the one snippet they all funnel through means there is a single place where
+  "which product is this page about" gets decided.
+
+  ---------------------------------------------------------------------------
+  THE METAFIELDS THIS THEME EXPECTS
+
+  All under the `custom` namespace, on the product. This list is the manifest —
+  it existed only implicitly before, scattered across the sections that call
+  this snippet, so setting up a second product meant reading five section files
+  to find out what to fill in.
+
+    dimensions_unfolded   text     "6.5 x 5 ft"    fit comparator, specs
+    dimensions_folded     text     "2.2 x 1.7 ft"  fit comparator, specs
+    thickness_mm          number   rendered with " mm"
+    weight_kg             number   rendered with " kg"
+    panel_count           number   fit comparator, specs
+    fold_time_seconds     number   fold sequence
+    material              text     fit comparator, specs
+    reversible            boolean  prints Yes / No, and false is a real answer
+    care_note             text     fit comparator
+    cleaning_note         text     safety panel
+    test_report_status    text     safety panel
+    test_report           file     safety panel, linked for download
+
+  Any key left unset shows its label as a .bc-todo chip to a merchant in the
+  theme editor and renders nothing at all to a customer, so a half-filled
+  product is never a broken page.
+  ---------------------------------------------------------------------------
 {%- endcomment -%}
 {%- liquid
-  assign mf = product.metafields.custom[key]
+  assign ctx = product | default: settings.featured_product
+  assign mf = ctx.metafields.custom[key]
   assign todo_label = label
 
   case key

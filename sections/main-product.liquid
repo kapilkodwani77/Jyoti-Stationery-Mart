@@ -33,16 +33,42 @@
       </div>
 
       {%- if product.images.size > 1 -%}
-        <div class="gallery-thumbs" role="tablist" aria-label="Product images">
+        {%- comment -%}
+          Thumbs above 900px, dots below — the two never share a screen, so
+          they are one control at two sizes rather than two controls saying
+          the same thing.
+
+          role="tablist" was wrong here: the buttons were never role="tab" and
+          the slides are a scroll-snap strip, not tabpanels, so the promise the
+          role makes to a screen reader was one this markup could not keep. A
+          named group of buttons describes what this actually is, and
+          aria-current marks which image is showing.
+        {%- endcomment -%}
+        <div class="gallery-thumbs" role="group" aria-label="Product images">
           {%- for image in product.images -%}
-            <button type="button" class="gallery-thumb {% if forloop.first %}is-active{% endif %}" data-gallery-thumb aria-label="Show image {{ forloop.index }}">
+            <button type="button" class="gallery-thumb {% if forloop.first %}is-active{% endif %}"
+                    data-gallery-thumb
+                    {% if forloop.first %}aria-current="true"{% endif %}
+                    aria-label="Show image {{ forloop.index }} of {{ product.images.size }}">
               {% render 'responsive-image', img: image, alt: '', widths: '150', sizes: '76px' %}
             </button>
           {%- endfor -%}
         </div>
-        <div class="gallery-dots" aria-hidden="true">
+
+        {%- comment -%}
+          These were 6px spans inside an aria-hidden wrapper that theme.js
+          nonetheless bound a click handler to: a control no keyboard could
+          reach, no screen reader could see, and no thumb could reliably hit —
+          on mobile, where they are the only position control there is. Real
+          buttons now, each carrying the 44px target the rest of the theme
+          holds to, with the 6px dot kept as the visual.
+        {%- endcomment -%}
+        <div class="gallery-dots" role="group" aria-label="Product images">
           {%- for image in product.images -%}
-            <span data-gallery-dot class="{% if forloop.first %}is-active{% endif %}"></span>
+            <button type="button" class="gallery-dot {% if forloop.first %}is-active{% endif %}"
+                    data-gallery-dot
+                    {% if forloop.first %}aria-current="true"{% endif %}
+                    aria-label="Show image {{ forloop.index }} of {{ product.images.size }}"></button>
           {%- endfor -%}
         </div>
       {%- endif -%}
@@ -54,6 +80,24 @@
 
   </div>
 </section>
+
+{%- comment -%}
+  In-page nav for what is a very long page: six storytelling sections stack
+  below the buy box, and until now the only way to know that was to scroll
+  through them. Worst on a phone, where that scroll is longest.
+
+  Deliberately not a third sticky bar — the header is already pinned and the
+  buy bar already sits at the bottom of the viewport on mobile. This sits in
+  the flow at the seam between buying and reading, which is the moment the
+  question "how much more is there?" actually gets asked.
+
+  Empty in the markup and filled by theme.js from whichever sections below
+  carry data-jump. That way it reflects the sections a merchant actually
+  placed, in their real order, and a merchant who clears a section's label
+  drops it from the nav. With JS off, or with nothing opted in, it stays empty
+  and collapses to nothing.
+{%- endcomment -%}
+<nav class="pdp-jump" data-pdp-jump aria-label="On this page" hidden></nav>
 
 {%- comment -%}
   Full-screen image viewer. One <img> that gets its source swapped, rather than

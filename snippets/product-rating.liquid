@@ -1,0 +1,58 @@
+{%- comment -%}
+  Compact rating line for a product, computed from the same review metaobjects
+  the reviews section reads. Renders nothing at all when there is nothing to
+  show, so it costs a card no space until real reviews exist and then turns
+  itself on — no second pass, no placeholder pretending to be a rating.
+
+  Usage: {% render 'product-rating', product: product %}
+
+  Params:
+    product   (required)
+    compact   true renders stars and count only, no numeric average (default false)
+
+  Which reviews count:
+    A review with its `product` field pointing at this product always counts.
+    Where a product has none of its own, reviews with no product set are used
+    instead — they are store-level praise for a one-product catalogue, which is
+    what this store is today. Link a review to a product and it stops being
+    store-level, so precision arrives as the catalogue grows rather than
+    requiring every review to be relinked on the day a second product lands.
+
+  Never invents a rating: with zero reviews the whole block is absent, not a
+  row of empty stars implying a score of nothing.
+{%- endcomment -%}
+{%- liquid
+  assign reviews = metaobjects.review.values
+  assign sum = 0
+  assign n = 0
+
+  for r in reviews
+    if r.product.value != blank and r.product.value.id == product.id
+      assign sum = sum | plus: r.rating.value
+      assign n = n | plus: 1
+    endif
+  endfor
+
+  if n == 0
+    for r in reviews
+      if r.product.value == blank
+        assign sum = sum | plus: r.rating.value
+        assign n = n | plus: 1
+      endif
+    endfor
+  endif
+-%}
+{%- if n > 0 -%}
+  {%- liquid
+    assign avg = sum | times: 1.0 | divided_by: n
+    assign avg_1dp = avg | round: 1
+    assign filled = avg | round
+  -%}
+  <p class="pc-rating">
+    <span class="pc-rating-stars" role="img" aria-label="Rated {{ avg_1dp }} out of 5 from {{ n }} review{% if n != 1 %}s{% endif %}">
+      {%- for i in (1..5) -%}{% if i <= filled %}★{% else %}☆{% endif %}{% endfor -%}
+    </span>
+    {%- unless compact -%}<span class="pc-rating-avg">{{ avg_1dp }}</span>{%- endunless -%}
+    <span class="pc-rating-count" aria-hidden="true">({{ n }})</span>
+  </p>
+{%- endif -%}

@@ -1,5 +1,7 @@
 {{ 'section-pdp-benefits.css' | asset_url | stylesheet_tag }}
-<section class="sec sec--tight pdp-benefits {% render 'surface-class', s: section.settings.surface %}">
+<section class="sec sec--tight pdp-benefits {% render 'surface-class', s: section.settings.surface %}"
+         id="jump-{{ section.id }}"
+         {% if section.settings.jump_label != blank %}data-jump="{{ section.settings.jump_label | escape }}"{% endif %}>
   <div class="wrap">
     {%- if section.settings.heading != blank -%}
       <h2 class="pdp-ben-heading">{{ section.settings.heading }}</h2>
@@ -34,6 +36,7 @@
 {
   "name": "Product benefits",
   "settings": [
+    { "type": "text", "id": "jump_label", "label": "Jump-nav label", "default": "Benefits", "info": "Short label for the in-page nav at the top of the product page. Clear it to leave this section out of the nav." },
     { "type": "select", "id": "surface", "label": "Surface", "default": "chalk", "options": [{ "value": "chalk", "label": "Chalk" }, { "value": "jute", "label": "Jute wash" }] },
     { "type": "text", "id": "heading", "label": "Heading (optional)" }
   ],

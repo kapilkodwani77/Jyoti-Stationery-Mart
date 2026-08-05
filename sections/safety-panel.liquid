@@ -15,7 +15,7 @@
       <div data-reveal>
         <dl class="safe-dl">
           <div>
-            <dt>{% render 'spec', product: ctx_product, key: 'thickness_mm', suffix: ' mm' %} of {% render 'spec', product: ctx_product, key: 'material' %}</dt>
+            <dt>{% render 'spec', product: product, key: 'thickness_mm', suffix: ' mm' %} of {% render 'spec', product: product, key: 'material' %}</dt>
             <dd>Dense enough that a knee landing on it does not find the floor underneath.</dd>
           </div>
           <div>
@@ -24,12 +24,12 @@
           </div>
           <div>
             <dt>Wipes clean</dt>
-            <dd>A damp cloth handles most of it. {% render 'spec', product: ctx_product, key: 'cleaning_note', label: 'cleaning note' %}</dd>
+            <dd>A damp cloth handles most of it. {% render 'spec', product: product, key: 'cleaning_note', label: 'cleaning note' %}</dd>
           </div>
         </dl>
 
         <p class="body-copy" style="margin-top:var(--s-5);font-size:15px;opacity:.82;max-width:42ch">
-          Made without phthalates, BPA or formaldehyde. {% render 'spec', product: ctx_product, key: 'test_report_status', label: 'certification status' %}
+          Made without phthalates, BPA or formaldehyde. {% render 'spec', product: product, key: 'test_report_status', label: 'certification status' %}
         </p>
 
         {%- if report.value -%}
