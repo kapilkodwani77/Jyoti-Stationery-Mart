@@ -37,7 +37,15 @@
   endif
 -%}
 
-<article class="pc" {% if reveal %}data-reveal{% endif %}>
+{%- comment -%}
+  aria-label names the card region. Eight unnamed <article>s in a grid announce
+  as eight identical "article" boundaries with no way to tell them apart.
+  Deliberately not an id + aria-labelledby: the same product can legitimately
+  appear in two grids on one page, and that pattern would emit duplicate ids.
+{%- endcomment -%}
+<article class="pc {% unless v.available %}pc--out{% endunless %}"
+         aria-label="{{ product.title | escape }}"
+         {% if reveal %}data-reveal{% endif %}>
   <div class="pc-media">
     {% render 'responsive-image',
        img: product.featured_image,
@@ -72,10 +80,12 @@
     {%- comment -%}
       Social proof sits between the name and the price, which is the order the
       question actually gets asked in: what is it, is it any good, what does it
-      cost. The snippet renders nothing until reviews exist, so the card keeps
-      its current spacing exactly until there is something true to say.
+      cost. Default scope, so this speaks only for this product: a card with no
+      reviews of its own renders nothing rather than borrowing the store's
+      average, which used to print an identical star row on every card in the
+      grid. The store-level figure now appears once, on the grid heading.
     {%- endcomment -%}
-    {% render 'product-rating', product: product, compact: true %}
+    {% render 'product-rating', product: product %}
 
     <p class="pc-price">
       <span class="pc-price-now">{{ v.price | money }}</span>
@@ -89,11 +99,20 @@
       <form class="pc-add" data-buybox-form>
         <input type="hidden" name="id" value="{{ v.id }}">
         <input type="hidden" name="quantity" value="1">
+        {%- comment -%}
+          Both words ship in the markup and CSS shows one of them, keyed off the
+          aria-busy the shared handler sets. That is deliberately not a JS label
+          rewrite: writing the label back afterwards would flatten the
+          visually-hidden product name below into plain visible text. No
+          spinner — at 14px in a grid cell a rotating glyph is decoration, and
+          the word change is both faster to read and quieter.
+        {%- endcomment -%}
         <button type="submit" class="cta-outline cta-block pc-add-btn"
                 data-add-to-cart
                 {% unless v.available %}disabled{% endunless %}>
           {%- if v.available -%}
-            Add to cart<span class="visually-hidden"> — {{ product.title }}</span>
+            <span class="btn-label">Add to cart<span class="visually-hidden"> — {{ product.title }}</span></span>
+            <span class="btn-pending" aria-hidden="true">Adding&hellip;</span>
           {%- else -%}
             Sold out
           {%- endif -%}

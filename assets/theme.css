@@ -231,11 +231,51 @@
     background:transparent; color:var(--indigo); border:1px solid var(--indigo);
     font-weight:500; font-size:16px; text-decoration:none;
     border-radius:var(--r-md); min-height:52px; padding-inline:var(--s-6);
-    transition:background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+    transition:background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease),
+               color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
   }
-  .cta-outline:hover{ background:rgba(47,66,96,.06); }
+  /* Gated like every other hover in the theme. Ungated, the tint stuck to the
+     tapped button on touch until the user tapped somewhere else — the product
+     card fixed this for the card itself and the button underneath it kept the
+     bug. */
+  @media(hover:hover) and (pointer:fine){
+    .cta-outline:hover{ background:rgba(47,66,96,.06); }
+  }
   .cta-outline:active{ transform:scale(.985); }
+
+  /* The outline button had no disabled state at all: a sold-out "Sold out"
+     button rendered in full indigo with cursor:pointer, identical in weight to
+     a live "Add to cart" and tappable-looking to the end of time.
+     Colour rather than the opacity fade .cta uses, because this variant is
+     transparent — --indigo at 45% over chalk lands at 2.3:1 and turns the one
+     piece of information the control still carries into grey mush. --ink-2 is
+     5.9:1 on chalk, and dropping the hairline to --edge is what actually says
+     "inactive". */
+  .cta-outline:disabled,.cta-outline[disabled]{
+    color:var(--ink-2); border-color:var(--edge); background:transparent;
+    cursor:not-allowed; box-shadow:none;
+  }
+  .cta-outline:disabled:hover,.cta-outline[disabled]:hover{ background:transparent; }
+  .cta-outline:disabled:active,.cta-outline[disabled]:active{ transform:none; }
+
+  /* Pending is not unavailable. The button is disabled while the request is in
+     flight, but it is coming back, so it keeps the brand colour and only swaps
+     its word — otherwise "adding" and "sold out" look the same. */
+  .cta-outline[aria-busy="true"],
+  .cta-outline[aria-busy="true"]:disabled{
+    color:var(--indigo); border-color:var(--indigo); cursor:progress;
+  }
+
   .cta-block + .cta-block{ margin-top:var(--s-3); }
+
+  /* Label swap for in-flight actions. Both words ship in the markup and CSS
+     shows one, so the JS never rewrites the button's contents — which is what
+     keeps the visually-hidden product name inside the label from being
+     flattened into visible text on the way back. No spinner: at this size a
+     rotating glyph is decoration, and the word carries the state on its own. */
+  .btn-pending{ display:none; }
+  [aria-busy="true"] > .btn-label{ display:none; }
+  [aria-busy="true"] > .btn-pending{ display:inline; }
 
   /* ---- shared primitives -------------------------------------------------
      These are used by more than one section (price by the buy box, sticky bar

@@ -19,7 +19,6 @@
   .qty-label{ font-size:14px; font-weight:500; }
 
   .buybox form{ margin-top:var(--s-5); }
-  .btn-spinner{ display:none !important; }
   .buybox-error{ margin-top:var(--s-3); font-size:14px; color:var(--danger); }
   .buybox-trust{ margin-top:var(--s-5); font-size:13px; color:var(--ink-2); }
   .buybox--compact .buybox-trust{ margin-top:var(--s-4); }

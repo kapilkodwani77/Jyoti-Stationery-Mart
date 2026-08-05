@@ -3,12 +3,19 @@
    Replaces .ps-card (product-showcase) and .pg-card (main-collection),
    which were duplicate markup + duplicate CSS with no shared source.
 
-   Hierarchy note: title and price are deliberately the same size and
-   weight. The title carries more visual mass simply by being longer and
-   wrapping to two lines, which makes it read as primary without needing
-   a second lever. The old card set the title to 13.5px and the price to
-   14px at 85% opacity, so the price out-weighed the product name while
-   both sat below a comfortable mobile reading size.
+   Hierarchy: the card is read image -> title -> rating -> price -> CTA,
+   and each step is separated by exactly one lever so nothing has to shout.
+   Title and price used to be identical (15px/500 both), which left the card
+   with no anchor at all — blur it and the loudest thing on the whole grid
+   was the discount badge. The price is now one size step up and set in
+   tabular figures; the title keeps its mass from wrapping to two lines.
+   That is the entire differentiation, deliberately: the earlier card went
+   the other way and set the price larger AND darker AND heavier than the
+   product name, which reads as a discount brand rather than a considered one.
+
+   Vertical budget: the body is sized to leave the photograph the majority of
+   the card. Every gap in here is a token and the run of them is deliberate —
+   4px inside the title/rating group, 8px between groups, 12px before the CTA.
 =================================================================== */
 
 /* ---- grid ---------------------------------------------------------- */
@@ -29,10 +36,21 @@
   background:var(--chalk);
   border:1px solid var(--jute); border-radius:var(--r-lg);
   overflow:hidden;
-  transition:transform var(--dur-fast) var(--ease),
+  transition:opacity var(--dur-slow) var(--ease),
+             transform var(--dur-fast) var(--ease),
              box-shadow var(--dur-fast) var(--ease),
              border-color var(--dur-fast) var(--ease);
 }
+
+/* The card's entrance is a fade, with none of the global reveal's translate
+   and rotateX. Two reasons. A 3D tilt on a grid of product tiles reads as a
+   theme demo rather than as this brand. And `transform` can only have one
+   transition duration per element: the card claims it at --dur-fast for the
+   hover lift, so the reveal's --dur-slow never applied and the entrance was
+   running at 180ms with no fade at all — opacity was not even in the card's
+   transition list, so it snapped. Opacity is in the list now and the reveal
+   is the one property it animates. */
+.pc[data-reveal]{ transform:none; }
 
 /* Hover effects are gated behind an actual pointer. Unscoped :hover on a
    touch device sticks after the tap, leaving the card lifted and shadowed
@@ -43,8 +61,14 @@
     box-shadow:var(--sh-2);
     border-color:var(--edge-strong);
   }
-  .pc:hover .pc-media img{ transform:scale(1.04); }
-  .pc-media img{ transition:transform 600ms var(--ease); }
+  /* Two speeds on one gesture used to read as two separate events: the card
+     answered in 180ms while the photograph was still moving 420ms later, on a
+     hand-typed 600ms that matched nothing else in the theme. Both are tokens
+     now — --dur-fast is the card's response, --dur-slow is the photograph's
+     ambience — and the scale is 3% rather than 4%, which at card size is the
+     difference between a drift and a zoom. */
+  .pc:hover .pc-media img{ transform:scale(1.03); }
+  .pc-media img{ transition:transform var(--dur-slow) var(--ease); }
 }
 
 /* Touch devices get press feedback instead, since they have no hover. */
@@ -58,36 +82,72 @@
    entirely, trading a cosmetic gain for an accessibility regression. */
 .pc:focus-within{ border-color:var(--indigo); box-shadow:var(--sh-1); }
 
+/* ---- sold out ------------------------------------------------------
+   A sold-out card used to render at full strength and compete equally for
+   attention with product that can actually be bought — on a four-up row that
+   is a quarter of the grid's visual weight spent on nothing. The photograph
+   washes back toward the jute behind it and the price drops to secondary ink,
+   which is enough to take it out of the scan without taking it out of the
+   page: the card stays fully clickable, because the PDP is still where the
+   story gets told and where a restock note can be left. */
+.pc--out .pc-media img,
+.pc--out .pc-media .img-missing{ opacity:.55; }
+.pc--out .pc-price-now{ color:var(--ink-2); }
+
 /* ---- media --------------------------------------------------------- */
 .pc-media{
   position:relative; aspect-ratio:4/5; flex:0 0 auto;
   overflow:hidden; background:var(--jute);
 }
 
+/* Inset matches the body's inline padding at each breakpoint, so the badge
+   shares the title's left edge instead of sitting 8px inboard of it — two
+   competing left edges inside one small component is the kind of thing that
+   reads as sloppiness without being nameable. The hairline is --edge rather
+   than --jute: jute on a light photograph is invisible, which left the badge
+   with no boundary at all over pale product shots. */
 .pc-badge{
-  position:absolute; left:var(--s-2); top:var(--s-2); z-index:2;
+  position:absolute; left:var(--s-4); top:var(--s-4); z-index:2;
   border-radius:100px; padding:var(--s-1) var(--s-3);
   font-size:11px; font-weight:500; letter-spacing:.05em; text-transform:uppercase;
-  background:var(--chalk); border:1px solid var(--jute); color:var(--ink);
+  background:var(--chalk); border:1px solid var(--edge); color:var(--ink);
 }
-.pc-badge--sale{ background:var(--indigo); border-color:var(--indigo); color:var(--chalk); }
+@media(min-width:700px){ .pc-badge{ left:var(--s-5); top:var(--s-5); } }
+
+/* The sale badge was a solid indigo pill — the highest-contrast object
+   anywhere in the grid, and the only place in the theme where solid --indigo
+   was spent on something other than a primary action. It out-shouted the
+   photography it was sitting on and pointed the strongest signal on the page
+   at a price cut. Same quiet pill as the sold-out badge now, distinguished by
+   indigo type and a slightly firmer hairline rather than by volume. */
+.pc-badge--sale{ color:var(--indigo); border-color:var(--edge-strong); }
 
 /* ---- body ---------------------------------------------------------- */
+/* Asymmetric on purpose: the photograph above already supplies the optical
+   space at the top, so a full step there was reading as a gap rather than as
+   padding. Sides and bottom keep the full step. */
 .pc-body{
   flex:1 1 auto; display:flex; flex-direction:column;
-  padding:var(--s-4);
+  padding:var(--s-3) var(--s-4) var(--s-4);
 }
-@media(min-width:700px){ .pc-body{ padding:var(--s-5); } }
+@media(min-width:700px){ .pc-body{ padding:var(--s-4) var(--s-5) var(--s-5); } }
 
 .pc-type{
   font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase;
   color:var(--ink-2); margin:0 0 var(--s-2);
 }
 
+/* Two lines are reserved whether the title needs them or not. This is the
+   fix for two separate problems that had the same cause: cards with one-line
+   titles pushed their CTA down with margin-top:auto and opened a ~90px void
+   above it, and every element below the title sat 21px higher than it did in
+   the neighbouring card, so prices in a single row never shared a baseline.
+   Reserving the line spends that space on structure instead of on a hole, at
+   no extra card height. */
 .pc-title{
   font-family:var(--font-body);
-  font-size:15px; font-weight:500; line-height:1.4; letter-spacing:-.005em;
-  color:var(--ink); margin:0;
+  font-size:15px; font-weight:500; line-height:1.35; letter-spacing:-.005em;
+  color:var(--ink); margin:0; min-height:2.7em;
 }
 /* No overflow here — this element owns the stretched ::after and clipping it
    would collapse the card's click target. */
@@ -101,34 +161,79 @@
   overflow:hidden;
 }
 
-/* Supporting evidence for the title, not a competitor to it: one step down in
-   size and set in the secondary ink, so the card still reads title → price.
-   The stars carry the brand indigo because that is the one thing here worth
-   a glance; the count beside them stays quiet. */
+/* Evidence about the title, so it is grouped with the title: 4px above,
+   against the 8px that separates it from the price. Spacing carries the
+   relationship, which is why the rating needs no rule, box or divider. */
 .pc-rating{
-  margin:var(--s-2) 0 0;
+  margin:var(--s-1) 0 0;
   display:flex; align-items:center; gap:var(--s-2);
-  font-size:12px; color:var(--ink-2);
+  font-size:12px; line-height:1.2; color:var(--ink-2);
 }
-.pc-rating-stars{ color:var(--indigo); letter-spacing:.08em; font-size:11px; }
+/* Fractional stars: an unfilled track with a filled copy clipped over it, so
+   4.6 draws as 4.6 stars. The previous row rounded to whole stars, printed
+   five solid stars for anything at or above 4.5, and contradicted its own
+   aria-label while doing it. The track's contrast is low by design — it is
+   the empty half of a measure, and the accessible name plus the numeral
+   beside it both carry the real value. */
+.pc-rating-stars{
+  position:relative; display:inline-block; flex:0 0 auto;
+  font-size:12px; line-height:1; color:var(--indigo-wash);
+}
+.pc-rating-track{ display:block; }
+.pc-rating-fill{
+  position:absolute; top:0; left:0; height:100%;
+  overflow:hidden; white-space:nowrap; color:var(--indigo);
+}
 .pc-rating-avg{ font-weight:500; color:var(--ink); font-variant-numeric:tabular-nums; }
 .pc-rating-count{ font-variant-numeric:tabular-nums; }
 
+/* The row is layout; .pc-price-now carries the type. That class existed in the
+   markup with no rule behind it, which is why the sale price and the regular
+   price were indistinguishable from the product name.
+
+   margin-top:auto anchors price and CTA to the bottom of the body together.
+   It used to sit on .pc-add, which aligned the buttons but let everything above
+   them float: a card carrying a rating pushed its price 18px below the price of
+   the unrated card beside it, so a row of prices — the one line a shopper reads
+   horizontally — never lined up. Anchoring from the bottom instead means the
+   price/CTA pair is at a fixed offset from the card's base on every card, and
+   the slack from an absent rating is absorbed above the price, where it reads
+   as the gap between two groups rather than as a hole under the last one.
+   padding-top rather than margin-top for the minimum gap, because auto has the
+   margin. */
 .pc-price{
-  margin:var(--s-2) 0 0;
-  font-size:15px; font-weight:500; color:var(--ink);
-  font-variant-numeric:tabular-nums;
+  margin:auto 0 0; padding-top:var(--s-2);
   display:flex; align-items:baseline; gap:var(--s-2); flex-wrap:wrap;
+  line-height:1.3;
 }
-.pc-price-was{ font-size:13px; color:var(--ink-2); text-decoration:line-through; }
+.pc-price-now{
+  font-size:16px; font-weight:500; color:var(--ink);
+  font-variant-numeric:tabular-nums; letter-spacing:-.01em;
+}
+/* 12px and a 4px gap on the two-up mobile grid, where the pair has ~129px to
+   live in: at 13px with the standard 8px gap a four-digit price and its
+   compare-at wrapped onto two lines, which pushed the sale card's price a full
+   line above the price beside it. The struck figure is the secondary half of
+   the pair and the badge above already states the discount, so it is the one
+   that gives way. Back to the full step from 700px, where the card is wide
+   enough that neither is under pressure. */
+.pc-price-was{
+  font-size:12px; color:var(--ink-2); text-decoration:line-through;
+  font-variant-numeric:tabular-nums;
+}
+@media(max-width:699px){ .pc-price{ gap:var(--s-1); } }
+@media(min-width:700px){ .pc-price-was{ font-size:13px; } }
 
 /* ---- quick add ------------------------------------------------------ */
 /* Sits above the stretched link so it stays independently tappable.
    Uses the outline button, not the solid one: the solid --indigo CTA is
    reserved for the primary action on a page (the PDP buy button). Eight
    solid buttons in a mobile grid would out-shout the product photography
-   this brand is actually selling on. */
-.pc-add{ position:relative; z-index:2; margin-top:auto; padding-top:var(--s-4); }
+   this brand is actually selling on.
+
+   No margin-top:auto here any more — .pc-price owns it, so the two travel
+   together and the gap above the button is a constant 12px on every card. */
+.pc-add{ position:relative; z-index:2; padding-top:var(--s-3); }
 .pc-add-btn{ min-height:var(--tap); font-size:14px; padding-inline:var(--s-4); }
 .pc-add-error{ margin-top:var(--s-2); font-size:12px; color:var(--danger); }
 
@@ -141,6 +246,11 @@
   display:flex; align-items:baseline; justify-content:space-between;
   gap:var(--s-4); margin-bottom:var(--s-6); flex-wrap:wrap;
 }
+.pc-head-main{ display:flex; flex-direction:column; gap:var(--s-2); }
+/* The store-level rating lives here, once, instead of being repeated as an
+   identical star row on every card in the grid. */
+.pc-head .pc-rating{ margin:0; font-size:13px; }
+.pc-head .pc-rating-stars{ font-size:13px; }
 .pc-head .h2{ font-size:clamp(1.5rem,4.5vw,2.25rem); }
 .pc-viewall{
   font-size:14px; text-decoration:none; color:var(--indigo);

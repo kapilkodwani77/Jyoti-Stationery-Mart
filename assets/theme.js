@@ -852,21 +852,24 @@
   /* ---------------------------------------------------------------
      Buy box: AJAX add-to-cart + prepaid discount redirect
   --------------------------------------------------------------- */
+  /* Pending state is one attribute. The old version hunted for
+     [data-btn-label] and [data-btn-spinner], which no template in the theme has
+     ever rendered — so every add-to-cart, on the PDP and in the grid alike, ran
+     its whole round trip with no feedback beyond a disabled attribute. It was
+     also a latent bug: restoring the label by writing back textContent would
+     have flattened the visually-hidden product name inside the card's button
+     into visible text. aria-busy tells assistive tech directly, and CSS does
+     the label swap without the DOM being rewritten. */
   document.addEventListener('submit', function (e) {
     var form = e.target.closest('[data-buybox-form]');
     if (!form) return;
     e.preventDefault();
 
     var btn = form.querySelector('[data-add-to-cart]');
-    var label = form.querySelector('[data-btn-label]');
-    var spinner = form.querySelector('[data-btn-spinner]');
     var errorEl = form.querySelector('[data-buybox-error]');
-    var originalLabel = label ? label.textContent : '';
 
     if (errorEl) { errorEl.hidden = true; errorEl.textContent = ''; }
-    if (btn) btn.disabled = true;
-    if (spinner) spinner.hidden = false;
-    if (label) label.style.visibility = 'hidden';
+    if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
 
     fetch(routes.cartAdd, {
       method: 'POST',
@@ -894,9 +897,7 @@
         announce(err.message);
       })
       .finally(function () {
-        if (btn) btn.disabled = false;
-        if (spinner) spinner.hidden = true;
-        if (label) { label.style.visibility = ''; label.textContent = originalLabel; }
+        if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); }
       });
   });
 

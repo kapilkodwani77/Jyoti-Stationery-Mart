@@ -22,7 +22,17 @@
 <section class="sec {% if section.settings.compact %}sec--tight{% endif %} {% render 'surface-class', s: section.settings.surface %}">
   <div class="wrap">
     <div class="pc-head">
-      <h2 class="h2">{{ section.settings.heading }}</h2>
+      {%- comment -%}
+        The store-level rating is stated once, here, rather than being printed
+        on every card. Cards carry only their own reviews now, so on a
+        single-product catalogue this is the honest place for the number: it is
+        the store's average and it says so, instead of eight cards each
+        implying the figure is theirs. Renders nothing until a review exists.
+      {%- endcomment -%}
+      <div class="pc-head-main">
+        <h2 class="h2">{{ section.settings.heading }}</h2>
+        {% render 'product-rating', scope: 'store', verbose: true %}
+      </div>
       {%- if col.products_count > section.settings.max_products -%}
         <a class="pc-viewall" href="{{ col.url }}">
           View all<span class="visually-hidden"> {{ section.settings.heading }}</span> ({{ col.products_count }})

@@ -1,58 +1,68 @@
 {%- comment -%}
-  Compact rating line for a product, computed from the same review metaobjects
-  the reviews section reads. Renders nothing at all when there is nothing to
-  show, so it costs a card no space until real reviews exist and then turns
-  itself on — no second pass, no placeholder pretending to be a rating.
+  Rating line computed from the same review metaobjects the reviews section
+  reads. Renders nothing at all when there is nothing to show, so it costs a
+  card no space until real reviews exist.
 
-  Usage: {% render 'product-rating', product: product %}
+  Usage:
+    {% render 'product-rating', product: product %}                  <- a card
+    {% render 'product-rating', scope: 'store', verbose: true %}     <- a grid head
 
   Params:
-    product   (required)
-    compact   true renders stars and count only, no numeric average (default false)
+    product   required for the default scope
+    scope     'product' (default) counts only reviews linked to this product,
+              and renders nothing when the product has none of its own.
+              'store' counts every review in the metaobject, whatever it is
+              linked to, and ignores `product`.
+    verbose   true writes "12 reviews" instead of "(12)" (default false)
+    class     extra class on the wrapper (default none)
 
-  Which reviews count:
-    A review with its `product` field pointing at this product always counts.
-    Where a product has none of its own, reviews with no product set are used
-    instead — they are store-level praise for a one-product catalogue, which is
-    what this store is today. Link a review to a product and it stops being
-    store-level, so precision arrives as the catalogue grows rather than
-    requiring every review to be relinked on the day a second product lands.
+  Why the store-level number is no longer a per-product fallback:
+    This snippet used to fall back to unlinked, store-level reviews whenever a
+    product had none of its own. With one product that was defensible; with a
+    grid it meant every card printed the identical star row and identical count,
+    which is the exact visual signature of invented social proof. A shopper who
+    reads two cards and sees the same number twice discounts all of it. So the
+    store-level figure is still shown — once, on the grid heading, where it is
+    true — and a card speaks only for its own product or says nothing.
 
-  Never invents a rating: with zero reviews the whole block is absent, not a
-  row of empty stars implying a score of nothing.
+  Never invents a rating: with zero reviews in scope the whole block is absent,
+  not a row of empty stars implying a score of nothing.
 {%- endcomment -%}
 {%- liquid
-  assign reviews = metaobjects.review.values
+  assign want = scope | default: 'product'
   assign sum = 0
   assign n = 0
 
-  for r in reviews
-    if r.product.value != blank and r.product.value.id == product.id
+  for r in metaobjects.review.values
+    if want == 'store'
+      assign sum = sum | plus: r.rating.value
+      assign n = n | plus: 1
+    elsif r.product.value != blank and r.product.value.id == product.id
       assign sum = sum | plus: r.rating.value
       assign n = n | plus: 1
     endif
   endfor
-
-  if n == 0
-    for r in reviews
-      if r.product.value == blank
-        assign sum = sum | plus: r.rating.value
-        assign n = n | plus: 1
-      endif
-    endfor
-  endif
 -%}
 {%- if n > 0 -%}
   {%- liquid
-    assign avg = sum | times: 1.0 | divided_by: n
-    assign avg_1dp = avg | round: 1
-    assign filled = avg | round
+    assign avg = sum | times: 1.0 | divided_by: n | round: 1
+    comment
+      The fill width is derived from the same rounded average that is printed
+      beside it, so the stars and the numeral can never disagree. The old
+      version rounded to whole stars, which drew 4.6 as five solid stars — it
+      overstated the score, contradicted its own aria-label, and threw away the
+      more persuasive number of the two.
+    endcomment
+    assign pct = avg | times: 20
   -%}
-  <p class="pc-rating">
-    <span class="pc-rating-stars" role="img" aria-label="Rated {{ avg_1dp }} out of 5 from {{ n }} review{% if n != 1 %}s{% endif %}">
-      {%- for i in (1..5) -%}{% if i <= filled %}★{% else %}☆{% endif %}{% endfor -%}
+  <p class="pc-rating {{ class }}">
+    <span class="pc-rating-stars" role="img" aria-label="Rated {{ avg }} out of 5 from {{ n }} review{% if n != 1 %}s{% endif %}">
+      <span class="pc-rating-track" aria-hidden="true">★★★★★</span>
+      <span class="pc-rating-fill" aria-hidden="true" style="width:{{ pct }}%">★★★★★</span>
     </span>
-    {%- unless compact -%}<span class="pc-rating-avg">{{ avg_1dp }}</span>{%- endunless -%}
-    <span class="pc-rating-count" aria-hidden="true">({{ n }})</span>
+    <span class="pc-rating-avg" aria-hidden="true">{{ avg }}</span>
+    <span class="pc-rating-count" aria-hidden="true">
+      {%- if verbose -%}{{ n }} review{% if n != 1 %}s{% endif %}{%- else -%}({{ n }}){%- endif -%}
+    </span>
   </p>
 {%- endif -%}
