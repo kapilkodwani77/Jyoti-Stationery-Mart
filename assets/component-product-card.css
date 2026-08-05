@@ -68,8 +68,19 @@
   /* Second image on hover, crossfade only. The zoom that used to live here is
      gone deliberately: a scale and a crossfade on one gesture are two events
      competing to describe one intent, and for a product whose whole story is
-     that it is reversible, the other face is worth more than a 3% zoom. */
-  .pc-media-alt{ opacity:0; transition:opacity var(--dur-fast) var(--ease); }
+     that it is reversible, the other face is worth more than a 3% zoom.
+
+     Only the reveal is gated. Hiding it was gated too, which was the bug: a
+     device with no fine pointer never entered this block, so the opacity:0
+     never applied and the second image — absolutely positioned over the first
+     by the .pc-media img rule — simply sat on top of the featured image at
+     full strength. Every card on every phone showed image 2.
+
+     Qualified with .pc-media so it outranks the display:none default further
+     down the file. A media query adds no specificity, so at equal weight the
+     later rule wins — and the default is declared later, which would leave
+     this one losing and the swap dead on desktop as well. */
+  .pc-media .pc-media-alt{ display:block; opacity:0; transition:opacity var(--dur-fast) var(--ease); }
   .pc:hover .pc-media-alt,
   .pc:focus-within .pc-media-alt{ opacity:1; }
 }
@@ -113,6 +124,12 @@
    second is absolutely positioned over the first and painted only on hover;
    it is lazy, so a visitor who never hovers never downloads it. */
 .pc-media img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+
+/* display:none is the default state, not opacity:0, so the featured image is
+   what shows unless a browser has explicitly opted into the hover behaviour
+   below. A rule that fails to apply now means "no second image" rather than
+   "the wrong image", and a phone never paints or fetches it at all. */
+.pc-media-alt{ display:none; }
 
 /* Inset matches the body's inline padding at each breakpoint, so the badge
    shares the title's left edge instead of sitting 8px inboard of it — two

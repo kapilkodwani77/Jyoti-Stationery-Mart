@@ -90,8 +90,24 @@
   --------------------------------------------------------------- */
   (function buybar() {
     var bar = document.querySelector('[data-buybar]');
-    var anchor = document.querySelector('[data-buybar-anchor]');
-    if (!bar || !anchor) return;
+    if (!bar) return;
+
+    /* What the bar waits for. An explicit [data-buybar-anchor] wins; where a
+       template never declared one, the buy box is the right answer by
+       definition, because replacing it once it scrolls away is the whole job.
+
+       The fallback exists because the early return here is a silent failure:
+       the layout has always rendered this bar on every page, and the product
+       template simply had no anchor, so the module returned and the bar sat
+       inert with nothing to show for it. One missing attribute on one template
+       should not be able to switch off a purchase control.
+
+       bar.contains guards the fallback against matching the bar's own form,
+       which would leave it observing an element that is only ever on screen
+       when the bar already is. */
+    var anchor = document.querySelector('[data-buybar-anchor]') ||
+                 document.querySelector('[data-buybox]');
+    if (!anchor || bar.contains(anchor)) return;
 
     var hideEl = document.querySelector('[data-buybar-hide]');
     var pastAnchor = false, atHide = false;

@@ -143,10 +143,6 @@
         "s3"
       ]
     },
-    "stickybuy": {
-      "type": "sticky-buy-bar",
-      "settings": {}
-    },
     "faq": {
       "type": "faq-accordion",
       "settings": {
@@ -213,7 +209,6 @@
     "fold",
     "roomtest",
     "specs",
-    "faq",
-    "stickybuy"
+    "faq"
   ]
 }
