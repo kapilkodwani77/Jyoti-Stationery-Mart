@@ -26,4 +26,6 @@
 .cg-card:hover .cg-title{ text-decoration:underline; text-underline-offset:4px; }
 
 .cg-foot{ margin-top:var(--s-8); }
+/* Small-phone tier (the max-side pair of the 400px breakpoint). Two columns
+   still beat one here, but only once the gap gives its width back to them. */
 @media(max-width:399px){ .cg-grid{ gap:var(--s-4); } }

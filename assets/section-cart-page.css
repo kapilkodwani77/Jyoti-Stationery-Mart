@@ -11,7 +11,10 @@
   .cart-remove-link{ font-size:13px; text-decoration:underline; text-underline-offset:3px;
                      color:var(--ink-2); min-height:var(--tap); display:inline-flex; align-items:center; }
   .cart-remove-link:hover{ color:var(--danger); }
-  @media(max-width:640px){
+  /* Was 640px. On the canonical scale this is the max-side pair of the 700px
+     breakpoint, which also means the 660-699px band stops trying to render a
+     three-column table in a space that cannot hold one. */
+  @media(max-width:699px){
     .cart-table thead{ display:none; }
     .cart-table, .cart-table tbody, .cart-table tr, .cart-table td{ display:block; width:100%; }
     .cart-table td{ border-bottom:0; padding-block:var(--s-3); }

@@ -1,46 +1,38 @@
 {%- liquid
-  assign is_lp = false
-  if template.name == 'page' and template.suffix contains 'lp'
-    assign is_lp = true
-  endif
   assign menu = section.settings.menu
   assign brand = settings.brand_name | default: shop.name
 -%}
 
 <header class="hdr" data-header>
-  {%- unless is_lp -%}
-    <button type="button" class="hdr-icon burger" data-nav-open aria-label="Open menu" aria-expanded="false" aria-controls="nav-overlay">
-      {% render 'icon', name: 'menu' %}
-    </button>
-  {%- endunless -%}
+  <button type="button" class="hdr-icon burger" data-nav-open aria-label="Open menu" aria-expanded="false" aria-controls="nav-overlay">
+    {% render 'icon', name: 'menu' %}
+  </button>
 
   <a class="mark" href="{{ routes.root_url }}">{{ brand }}</a>
 
-  {%- unless is_lp -%}
-    <nav class="nav-desktop" aria-label="Primary">
-      <ul class="nav-list">
-        {%- for link in menu.links -%}
-          {%- if link.links.size > 0 -%}
-            <li class="nav-item nav-has-children">
-              <a class="nav-link" href="{{ link.url }}" aria-haspopup="true">
-                {{ link.title }}
-                <svg class="nav-caret" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 4l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </a>
-              <ul class="subnav">
-                {%- for child in link.links -%}
-                  <li><a href="{{ child.url }}" {% if child.current %}aria-current="page"{% endif %}>{{ child.title }}</a></li>
-                {%- endfor -%}
-              </ul>
-            </li>
-          {%- else -%}
-            <li class="nav-item">
-              <a class="nav-link" href="{{ link.url }}" {% if link.current %}aria-current="page"{% endif %}>{{ link.title }}</a>
-            </li>
-          {%- endif -%}
-        {%- endfor -%}
-      </ul>
-    </nav>
-  {%- endunless -%}
+  <nav class="nav-desktop" aria-label="Primary">
+    <ul class="nav-list">
+      {%- for link in menu.links -%}
+        {%- if link.links.size > 0 -%}
+          <li class="nav-item nav-has-children">
+            <a class="nav-link" href="{{ link.url }}" aria-haspopup="true">
+              {{ link.title }}
+              <svg class="nav-caret" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 4l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+            <ul class="subnav">
+              {%- for child in link.links -%}
+                <li><a href="{{ child.url }}" {% if child.current %}aria-current="page"{% endif %}>{{ child.title }}</a></li>
+              {%- endfor -%}
+            </ul>
+          </li>
+        {%- else -%}
+          <li class="nav-item">
+            <a class="nav-link" href="{{ link.url }}" {% if link.current %}aria-current="page"{% endif %}>{{ link.title }}</a>
+          </li>
+        {%- endif -%}
+      {%- endfor -%}
+    </ul>
+  </nav>
 
   {%- comment -%}
     Search shipped fully built (templates/search.json + sections/main-search)
@@ -48,11 +40,9 @@
     cart; on mobile it lives at the top of the nav overlay instead, so the
     three-item header stays balanced around the centred wordmark.
   {%- endcomment -%}
-  {%- unless is_lp -%}
-    <a class="hdr-icon hdr-search" href="{{ routes.search_url }}" aria-label="Search">
-      {% render 'icon', name: 'search' %}
-    </a>
-  {%- endunless -%}
+  <a class="hdr-icon hdr-search" href="{{ routes.search_url }}" aria-label="Search">
+    {% render 'icon', name: 'search' %}
+  </a>
 
   <button type="button" class="hdr-icon cart-icon" data-cart-open
           aria-label="Open cart, {{ cart.item_count }} {% if cart.item_count == 1 %}item{% else %}items{% endif %}">
@@ -61,7 +51,6 @@
   </button>
 </header>
 
-{%- unless is_lp -%}
 <div class="nav-overlay" id="nav-overlay" data-nav-overlay>
   <div class="nav-overlay-top">
     <span class="mark">{{ brand }}</span>
@@ -103,7 +92,6 @@
     <p class="micro" style="margin-top:var(--s-3)">Cash on delivery &middot; 30-day returns</p>
   </div>
 </div>
-{%- endunless -%}
 
 {% schema %}
 {

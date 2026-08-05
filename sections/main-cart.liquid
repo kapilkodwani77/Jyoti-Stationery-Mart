@@ -20,7 +20,28 @@
                 <td>
                   <div class="cart-row-product">
                     <div class="cart-row-img">
-                      {%- if item.image -%}<img class="img-cover" src="{{ item.image | image_url: width: 200 }}" alt="{{ item.title | escape }}" width="88" height="88" loading="lazy">{%- endif -%}
+                      {%- comment -%}
+                        Through the shared snippet like every other image in the
+                        theme. The box is a fixed 88px, so it gets a short ladder
+                        and its own base_width rather than the full-bleed default
+                        — and alt is empty because the product title sits right
+                        beside it, so naming the image again only makes a screen
+                        reader say it twice.
+
+                        The presence check around it stays, rather than letting
+                        the snippet draw its own placeholder: .img-missing carries
+                        a 160px min-height for full-size plates, which would burst
+                        an 88px box.
+                      {%- endcomment -%}
+                      {%- if item.image -%}
+                        {% render 'responsive-image',
+                           img: item.image,
+                           alt: '',
+                           widths: '88,176,264',
+                           sizes: '88px',
+                           base_width: 176,
+                           loading: 'lazy' %}
+                      {%- endif -%}
                     </div>
                     <div>
                       <p class="cart-line-title">{{ item.product.title }}</p>

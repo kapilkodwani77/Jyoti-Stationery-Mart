@@ -52,17 +52,23 @@
   }
 
   /* BREAKPOINTS - the canonical set. CSS cannot use custom properties inside
-     a media query, so these are documented rather than tokenised; use ONLY
-     these four values so components never shift at mismatched widths:
-       700px   two-col  -> three-col grids, footer columns
+     a media query, so these are documented rather than tokenised. Use ONLY
+     these five widths, so components never shift at mismatched widths:
+       400px   small phone -> standard phone (tightened grid gaps)
+       560px   phone    -> large phone (spec table, 2-up benefit grid)
+       700px   two-col  -> three-col grids, footer columns, cart table
        900px   mobile   -> desktop (nav, PDP split, sticky bar off)
-      1100px   three-col -> four-col grids
-      1200px   widest rhythm
-     Legacy one-off widths (399/559/560/640/768/769/899) are being migrated. */
+      1100px   three-col -> four-col grids, widest vertical rhythm
+     A max-width query is always the next value down minus 1px - 399 / 559 /
+     699 / 899 / 1099 - so the two sides of a boundary can never both match
+     or both miss. Migration complete: the former 640/769/1200 one-offs are
+     gone, and there is no width left in the theme outside this set. */
   @media(min-width:700px){ :root{ --rhythm:80px; } }
   @media(min-width:900px){ :root{ --rhythm:var(--s-9); } }
   @media(min-width:900px){ :root{ --header-h:72px; --announce-h:36px; } }
-  @media(min-width:1200px){ :root{ --rhythm:var(--s-10); } }
+  /* Was 1200px. Folded onto 1100 so the widest rhythm arrives with the
+     four-column grid rather than 100px after it. */
+  @media(min-width:1100px){ :root{ --rhythm:var(--s-10); } }
 }
 
 /* ===================================================================
@@ -314,7 +320,10 @@
   .announce .inner{ display:flex; align-items:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
   .announce .sep{ opacity:.5; margin-inline:var(--s-2); flex:0 0 auto; }
   .announce .wide{ display:none; }
-  @media(min-width:769px){
+  /* Was 769px, which matched nothing else in the theme. The three-item string
+     measures ~585px including its padding, so 700 clears it with ~115px to
+     spare and the overflow ellipsis above still covers longer merchant copy. */
+  @media(min-width:700px){
     .announce{ padding-inline:var(--s-6); letter-spacing:.03em; }
     .announce .wide{ display:inline; } .announce .narrow{ display:none; }
     .announce .sep{ margin-inline:var(--s-3); }

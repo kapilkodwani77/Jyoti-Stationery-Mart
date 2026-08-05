@@ -518,6 +518,19 @@
     return '₹' + (cents / 100).toLocaleString('en-IN', { maximumFractionDigits: 0 });
   }
 
+  /* /cart.js hands back the original upload URL, so every drawer render was
+     pulling a full-resolution product photo through a 72px box — the same
+     pipeline bypass the cart page had in Liquid. Shopify's CDN resizes on
+     request. Any width already on the URL is stripped first so ours is the
+     only one that can apply. */
+  function cdnImg(url, w) {
+    if (!url) return '';
+    var clean = String(url)
+      .replace(/([?&])width=\d+&?/g, '$1')
+      .replace(/[?&]$/, '');
+    return clean + (clean.indexOf('?') === -1 ? '?' : '&') + 'width=' + w;
+  }
+
   function renderDrawer(cart) {
     if (!drawer) return;
     var body = drawer.querySelector('[data-cart-body]');
@@ -543,7 +556,11 @@
       return (
         '<div class="cart-line" data-line-key="' + esc(item.key) + '">' +
           '<div class="cart-line-img">' +
-            (item.image ? '<img class="img-cover" src="' + esc(item.image) + '" alt="" width="72" height="72" loading="lazy">' : '') +
+            (item.image
+              ? '<img class="img-cover" src="' + esc(cdnImg(item.image, 144)) + '"' +
+                ' srcset="' + esc(cdnImg(item.image, 72)) + ' 1x, ' + esc(cdnImg(item.image, 144)) + ' 2x"' +
+                ' alt="" width="72" height="72" loading="lazy">'
+              : '') +
           '</div>' +
           '<div>' +
             '<p class="cart-line-title">' + title + '</p>' + variant +
@@ -624,6 +641,9 @@
 
   function closeDrawer() {
     if (!drawer || !drawer.classList.contains('on')) return;
+    /* Declared further down; both are function declarations in this same IIFE,
+       so it is hoisted and this only ever runs on a real close. */
+    flushQty();
     drawer.classList.remove('on');
     drawer.setAttribute('aria-hidden', 'true');
     if (scrim) scrim.classList.remove('on');
@@ -638,10 +658,39 @@
   });
   if (scrim) scrim.addEventListener('click', closeDrawer);
 
+  /* Updates only the numbers, leaving the line markup where it is. A full
+     re-render replaces the very input being tapped, which drops focus and
+     discards anything typed since the request went out — so it is reserved
+     for changes that actually alter the line-up. */
+  function patchTotals(cart) {
+    if (!drawer) return;
+    var subtotal = drawer.querySelector('[data-cart-subtotal]');
+    if (subtotal) subtotal.textContent = money(cart.total_price);
+
+    cart.items.forEach(function (item) {
+      var key = String(item.key).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      var line = drawer.querySelector('.cart-line[data-line-key="' + key + '"]');
+      if (!line) return;
+
+      var unit = line.querySelector('.cart-line-price');
+      if (unit) unit.textContent = money(item.final_price);
+      var total = line.querySelector('.cart-line-total');
+      if (total) total.textContent = money(item.final_line_price);
+
+      /* Never overwrite a field the shopper is still working in, or one with
+         an edit already queued behind this response — their number is newer
+         than the cart we are holding. */
+      var input = line.querySelector('[data-cart-qty-input]');
+      if (input && document.activeElement !== input && !qtyPending[item.key]) {
+        input.value = item.quantity;
+      }
+    });
+  }
+
   /* Quantity edits were fired one request per click with no sequencing, so
      tapping + three times raced three /cart/change calls and whichever
      response landed last won — which is not necessarily the last click.
-     Requests are now queued so the final state always reflects the final tap. */
+     Requests are queued so the final state always reflects the final tap. */
   var cartQueue = Promise.resolve();
   function changeLine(key, quantity, label) {
     cartQueue = cartQueue.then(function () {
@@ -653,7 +702,9 @@
         .then(function (r) { return r.json(); })
         .then(function (cart) {
           updateBadges(cart.item_count);
-          renderDrawer(cart);
+          var shown = drawer ? drawer.querySelectorAll('.cart-line').length : 0;
+          if (shown && shown === cart.items.length) patchTotals(cart);
+          else renderDrawer(cart);
           if (quantity === 0) announce((label ? label + ' removed' : 'Item removed') + ' from cart.');
           else announce('Cart updated. Subtotal ' + money(cart.total_price) + '.');
           return cart;
@@ -663,19 +714,56 @@
     return cartQueue;
   }
 
+  /* A run of stepper taps is one decision, not four. Queueing kept the calls
+     in order but the shopper still paid a round-trip per tap to say "5", and
+     each response re-rendered the drawer under their finger. The request is
+     now held until the taps stop and one goes out carrying the final number. */
+  var QTY_DELAY = 350;
+  var qtyPending = {};
+
+  function sendQty(key) {
+    var p = qtyPending[key];
+    if (!p) return;
+    window.clearTimeout(p.timer);
+    delete qtyPending[key];
+    changeLine(key, p.quantity);
+  }
+
+  function queueQtyChange(key, quantity) {
+    if (qtyPending[key]) window.clearTimeout(qtyPending[key].timer);
+    qtyPending[key] = {
+      quantity: quantity,
+      timer: window.setTimeout(function () { sendQty(key); }, QTY_DELAY)
+    };
+  }
+
+  /* Anything that ends the shopper's time with the drawer has to send the held
+     edit first, or their last tap dies with the timer. pointerdown rather than
+     click, so the request is already in flight while the tap completes. This
+     narrows the window rather than closing it: if navigation still beats the
+     response, the cart keeps its previous quantity — stale, never corrupt. */
+  function flushQty() { Object.keys(qtyPending).forEach(sendQty); }
+
   if (drawer) {
+    drawer.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('[data-cart-foot] a')) flushQty();
+    });
     drawer.addEventListener('click', function (e) {
       var rm = e.target.closest('[data-cart-remove]');
       if (rm) {
         var line = rm.closest('.cart-line');
         var t = line && line.querySelector('.cart-line-title');
+        /* Removals go straight out: the line-up changes either way, so there
+           is nothing for a debounce to coalesce. */
+        delete qtyPending[rm.dataset.lineKey];
         changeLine(rm.dataset.lineKey, 0, t ? t.textContent : '');
       }
     });
     drawer.addEventListener('change', function (e) {
       var input = e.target.closest('[data-cart-qty-input]');
-      if (input) { changeLine(input.dataset.lineKey, parseInt(input.value, 10) || 0); }
+      if (input) { queueQtyChange(input.dataset.lineKey, parseInt(input.value, 10) || 0); }
     });
+    window.addEventListener('pagehide', flushQty);
   }
 
   /* ---------------------------------------------------------------

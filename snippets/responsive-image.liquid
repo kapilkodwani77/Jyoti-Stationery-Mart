@@ -8,16 +8,23 @@
      loading: 'lazy',        <!-- 'lazy' | 'eager' -->
      priority: false,        <!-- true sets fetchpriority=high -->
      fit: 'cover',           <!-- 'cover' (fill, may crop) | 'contain' (whole image, may letterbox) -->
+     base_width: 1800,       <!-- optional. size of the plain src fallback -->
      class: 'my-class' %}    <!-- optional. class is nil on every call site that omits it -->
 
   Pair with a wrapper that sets aspect-ratio + position:relative.
   fit defaults to 'cover'. Pass 'contain' when the whole subject must stay
   visible regardless of source aspect ratio.
+
+  base_width is the width of the plain `src`, which is what a browser without
+  srcset support downloads. It defaults to the largest size a full-bleed image
+  needs. Small fixed boxes (cart thumbnails and the like) should pass their own
+  top width instead, or the fallback path fetches a 1800px file for an 88px slot.
 {%- endcomment -%}
 {%- liquid
   assign w = widths | default: '400,600,900,1200,1800'
   assign sz = sizes | default: '100vw'
   assign ld = loading | default: 'lazy'
+  assign base_w = base_width | default: 1800
   assign fit_mode = fit | default: 'cover'
   if fit_mode == 'contain'
     assign fit_class = 'img-contain'
@@ -31,7 +38,7 @@
 -%}
 {%- if img != blank -%}
   {{ img
-     | image_url: width: 1800
+     | image_url: width: base_w
      | image_tag:
          widths: w,
          sizes: sz,
