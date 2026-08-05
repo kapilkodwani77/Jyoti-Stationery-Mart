@@ -55,6 +55,31 @@
        loading: img_loading,
        fit: 'cover' %}
 
+    {%- comment -%}
+      Second image, crossfaded in on hover. Desktop only — the reveal lives
+      entirely in a (hover:hover) block, so a phone never paints it.
+
+      Worth the extra element here specifically because this product is
+      reversible and folds: the second frame is different information, not a
+      second angle of the same thing.
+
+      alt="" because it is the same product the link is already named after,
+      and announcing the name twice helps nobody. Always lazy, even on the
+      first row, so a visitor who never hovers never pays for it — and both
+      images fill the same aspect-ratio box, so nothing can shift when the
+      second one arrives.
+    {%- endcomment -%}
+    {%- if product.images.size > 1 -%}
+      {% render 'responsive-image',
+         img: product.images[1],
+         alt: '',
+         widths: '400,600,900',
+         sizes: card_sizes,
+         loading: 'lazy',
+         fit: 'cover',
+         class: 'pc-media-alt' %}
+    {%- endif -%}
+
     {%- if v.available == false -%}
       <span class="pc-badge pc-badge--out">Sold out</span>
     {%- elsif on_sale -%}

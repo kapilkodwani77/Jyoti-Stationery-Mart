@@ -74,7 +74,11 @@
       {%- endif -%}
     </div>
 
-    <div id="buybox">
+    {%- comment -%}
+      data-buybar-anchor: the sticky bar appears the moment this scrolls out of
+      view, so the two Add to Cart controls are never on screen at once.
+    {%- endcomment -%}
+    <div id="buybox" data-buybar-anchor>
       {% render 'buy-box', product: product, compact: false %}
     </div>
 

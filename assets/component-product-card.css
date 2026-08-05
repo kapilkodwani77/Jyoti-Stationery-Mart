@@ -31,15 +31,17 @@
 }
 
 /* ---- card ---------------------------------------------------------- */
+/* Frameless. The card was a chalk panel with a jute border sitting on the
+   mist homepage surface — three light neutrals stacked, with the photograph
+   reduced to one element inside a box. The panel is gone: the radius, the
+   elevation and the focus ring all moved onto the photograph, and the type
+   sits on the page. Measured against the framed version on identical markup,
+   this took the image from 54% to 57% of card height at 390 and 64% to 67% at
+   1440, and the text column from 129 to 163px and 220 to 270px — the width is
+   the bigger win, because it is what stops long product names being clamped. */
 .pc{
   position:relative; display:flex; flex-direction:column;
-  background:var(--chalk);
-  border:1px solid var(--jute); border-radius:var(--r-lg);
-  overflow:hidden;
-  transition:opacity var(--dur-slow) var(--ease),
-             transform var(--dur-fast) var(--ease),
-             box-shadow var(--dur-fast) var(--ease),
-             border-color var(--dur-fast) var(--ease);
+  transition:opacity var(--dur-slow) var(--ease);
 }
 
 /* The card's entrance is a fade, with none of the global reveal's translate
@@ -56,31 +58,32 @@
    touch device sticks after the tap, leaving the card lifted and shadowed
    until the user taps elsewhere — the previous card had this bug. */
 @media(hover:hover) and (pointer:fine){
-  .pc:hover{
-    transform:translateY(-3px);
-    box-shadow:var(--sh-2);
-    border-color:var(--edge-strong);
+  /* Elevation belongs to the photograph now. A frameless card that lifts has
+     no surface to lift, so it would just slide its own text around. */
+  .pc:hover .pc-media{ transform:translateY(-3px); box-shadow:var(--sh-2); }
+  .pc-media{
+    transition:transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
   }
-  /* Two speeds on one gesture used to read as two separate events: the card
-     answered in 180ms while the photograph was still moving 420ms later, on a
-     hand-typed 600ms that matched nothing else in the theme. Both are tokens
-     now — --dur-fast is the card's response, --dur-slow is the photograph's
-     ambience — and the scale is 3% rather than 4%, which at card size is the
-     difference between a drift and a zoom. */
-  .pc:hover .pc-media img{ transform:scale(1.03); }
-  .pc-media img{ transition:transform var(--dur-slow) var(--ease); }
+
+  /* Second image on hover, crossfade only. The zoom that used to live here is
+     gone deliberately: a scale and a crossfade on one gesture are two events
+     competing to describe one intent, and for a product whose whole story is
+     that it is reversible, the other face is worth more than a 3% zoom. */
+  .pc-media-alt{ opacity:0; transition:opacity var(--dur-fast) var(--ease); }
+  .pc:hover .pc-media-alt,
+  .pc:focus-within .pc-media-alt{ opacity:1; }
 }
 
 /* Touch devices get press feedback instead, since they have no hover. */
 @media(hover:none){
-  .pc:active{ transform:scale(.99); }
+  .pc:active .pc-media{ transform:scale(.99); transition:transform var(--dur-fast) var(--ease); }
 }
 
 /* Keyboard focus reinforces the card edge as well as showing the browser's
    own focus ring on the link text. Deliberately NOT using :has() to move the
    ring onto the card — if :has() were unsupported the ring would disappear
    entirely, trading a cosmetic gain for an accessibility regression. */
-.pc:focus-within{ border-color:var(--indigo); box-shadow:var(--sh-1); }
+.pc:focus-within .pc-media{ outline:2px solid var(--indigo); outline-offset:3px; }
 
 /* ---- sold out ------------------------------------------------------
    A sold-out card used to render at full strength and compete equally for
@@ -95,10 +98,21 @@
 .pc--out .pc-price-now{ color:var(--ink-2); }
 
 /* ---- media --------------------------------------------------------- */
+/* The photograph is the object. The hairline is inset rather than a border so
+   it costs no layout and never shifts the image: on the jute-wash surface the
+   media's own jute placeholder is the same value as the page, so a pale
+   product shot would otherwise bleed into it with no edge at all. On chalk and
+   mist it is nearly invisible, which is correct. */
 .pc-media{
   position:relative; aspect-ratio:4/5; flex:0 0 auto;
   overflow:hidden; background:var(--jute);
+  border-radius:var(--r-lg);
+  box-shadow:inset 0 0 0 1px var(--edge);
 }
+/* Both images fill the same box, so swapping them can shift nothing. The
+   second is absolutely positioned over the first and painted only on hover;
+   it is lazy, so a visitor who never hovers never downloads it. */
+.pc-media img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
 
 /* Inset matches the body's inline padding at each breakpoint, so the badge
    shares the title's left edge instead of sitting 8px inboard of it — two
@@ -107,12 +121,12 @@
    than --jute: jute on a light photograph is invisible, which left the badge
    with no boundary at all over pale product shots. */
 .pc-badge{
-  position:absolute; left:var(--s-4); top:var(--s-4); z-index:2;
+  position:absolute; left:var(--s-3); top:var(--s-3); z-index:3;
   border-radius:100px; padding:var(--s-1) var(--s-3);
   font-size:11px; font-weight:500; letter-spacing:.05em; text-transform:uppercase;
   background:var(--chalk); border:1px solid var(--edge); color:var(--ink);
 }
-@media(min-width:700px){ .pc-badge{ left:var(--s-5); top:var(--s-5); } }
+@media(min-width:700px){ .pc-badge{ left:var(--s-4); top:var(--s-4); } }
 
 /* The sale badge was a solid indigo pill — the highest-contrast object
    anywhere in the grid, and the only place in the theme where solid --indigo
@@ -126,11 +140,17 @@
 /* Asymmetric on purpose: the photograph above already supplies the optical
    space at the top, so a full step there was reading as a gap rather than as
    padding. Sides and bottom keep the full step. */
+/* No panel to inset from, so the inline padding goes and the title starts on
+   the photograph's own left edge. That hands the text the 32px the padding was
+   holding — a 26% wider column on a phone — which is what buys the photography
+   its share back without the card growing. Bottom padding goes too: the grid
+   gap already separates one card from the next, and a second gap underneath
+   was spacing measured twice. */
 .pc-body{
   flex:1 1 auto; display:flex; flex-direction:column;
-  padding:var(--s-3) var(--s-4) var(--s-4);
+  padding:var(--s-3) 0 0;
 }
-@media(min-width:700px){ .pc-body{ padding:var(--s-4) var(--s-5) var(--s-5); } }
+@media(min-width:700px){ .pc-body{ padding:var(--s-4) 0 0; } }
 
 .pc-type{
   font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase;

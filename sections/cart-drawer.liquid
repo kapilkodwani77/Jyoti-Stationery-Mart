@@ -28,7 +28,26 @@
       </div>
     {%- else -%}
       {%- for item in cart.items -%}
-        <div class="cart-line" data-line-key="{{ item.key }}">
+        {%- comment -%}
+          The quantity ceiling for this line. /cart.js carries no inventory at
+          all, so the JS re-render has no way to know it — but Liquid does, and
+          seeding it here means the + button stops offering a quantity the store
+          cannot supply. `continue` means oversell is allowed, so the only cap
+          is the theme's own 10; anything else is capped by real stock.
+        {%- endcomment -%}
+        {%- liquid
+          assign line_max = 10
+          if item.variant.inventory_management != blank and item.variant.inventory_policy != 'continue'
+            assign line_max = item.variant.inventory_quantity
+          endif
+          if line_max > 10
+            assign line_max = 10
+          endif
+          if line_max < 1
+            assign line_max = 1
+          endif
+        -%}
+        <div class="cart-line" data-line-key="{{ item.key }}" data-line-max="{{ line_max }}">
           <div class="cart-line-img">
             {%- comment -%}
               Through the shared snippet, like the cart page and every other

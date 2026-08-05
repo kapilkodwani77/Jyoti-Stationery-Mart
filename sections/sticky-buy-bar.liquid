@@ -1,10 +1,22 @@
 {%- comment -%}
-  Mobile sticky buy bar. Appears once the main buy section scrolls out of
-  view, fixed at the bottom with safe-area inset respect for iPhone.
-  Hidden on desktop (desktop uses the in-page sticky buybox instead).
+  Mobile sticky buy bar. Fixed to the bottom of the viewport with safe-area
+  inset for iPhone, hidden on desktop where the buy box is already sticky in
+  the page.
 
-  On PDP: performs a real Add to Cart via the same [data-buybox-form] handler
-  already in theme.js - no new JS. On non-PDP pages: links to the product.
+  It appears once [data-buybar-anchor] leaves the screen and hides again over
+  [data-buybar-hide]. On the product template the anchor is the buy box itself,
+  so the bar arrives at exactly the moment the real Add to Cart scrolls away
+  and never competes with it — the two are never on screen together. Elsewhere
+  the anchor is the hero.
+
+  No purchase logic of its own: the form carries [data-buybox-form], which is
+  the same delegated handler the buy box and the product card submit through.
+  Off the product page there is nothing to add, so it links to the product.
+
+  Deliberately no price. The buy box states it, the cart drawer states it on
+  open, and a third copy inside a 68px bar is one number too many to be
+  scanning while reading. What the bar owes the shopper is *what* they are
+  buying, which is the thumbnail and the name, and one way to act on it.
 {%- endcomment -%}
 {%- liquid
   assign p = product | default: settings.featured_product
@@ -16,17 +28,38 @@
 -%}
 {%- if p -%}
 <div class="buybar" data-buybar role="region" aria-label="Quick purchase">
-  <span class="buybar-price">{% render 'price', variant: v %}</span>
+  <div class="buybar-media" aria-hidden="true">
+    {%- if p.featured_image -%}
+      {% render 'responsive-image',
+         img: p.featured_image,
+         alt: '',
+         widths: '80,120',
+         sizes: '40px',
+         base_width: 80,
+         loading: 'lazy' %}
+    {%- endif -%}
+  </div>
+
+  <p class="buybar-title">{{ p.title }}</p>
+
   {%- if on_pdp -%}
-    <form data-buybox-form style="flex:1;display:flex;margin:0">
+    <form class="buybar-form" data-buybox-form>
       <input type="hidden" name="id" value="{{ v.id }}">
       <input type="hidden" name="quantity" value="1">
+      {%- comment -%}
+        Same pending pattern as every other add-to-cart surface: both words
+        ship and CSS shows one, keyed off the aria-busy the shared handler
+        sets. Nothing spins and nothing animates.
+      {%- endcomment -%}
       <button type="submit" class="buybar-cta" data-add-to-cart {% unless v.available %}disabled{% endunless %}>
-        {%- if v.available -%}Add to Cart{%- else -%}Sold out{%- endif -%}
+        {%- if v.available -%}
+          <span class="btn-label">Add to Cart<span class="visually-hidden"> — {{ p.title }}</span></span>
+          <span class="btn-pending" aria-hidden="true">Adding&hellip;</span>
+        {%- else -%}Sold out{%- endif -%}
       </button>
     </form>
   {%- else -%}
-    <a class="buybar-cta" href="{{ p.url }}" style="text-decoration:none">View product</a>
+    <a class="buybar-cta" href="{{ p.url }}">View product</a>
   {%- endif -%}
 </div>
 {%- endif -%}

@@ -617,6 +617,57 @@
     return clean + (clean.indexOf('?') === -1 ? '?' : '&') + 'width=' + w;
   }
 
+  /* Quantity ceiling per line, keyed by line item key.
+     /cart.js returns no inventory of any kind, so a JS-rendered drawer has no
+     way to know that a line is already holding everything the store has. The
+     input's max was hard-coded to 10 and meant nothing: on a product with one
+     unit in stock and inventory policy `deny`, + asked Shopify for a second
+     one and Shopify refused, every single time. Seeded from the Liquid render,
+     which does know, and corrected from the server the first time a change
+     comes back refused — a line added by AJAX after page load has had no
+     Liquid pass, so learning from the refusal is the fallback. */
+  var lineMax = {};
+  var DEFAULT_MAX = 10;
+
+  function seedLineMax() {
+    if (!drawer) return;
+    drawer.querySelectorAll('.cart-line[data-line-max]').forEach(function (l) {
+      var m = parseInt(l.dataset.lineMax, 10);
+      if (!isNaN(m)) lineMax[l.dataset.lineKey] = m;
+    });
+  }
+
+  function maxFor(key) {
+    return lineMax[key] == null ? DEFAULT_MAX : lineMax[key];
+  }
+
+  /* A stepper button that cannot do anything says so. Without this the +
+     stayed live at the ceiling and every press fired a request the store was
+     always going to reject. */
+  function syncSteppers() {
+    if (!drawer) return;
+    drawer.querySelectorAll('.cart-line').forEach(function (line) {
+      var input = line.querySelector('[data-cart-qty-input]');
+      if (!input) return;
+      var v = parseInt(input.value, 10);
+      var mx = parseInt(input.max, 10);
+      var mn = parseInt(input.min, 10);
+      if (isNaN(v)) return;
+      if (isNaN(mx)) mx = DEFAULT_MAX;
+      if (isNaN(mn)) mn = 0;
+      var plus = line.querySelector('[data-qty-plus]');
+      var minus = line.querySelector('[data-qty-minus]');
+      if (plus) plus.disabled = v >= mx;
+      if (minus) minus.disabled = v <= mn;
+    });
+  }
+
+  /* Read the ceilings out of the Liquid render before anything replaces it.
+     Called here rather than beside `var drawer` above: seedLineMax is hoisted
+     but `lineMax` is a var, so calling it before this line would have found
+     the map still undefined. */
+  seedLineMax();
+
   function renderDrawer(cart) {
     if (!drawer) return;
     var body = drawer.querySelector('[data-cart-body]');
@@ -640,7 +691,7 @@
       var variant = item.variant_title && item.variant_title !== 'Default Title'
         ? '<p class="cart-line-variant">' + esc(item.variant_title) + '</p>' : '';
       return (
-        '<div class="cart-line" data-line-key="' + esc(item.key) + '">' +
+        '<div class="cart-line" data-line-key="' + esc(item.key) + '" data-line-max="' + maxFor(item.key) + '">' +
           '<div class="cart-line-img">' +
             (item.image
               ? '<img class="img-cover" src="' + esc(cdnImg(item.image, 144)) + '"' +
@@ -657,7 +708,7 @@
                  two items in the cart a screen reader announced three
                  indistinguishable "Quantity" controls. */
               '<button type="button" class="qty-btn" data-qty-minus aria-label="Decrease quantity of ' + title + '">−</button>' +
-              '<input class="qty-input" type="number" inputmode="numeric" min="0" max="10" value="' + item.quantity + '"' +
+              '<input class="qty-input" type="number" inputmode="numeric" min="0" max="' + maxFor(item.key) + '" value="' + item.quantity + '"' +
                 ' data-cart-qty-input data-line-key="' + esc(item.key) + '" aria-label="Quantity of ' + title + '">' +
               '<button type="button" class="qty-btn" data-qty-plus aria-label="Increase quantity of ' + title + '">+</button>' +
             '</div>' +
@@ -715,7 +766,10 @@
     drawer.setAttribute('aria-busy', 'true');
     showCartError('');
     fetchCart()
-      .then(function (cart) { renderDrawer(cart); updateBadges(cart.item_count); })
+      /* renderDrawer rather than applyCart: the drawer's opening markup is the
+         Liquid render, which carries no stepper, so the line count matching is
+         not enough to justify patching over it. */
+      .then(function (cart) { renderDrawer(cart); updateBadges(cart.item_count); syncSteppers(); })
       .catch(function () {
         if (body) body.innerHTML = '<div class="cart-empty"><p>Could not load your cart. Please refresh.</p></div>';
       })
@@ -766,10 +820,15 @@
 
       /* Never overwrite a field the shopper is still working in, or one with
          an edit already queued behind this response — their number is newer
-         than the cart we are holding. */
+         than the cart we are holding. The ceiling is not their input though,
+         so it is always brought up to date. */
       var input = line.querySelector('[data-cart-qty-input]');
-      if (input && document.activeElement !== input && !qtyPending[item.key]) {
-        input.value = item.quantity;
+      if (input) {
+        input.max = maxFor(item.key);
+        line.dataset.lineMax = maxFor(item.key);
+        if (document.activeElement !== input && !qtyPending[item.key]) {
+          input.value = item.quantity;
+        }
       }
     });
   }
@@ -783,6 +842,7 @@
     var shown = drawer ? drawer.querySelectorAll('.cart-line').length : 0;
     if (shown && shown === cart.items.length) patchTotals(cart);
     else renderDrawer(cart);
+    syncSteppers();
   }
 
   /* Errors are shown, not just announced. The failure this exists for is
@@ -808,6 +868,7 @@
      drawer kept the value it had while the input kept the number the shopper
      had tapped. Stock ran out and the drawer quietly lied until a refresh.
      Same shape as the add-to-cart handler, which has always checked r.ok. */
+  var CART_GENERIC = 'Could not update your cart.';
   var cartQueue = Promise.resolve();
   function changeLine(key, quantity, label) {
     cartQueue = cartQueue.then(function () {
@@ -816,9 +877,20 @@
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ id: key, quantity: quantity })
       })
-        .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+        .then(function (r) {
+          return r.json().then(function (data) { return { ok: r.ok, status: r.status, data: data }; });
+        })
         .then(function (res) {
-          if (!res.ok) throw new Error(res.data.description || res.data.message || 'Could not update your cart');
+          if (!res.ok) {
+            /* description only. `message` is Shopify's internal error class and
+               is the literal string "Cart Error" on every cart failure there
+               is — surfacing it just replaces one unhelpful message with a
+               worse-looking one, and it also masks the synthesised stock line
+               below by not matching the generic sentinel. */
+            var e = new Error(res.data.description || CART_GENERIC);
+            e.status = res.status;
+            throw e;
+          }
           var cart = res.data;
           showCartError('');
           applyCart(cart);
@@ -827,14 +899,31 @@
           return cart;
         })
         .catch(function (err) {
-          showCartError(err.message);
-          announce(err.message);
           /* Whatever went wrong, the drawer is now showing a quantity the cart
              may not hold. Re-read the real cart and put the drawer back on it,
              through the same path a successful change takes — a failed edit
              should leave the shopper looking at the truth, not at their own
              optimistic tap. */
-          return fetchCart().then(applyCart).catch(function () {});
+          return fetchCart().then(function (cart) {
+            /* 422 is the store saying "that is more than exists". The quantity
+               the cart came back holding is therefore the ceiling, so record it
+               and the + button retires instead of asking again. */
+            if (err.status === 422) {
+              cart.items.forEach(function (i) {
+                if (i.key === key && i.quantity > 0) lineMax[key] = i.quantity;
+              });
+            }
+            applyCart(cart);
+            var msg = err.message;
+            if (msg === CART_GENERIC && err.status === 422 && lineMax[key] != null) {
+              msg = 'Only ' + lineMax[key] + ' left in stock.';
+            }
+            showCartError(msg);
+            announce(msg);
+          }).catch(function () {
+            showCartError(err.message);
+            announce(err.message);
+          });
         });
     });
     return cartQueue;
