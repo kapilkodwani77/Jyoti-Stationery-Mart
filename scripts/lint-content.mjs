@@ -23,8 +23,16 @@ const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
    likely to be a mis-decode than a deliberate choice, so it gets surfaced for a
    human rather than guessed at. Deliberate additions belong here. */
 const ALLOWED_NON_ASCII = new Set([
-  ...'—–…·×₹°™®“”‘’′″≈≤≥±',
+  ...'—–…·×₹°™®“”‘’′″≈≤≥±★☆',
 ]);
+
+/* Escape sequences that only mean something to a JavaScript or JSON parser.
+   Liquid has no such syntax: in markup the backslash, the u and the four hex
+   digits are six literal characters that go straight to the page, which is how
+   a review rating came to print its escape codes instead of stars. The same
+   sequence inside a schema block is fine — that is real JSON and Shopify
+   decodes it — so this check is deliberately scoped to markup. */
+const ESCAPE_IN_MARKUP = /\\u\{[0-9a-fA-F]{1,6}\}|\\u[0-9a-fA-F]{4}|\\x[0-9a-fA-F]{2}/g;
 
 /* Unfinished-copy markers. Square brackets are the house style for a stub
    ("[city]"); the rest are the usual suspects from drafting. Angle brackets are
@@ -120,6 +128,34 @@ for (const abs of filesIn('sections', '.liquid')) {
   if (!m) continue;
   const data = parseJsonWithBanner(m[1], rel);
   if (data) walk(data, 'schema', rel);
+}
+
+/* ---- Liquid markup: the copy between the tags, which nothing above ever
+   read. That blind spot is the whole reason a star rating shipped as its own
+   escape codes. Schema blocks are genuine JSON and script blocks are genuine
+   JavaScript, so a backslash escape is correct in both — they get blanked
+   rather than cut so the line numbers below still point at the real line. ---- */
+const blankOut = (m) => m.replace(/[^\n]/g, ' ');
+
+for (const abs of [
+  ...filesIn('sections', '.liquid'),
+  ...filesIn('snippets', '.liquid'),
+  ...filesIn('layout', '.liquid'),
+]) {
+  const { rel, src } = read(abs);
+  const markup = src
+    .replace(/\{%-?\s*schema\s*-?%\}[\s\S]*?\{%-?\s*endschema\s*-?%\}/g, blankOut)
+    .replace(/<script[\s\S]*?<\/script>/gi, blankOut);
+
+  for (const m of markup.matchAll(ESCAPE_IN_MARKUP)) {
+    findings.push({
+      file: rel,
+      path: 'markup',
+      why: 'escape sequence Liquid does not decode',
+      detail: `${m[0]} reaches the page as literal text`,
+      line: markup.slice(0, m.index).split('\n').length,
+    });
+  }
 }
 
 /* ---- report ---- */

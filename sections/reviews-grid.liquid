@@ -2,8 +2,20 @@
   Requires a metaobject definition named "review" (Settings -> Custom data ->
   Metaobjects) with fields: rating (Integer 1-5), quote, customer_name,
   customer_city, photo.
-  Auto-hides entirely when zero reviews exist. Appears automatically once
-  the first review metaobject entry is published. No fake content, ever.
+
+  That definition also has to expose itself to the storefront, which is set on
+  the definition rather than per entry and is currently PUBLIC_READ. It matters
+  because metaobjects are admin-only by default, and while they are,
+  `metaobjects.review.values` reads as empty right here — indistinguishable
+  from having no reviews yet. The section would sit invisible forever with the
+  reviews sitting in admin the whole time, and nothing on the page would say
+  so. If reviews ever stop appearing, check that setting before the code.
+
+  The publishable capability is deliberately off, so an entry goes live the
+  moment it is saved rather than waiting on a second publish step.
+
+  Auto-hides entirely when zero reviews exist. Appears on its own once the
+  first review entry is saved. No fake content, ever.
 {%- endcomment -%}
 {%- liquid
   assign reviews = metaobjects.review.values
@@ -33,7 +45,7 @@
                 <div class="img-missing"><span>Photo pending</span></div>
               {%- endif -%}
             </div>
-            <div class="rev-stars" aria-label="Rated {{ r.rating.value }} out of 5">{% for i in (1..5) %}{% if i <= r.rating.value %}\u2605{% else %}\u2606{% endif %}{% endfor %}</div>
+            <div class="rev-stars" role="img" aria-label="Rated {{ r.rating.value }} out of 5">{% for i in (1..5) %}{% if i <= r.rating.value %}★{% else %}☆{% endif %}{% endfor %}</div>
             <p class="rev-quote">{{ r.quote.value }}</p>
             <p class="rev-byline">{{ r.customer_name.value }}{% if r.customer_city.value %}, {{ r.customer_city.value }}{% endif %}</p>
           </article>

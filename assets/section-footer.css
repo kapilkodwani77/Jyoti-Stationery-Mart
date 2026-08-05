@@ -45,4 +45,27 @@
   @media(min-width:900px){
     .ftr-signup{ grid-template-columns:1fr minmax(300px,400px); gap:var(--s-7); align-items:center; }
   }
+
+  /* Social row, under the wordmark.
+
+     .ftr a in theme.css makes every footer link a full-width block with
+     vertical padding — right for a stacked column of text links, wrong for a
+     row of icons, which would otherwise stack and each claim the full width.
+     These overrides win on specificity, not layer order, so they hold whichever
+     way the two stylesheets end up ordered in the head. */
+  .ftr-social{ display:flex; gap:var(--s-2); margin-top:var(--s-4); list-style:none; padding:0; }
+  .ftr-social a{
+    display:inline-flex; align-items:center; justify-content:center;
+    /* Square at the tap token, so the target is the full 44px the rest of the
+       theme guarantees rather than the 20px the glyph happens to occupy. */
+    width:var(--tap); height:var(--tap); min-height:0; padding:0;
+    border:1px solid var(--edge); border-radius:100px;
+    color:var(--ink-2);
+    transition:color 200ms var(--ease), border-color 200ms var(--ease);
+  }
+  .ftr-social a:hover{
+    color:var(--indigo); border-color:var(--indigo);
+    /* .ftr a:hover underlines, which on an icon draws a rule under the glyph. */
+    text-decoration:none;
+  }
 }

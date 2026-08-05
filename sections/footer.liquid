@@ -1,3 +1,10 @@
+{%- liquid
+  assign brand = settings.brand_name | default: shop.name
+  assign has_social = false
+  if settings.social_instagram != blank or settings.social_facebook != blank
+    assign has_social = true
+  endif
+-%}
 {{ 'section-footer.css' | asset_url | stylesheet_tag }}
 <footer class="ftr">
   <div class="wrap">
@@ -55,8 +62,39 @@
 
     <div class="ftr-top">
       <div class="ftr-brand">
-        <span class="ftr-mark">{{ settings.brand_name | default: shop.name }}</span>
+        <span class="ftr-mark">{{ brand }}</span>
         <p class="ftr-tag">{{ settings.brand_tagline | default: 'Thoughtfully designed for modern families.' }}</p>
+
+        {%- comment -%}
+          Social sat as one word of text in the Company column, reading as a
+          policy page rather than a place to go, and the Facebook setting had
+          no output at all — a merchant could fill it in and never see it
+          appear. Icons beside the wordmark instead, where the eye already is.
+
+          The accessible name carries the brand and the destination, because
+          "Instagram" alone in a link list tells a screen reader user nothing
+          about whose account it is.
+        {%- endcomment -%}
+        {%- if has_social -%}
+          <ul class="ftr-social">
+            {%- if settings.social_instagram != blank -%}
+              <li>
+                <a href="{{ settings.social_instagram }}" target="_blank" rel="noopener"
+                   aria-label="{{ brand }} on Instagram, opens in a new tab">
+                  {% render 'icon', name: 'instagram' %}
+                </a>
+              </li>
+            {%- endif -%}
+            {%- if settings.social_facebook != blank -%}
+              <li>
+                <a href="{{ settings.social_facebook }}" target="_blank" rel="noopener"
+                   aria-label="{{ brand }} on Facebook, opens in a new tab">
+                  {% render 'icon', name: 'facebook' %}
+                </a>
+              </li>
+            {%- endif -%}
+          </ul>
+        {%- endif -%}
       </div>
 
       <div class="ftr-grid">
@@ -70,9 +108,6 @@
           <h3>Company</h3>
           <a href="/pages/about">About</a>
           <a href="{{ routes.all_products_collection_url }}">Shop all</a>
-          {%- if settings.social_instagram != blank -%}
-            <a href="{{ settings.social_instagram }}" target="_blank" rel="noopener">Instagram</a>
-          {%- endif -%}
         </div>
         <div>
           <h3>Legal</h3>
