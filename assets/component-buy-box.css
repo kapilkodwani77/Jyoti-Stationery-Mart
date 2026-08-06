@@ -40,13 +40,5 @@
      away, so the two are never both on screen and neither is redundant. */
   @media(max-width:899px){
     .buybox [data-add-to-cart]{ display:none; }
-
-    /* The dots used to sit between the photograph and this panel and were
-       doing double duty as the separation between them. With them moved onto
-       the image, the eyebrow started immediately under the frame with nothing
-       between — the image and the text read as one collided block. Stated
-       here rather than left to the gallery's grid gap, because it is the
-       panel's own top margin now, and --pdp-fold-reserve is costed for it. */
-    .buybox{ margin-top:var(--s-4); }
   }
 }

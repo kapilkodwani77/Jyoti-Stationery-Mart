@@ -49,18 +49,6 @@
     --rhythm:var(--s-8);
     --header-h:56px;
     --announce-h:32px;
-
-    /* Everything the PDP's first screen owes the shopper apart from the
-       photograph: the masthead above it (88), the eyebrow, name, rating and
-       price below it (~156 measured, the type scale being fluid), the permanent
-       footer CTA under those (78), and enough air that the price is not touching
-       the bar. The gallery gets whatever is left — see the max-width in
-       section-gallery.css, which is the only thing that reads this.
-
-       A token rather than a number buried in a calc because it is a budget,
-       not a measurement: change what the fold has to carry and this is the one
-       place that has to know. */
-    --pdp-fold-reserve:336px;
   }
 
   /* BREAKPOINTS - the canonical set. CSS cannot use custom properties inside
