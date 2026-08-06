@@ -39,41 +39,99 @@
   .gallery-dot:focus-visible{ outline:none; }
   .gallery-dot:focus-visible::before{ outline:2px solid var(--indigo); outline-offset:3px; }
 
-  /* Below the two-column breakpoint the photograph is the whole argument, so
-     the strip runs to both screen edges instead of sitting inside the 24px
-     content inset. The pull is exactly the wrap's own padding, so it lands
-     flush with the viewport and cannot overflow it — no 100vw, which would
-     overshoot by the scrollbar width on desktop browsers.
+  /* Below the two-column breakpoint the photograph carries the page, so the
+     strip leaves the 24px content inset and takes as much of the screen as the
+     first fold can spare — full width wherever the screen is tall enough, and
+     narrowed symmetrically where it is not, because the name and the price
+     have to be readable before anyone scrolls.
 
-     The 4:5 box is untouched and the source art is 4:5, so this is purely
-     size: 354 -> 402px wide and 442 -> 502px tall at 402px, with nothing
-     cropped and nothing upscaled. aspect-ratio still reserves the space, so
-     there is no CLS, and scroll-snap, the dots, the zoom trigger and lazy
-     loading all sit inside the slide and are unaffected.
+     Nothing here crops or rescales. The 4:5 box is untouched and the source art
+     is 4:5, so every variation is pure size; aspect-ratio still reserves the
+     space, so there is no CLS, and scroll-snap, the zoom trigger and lazy
+     loading all sit inside the slide and are unaffected. The dots move out of
+     flow onto the image, which is what pays for most of the text above the
+     fold.
 
      The radius goes with it. A rounded corner cut off by the screen edge reads
-     as a rendering fault rather than a detail. */
+     as a rendering fault rather than a detail, and once the frame is a plate
+     rather than a bleed the square corner is what keeps the two consistent. */
   @media(max-width:899px){
-    /* Full bleed: widen by the wrap's padding on each side, then pull back out
-       over it by the same amount. The negative margin is doing the work, not
-       margin-inline:auto — auto margins only centre when there is free space
-       to distribute, and an element wider than its containing block has none,
-       so CSS resolves both to zero and the strip simply hangs 24px off the
-       right edge. It centred here only for as long as a max-width kept it
-       narrower than the column; without the cap, auto is silently a no-op.
+    /* Two jobs, two elements, because one element cannot do both.
+
+       The wrapper does the full bleed: widen by the wrap's padding on each
+       side, then pull back out over it by the same amount. The negative margin
+       is what moves it — margin-inline:auto only centres when there is free
+       space to distribute, and an element wider than its containing block has
+       none, so auto resolves to zero and the strip hangs off the right edge.
        Not 100vw either: that includes the scrollbar gutter and overshoots.
 
-       No max-width. A 4:5 frame's height is its width times 1.25 — the height
-       is not a free variable — so anything that shortens the frame at a fixed
-       ratio has to narrow it, and narrowing it is the one thing edge-to-edge
-       forbids. The strip is as tall as the screen is wide times 1.25; the
-       permanent footer CTA is what keeps the purchase action reachable from
-       the first screen instead. */
-    .gallery-main{
+       The strip inside it does the height. Its containing block is now already
+       edge to edge, so it can carry a max-width and still be centred by plain
+       auto margins — which is exactly what the previous single-element version
+       could not do, because explicit negative margins on both sides are
+       over-constrained and pin the box to the left. */
+    .gallery{
       width:calc(100% + var(--s-5) * 2);
       margin-inline:calc(var(--s-5) * -1);
+      position:relative;
+    }
+    /* A 4:5 frame's height is its width times 1.25 — height is not a free
+       variable — so the only way to shorten the photograph without cropping it
+       or changing its ratio is to narrow it. --pdp-fold-reserve is everything
+       else the first screen owes the shopper: the masthead above, the name, the
+       price and the rating below, and the footer CTA under those. Whatever is
+       left is the photograph's, and 0.8 turns that height budget into the width
+       that produces it.
+
+       On a screen tall enough to carry a full-bleed frame the cap never bites
+       and nothing changes; it only narrows where the alternative is a price the
+       shopper has to scroll to find. svh, not vh: vh on iOS is the viewport at
+       its tallest, which is the one number that is wrong while the browser
+       chrome is on screen — the plain-vh line is the fallback for engines
+       without svh. */
+    /* width:100% is load-bearing, not tidiness. A grid item stretches to its
+       column by default, but auto margins in an axis switch that off and the
+       box falls back to shrink-to-fit — and a flex container whose children are
+       all flex:0 0 100% shrinks to nothing. Stating the width restores the
+       stretch, and max-width still clamps it. */
+    .gallery-main{
+      width:100%;
+      max-width:calc((100vh - var(--pdp-fold-reserve)) * 0.8);
+      max-width:calc((100svh - var(--pdp-fold-reserve)) * 0.8);
+      margin-inline:auto;
       border-radius:0;
     }
+
+    /* The dots move onto the photograph. Below the image they cost 44px of
+       row plus the grid gap above it, and that band sat directly between the
+       product and its price — the most expensive 56px on the page, spent on
+       three 6px circles. Out of flow they cost nothing and the image runs
+       straight into the name.
+
+       They need their own surface to be legible over an unknown photograph,
+       so they travel in a blurred pill rather than as bare dots: the same
+       material as the buy bar and the zoom hint, which is the theme's existing
+       answer to "controls over an image". */
+    .gallery-dots{
+      position:absolute; left:50%; bottom:var(--s-3);
+      transform:translateX(-50%);
+      width:max-content; margin:0; padding-inline:var(--s-1);
+      border-radius:100px;
+      background:rgba(20,22,26,.34);
+      backdrop-filter:blur(10px) saturate(160%);
+      -webkit-backdrop-filter:blur(10px) saturate(160%);
+    }
+    /* 36px tall so the pill reads as an indicator rather than a slab, with the
+       tap target restored to the full 44 by the same pseudo-element trick
+       .u-tap uses. Width stays 44, so no two dots' targets overlap. */
+    .gallery-dot{ position:relative; height:36px; }
+    .gallery-dot::after{
+      content:''; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+      width:100%; height:var(--tap);
+    }
+    .gallery-dot::before{ background:rgba(241,240,236,.5); }
+    .gallery-dot.is-active::before{ background:var(--chalk); transform:scale(1.25); }
+    .gallery-dot:focus-visible::before{ outline-color:var(--chalk); }
     /* The photograph meets the navigation directly. The 48px of chalk that sat
        between them was section rhythm applied to a section that opens the page,
        where there is nothing above to be separated from. Padding only — the

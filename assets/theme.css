@@ -49,6 +49,18 @@
     --rhythm:var(--s-8);
     --header-h:56px;
     --announce-h:32px;
+
+    /* Everything the PDP's first screen owes the shopper apart from the
+       photograph: the masthead above it (88), the eyebrow, name, rating and
+       price below it (~156 measured, the type scale being fluid), the permanent
+       footer CTA under those (78), and enough air that the price is not touching
+       the bar. The gallery gets whatever is left — see the max-width in
+       section-gallery.css, which is the only thing that reads this.
+
+       A token rather than a number buried in a calc because it is a budget,
+       not a measurement: change what the fold has to carry and this is the one
+       place that has to know. */
+    --pdp-fold-reserve:336px;
   }
 
   /* BREAKPOINTS - the canonical set. CSS cannot use custom properties inside
@@ -802,7 +814,9 @@
      trigger at all — it is the page's footer CTA, present from the first paint
      and never withdrawn. On a phone the buy box is one screen out of a very
      long page, and a control that has to be scrolled back to is a control that
-     is missing for most of the visit.
+     is missing for most of the visit. It is also the only Add to Cart there:
+     the buy box's own button is hidden below 900px, so this is not competing
+     with anything.
 
      Stated in CSS rather than by adding .on from script, for two reasons: it
      paints with the first stylesheet instead of waiting on theme.js, so there

@@ -22,4 +22,31 @@
   .buybox-error{ margin-top:var(--s-3); font-size:14px; color:var(--danger); }
   .buybox-trust{ margin-top:var(--s-5); font-size:13px; color:var(--ink-2); }
   .buybox--compact .buybox-trust{ margin-top:var(--s-4); }
+
+  /* Below the two-column breakpoint the buy box is an information panel, not a
+     second place to buy. The footer CTA is permanent there, so this button was
+     a duplicate of a control already on screen — two identical primary actions
+     competing for the same tap, and two "Add to Cart" buttons for a screen
+     reader to tell apart.
+
+     display:none rather than visibility or opacity: it takes the button out of
+     the tab order and out of the accessibility tree, which is the whole point.
+     The form stays, and so does everything in it that is information — the
+     quantity the shopper picks, and the prepaid offer, which is a different
+     transaction rather than a second copy of this one. theme.js mirrors that
+     quantity into the bar, so the surviving CTA adds what was chosen here.
+
+     Desktop is untouched: there the bar only appears once this has scrolled
+     away, so the two are never both on screen and neither is redundant. */
+  @media(max-width:899px){
+    .buybox [data-add-to-cart]{ display:none; }
+
+    /* The dots used to sit between the photograph and this panel and were
+       doing double duty as the separation between them. With them moved onto
+       the image, the eyebrow started immediately under the frame with nothing
+       between — the image and the text read as one collided block. Stated
+       here rather than left to the gallery's grid gap, because it is the
+       panel's own top margin now, and --pdp-fold-reserve is costed for it. */
+    .buybox{ margin-top:var(--s-4); }
+  }
 }
