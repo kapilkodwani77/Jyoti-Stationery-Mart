@@ -16,6 +16,14 @@
       <p class="eyebrow">{{ product.type }}</p>
     {%- endif -%}
     <h1 class="buybox-title">{{ product.title }}</h1>
+    {%- comment -%}
+      Evidence sits between the name and the price, the order the questions
+      actually get asked in: what is it, is it any good, what does it cost.
+      Same snippet and same scope as the product card, so it speaks only for
+      this product and renders nothing at all until it has a review of its own
+      to report — which is the state every product is in today.
+    {%- endcomment -%}
+    {% render 'product-rating', product: product %}
   {%- endunless -%}
 
   <div class="buybox-price-row">

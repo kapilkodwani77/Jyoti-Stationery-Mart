@@ -54,7 +54,30 @@
      The radius goes with it. A rounded corner cut off by the screen edge reads
      as a rendering fault rather than a detail. */
   @media(max-width:899px){
-    .gallery-main{ margin-inline:calc(var(--s-5) * -1); border-radius:0; }
+    /* Full-bleed by width rather than by negative margin, so the same
+       declaration can also be capped. width overshoots the content column by
+       exactly the wrap's padding on each side and auto margins centre the
+       overshoot, which lands the strip flush with both screen edges.
+
+       max-width is the height control. A 4:5 frame's height is its width times
+       1.25 — the height is not a free variable — so the only way to shorten the
+       frame without cropping it or changing its ratio is to narrow it. Capping
+       the width at 80% of the height budget does exactly that: the photograph
+       keeps every pixel and its exact 4:5 shape, and on a screen tall enough to
+       carry it the cap never bites and the strip stays edge to edge.
+
+       52svh leaves the title, the rating, the price and the top of the buy box
+       above the fold on a 667px phone as well as an 874px one. svh, not vh:
+       vh on iOS is the viewport at its tallest, which is the one number that is
+       wrong while the browser chrome is on screen — the plain-vh line below it
+       is the fallback for engines without svh. */
+    .gallery-main{
+      width:calc(100% + var(--s-5) * 2);
+      max-width:calc(52vh * 0.8);
+      max-width:calc(52svh * 0.8);
+      margin-inline:auto;
+      border-radius:0;
+    }
     /* The photograph meets the navigation directly. The 48px of chalk that sat
        between them was section rhythm applied to a section that opens the page,
        where there is nothing above to be separated from. Padding only — the
