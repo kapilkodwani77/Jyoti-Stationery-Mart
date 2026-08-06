@@ -748,6 +748,14 @@
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   .buybar-form{ flex:0 0 auto; display:flex; margin:0; }
-  /* Hide the bar on desktop - desktop uses the in-page sticky buybox */
-  @media(min-width:900px){ .buybar{ display:none; } }
+  /* Desktop is not exempt. The in-page buy box is sticky only for as long as
+     the PDP's first section lasts — past it there is no way to buy on the
+     longest page in the theme without scrolling back up, and hiding the bar
+     above 900px also meant anyone checking this on a desktop browser saw
+     nothing at all and reasonably concluded it was broken. The proportions
+     change, not the component. */
+  @media(min-width:900px){
+    .buybar{ padding-inline:var(--s-6); gap:var(--s-4); }
+    .buybar-title{ font-size:15px; }
+  }
 }

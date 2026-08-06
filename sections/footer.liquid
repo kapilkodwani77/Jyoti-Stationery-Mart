@@ -6,7 +6,12 @@
   endif
 -%}
 {{ 'section-footer.css' | asset_url | stylesheet_tag }}
-<footer class="ftr">
+{%- comment -%}
+  data-buybar-hide: the sticky buy bar stands down as the footer arrives, so it
+  never sits on top of the last thing on the page. The hook already existed in
+  theme.js and had no element on any template using it.
+{%- endcomment -%}
+<footer class="ftr" data-buybar-hide>
   <div class="wrap">
 
     {%- comment -%}
