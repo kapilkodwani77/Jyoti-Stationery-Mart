@@ -4,20 +4,27 @@
   as long as the PDP's first section lasts, and past it there is no way to buy
   without scrolling back up.
 
-  It appears once [data-buybar-anchor] leaves the screen and hides again over
-  [data-buybar-hide]. On the product template the anchor is the buy box itself,
-  so the bar arrives at exactly the moment the real Add to Cart scrolls away
-  and never competes with it — the two are never on screen together. Elsewhere
-  the anchor is the hero.
+  On the product template below 900px it is not a scroll trigger at all: it is
+  on screen from the first paint and stays there, because on a phone the buy
+  box is one screen out of a very long page and a control you have to scroll
+  back to is a control that is missing. Above 900px, and on every other
+  template, it still appears once [data-buybar-anchor] leaves the screen and
+  hides again over [data-buybar-hide].
+
+  Both add-to-cart controls are therefore on screen together on a phone, which
+  the design accounts for: this one carries no title, no thumbnail and no
+  price, so it reads as the page's action rather than a second copy of the buy
+  box, and theme.js mirrors the buy box's quantity and variant into it so the
+  two cannot disagree about what they are adding.
 
   No purchase logic of its own: the form carries [data-buybox-form], which is
   the same delegated handler the buy box and the product card submit through.
   Off the product page there is nothing to add, so it links to the product.
 
-  One job: buy this. No thumbnail, no name, no price — the shopper has already
-  read all three on the way down, and by the time this arrives the only open
-  question is whether to act. Anything else in the bar is a second thing to
-  look at in a band that exists to be looked past until it is wanted.
+  One job: buy this. No thumbnail, no name, no price — the page above states
+  all three, and a band that is on screen for the entire visit has to be
+  ignorable for most of it. Anything else in it is a second thing to look at,
+  every screen, whether or not the shopper is ready to act.
 
   That is also what lets the button be the whole bar rather than a chip at the
   end of a row: with nothing to share the width with, the CTA runs the full
@@ -48,6 +55,15 @@
           <span class="btn-pending" aria-hidden="true">Adding&hellip;</span>
         {%- else -%}Sold out{%- endif -%}
       </button>
+      {%- comment -%}
+        The bar is the primary purchase control on a phone now, and the shared
+        handler writes failures into whichever form was submitted. Without a
+        target of its own, a refused add — a sold-out race, a dropped request —
+        left the button re-enabling and no drawer opening, with nothing said to
+        anyone not using a screen reader. It grows upward from a fixed element,
+        so nothing in the page moves for it.
+      {%- endcomment -%}
+      <p class="buybar-error" data-buybox-error role="alert" hidden></p>
     </form>
   {%- else -%}
     <a class="buybar-cta" href="{{ p.url }}">View product</a>

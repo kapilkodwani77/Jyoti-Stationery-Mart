@@ -798,6 +798,40 @@
     .buybar{ transition:opacity 160ms linear, visibility 160ms; }
   }
 
+  /* Below the two-column breakpoint the product page's bar is not a scroll
+     trigger at all — it is the page's footer CTA, present from the first paint
+     and never withdrawn. On a phone the buy box is one screen out of a very
+     long page, and a control that has to be scrolled back to is a control that
+     is missing for most of the visit.
+
+     Stated in CSS rather than by adding .on from script, for two reasons: it
+     paints with the first stylesheet instead of waiting on theme.js, so there
+     is no frame where the footer is absent and nothing arriving late; and it
+     holds even if the script never runs. body already reserves the bar's height
+     at every mobile width, so making it permanent moves nothing.
+
+     Scoped to the product template because off the PDP this bar is a "View
+     product" link, not a purchase — a permanent one would be an ad pinned over
+     every page. .on still gets toggled underneath and resolves to these same
+     values, so the two never disagree. */
+  @media(max-width:899px){
+    body.template-product .buybar{ opacity:1; visibility:visible; transform:none; }
+  }
+
+  /* The one thing that takes it away, at any width. The cart drawer, the nav
+     overlay and the zoom lightbox each own the whole screen and lock the body
+     behind them; an Add to Cart floating over a cart is a second, contradictory
+     exit from a surface that already has its own. Same weight as .buybar.on and
+     after both it and the rule above, so it wins in every combination.
+
+     Opacity and visibility only, no transform: the reduced-motion block above
+     zeroes the travel and is earlier in the cascade, and a rule that quietly
+     reinstates a slide for people who asked for none is worse than no exit
+     animation at all. */
+  body.nav-open .buybar,
+  body.cart-open .buybar,
+  body.zoom-open .buybar{ opacity:0; visibility:hidden; }
+
   .buybar-form{ margin:0; }
 
   /* The button is the bar. With nothing to share the width with it runs the
@@ -820,6 +854,11 @@
   .buybar-cta:active{ transform:scale(.985); box-shadow:var(--sh-1); }
   .buybar-cta:disabled{ opacity:.45; cursor:not-allowed; }
   .buybar-cta[aria-busy="true"]{ cursor:progress; }
+
+  .buybar-error{
+    margin:var(--s-2) 0 0; font-size:13px; line-height:1.4;
+    color:var(--danger); text-align:center;
+  }
 
   /* Desktop is not exempt: the in-page buy box is sticky only for as long as
      the PDP's first section lasts, and past it there is no way to buy on the

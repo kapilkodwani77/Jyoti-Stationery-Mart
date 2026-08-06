@@ -107,6 +107,12 @@
      Sticky buy bar
      Shows once [data-buybar-anchor] scrolls out of view.
      Hides again once [data-buybar-hide] scrolls into view.
+
+     This governs desktop, and every template that is not the PDP. On the
+     product page below 900px the bar is permanent, and that is stated in CSS
+     rather than here so it paints with the first stylesheet and survives this
+     script never running. The toggling below still happens there and lands on
+     the same values, so the two never contradict each other.
   --------------------------------------------------------------- */
   (function buybar() {
     var bar = document.querySelector('[data-buybar]');
@@ -197,6 +203,46 @@
         paint();
       }, { threshold: 0 }).observe(hideEl);
     }
+  })();
+
+  /* ---------------------------------------------------------------
+     Sticky bar <- buy box: two buttons, one decision
+  --------------------------------------------------------------- */
+  /* The bar is permanent on mobile now, so for the first time both add-to-cart
+     controls are on screen together, and the bar's own hidden inputs — quantity
+     1, the variant that was selected when the page rendered — became a way to
+     silently ignore the shopper. Set the stepper to 3 and tap the footer, and
+     the old build added 1.
+
+     A mirror rather than a shared form: the two are separate forms in separate
+     places in the DOM, the delegated submit handler reads whichever form was
+     submitted, and pointing the footer at the buy box's fields would mean
+     hoisting one of them out of the section it belongs to. The stepper
+     dispatches a bubbling change and typing fires input, so listening on the
+     buy box covers every path either control has.
+
+     Its own module, not part of buybar() above, because that one returns early
+     when there is no scroll anchor and this has nothing to do with scrolling. */
+  (function buybarMirror() {
+    var barForm = document.querySelector('[data-buybar] [data-buybox-form]');
+    var box = document.querySelector('[data-buybox]');
+    if (!barForm || !box || box.contains(barForm)) return;
+
+    var srcQty = box.querySelector('[data-qty-input]');
+    var srcId = box.querySelector('[data-variant-id]');
+    var dstQty = barForm.querySelector('[name="quantity"]');
+    var dstId = barForm.querySelector('[name="id"]');
+
+    function sync() {
+      if (srcQty && dstQty) {
+        var q = parseInt(srcQty.value, 10);
+        dstQty.value = isNaN(q) || q < 1 ? 1 : q;
+      }
+      if (srcId && dstId && srcId.value) dstId.value = srcId.value;
+    }
+    sync();
+    box.addEventListener('input', sync);
+    box.addEventListener('change', sync);
   })();
 
   /* ---------------------------------------------------------------
