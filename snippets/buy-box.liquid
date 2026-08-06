@@ -8,23 +8,6 @@
   assign v = product.selected_or_first_available_variant
   assign prepaid_code = settings.prepaid_discount_code
   assign prepaid_label = settings.prepaid_discount_label
-
-  comment
-    The stepper's ceiling was a hard-coded 10 with nothing behind it, so a
-    product with one unit in stock let a shopper ask for ten and only found out
-    at the add. Same ceiling the cart drawer now uses: real stock unless the
-    variant is set to keep selling when it runs out.
-  endcomment
-  assign qty_max = 10
-  if v.inventory_management != blank and v.inventory_policy != 'continue'
-    assign qty_max = v.inventory_quantity
-  endif
-  if qty_max > 10
-    assign qty_max = 10
-  endif
-  if qty_max < 1
-    assign qty_max = 1
-  endif
 -%}
 <div class="buybox {% if compact %}buybox--compact{% endif %}" data-buybox id="buybox">
 
@@ -47,7 +30,7 @@
       <span class="qty-label" id="qtyLabel-{{ section.id }}">Quantity</span>
       <div class="stepper" data-qty-stepper>
         <button type="button" class="qty-btn" data-qty-minus aria-label="Decrease quantity">{% render 'icon', name: 'minus', size: 16 %}</button>
-        <input type="number" class="qty-input" name="quantity" value="1" min="1" max="{{ qty_max }}" step="1" inputmode="numeric" data-qty-input aria-labelledby="qtyLabel-{{ section.id }}">
+        <input type="number" class="qty-input" name="quantity" value="1" min="1" max="10" step="1" inputmode="numeric" data-qty-input aria-labelledby="qtyLabel-{{ section.id }}">
         <button type="button" class="qty-btn" data-qty-plus aria-label="Increase quantity">{% render 'icon', name: 'plus', size: 16 %}</button>
       </div>
     </div>
