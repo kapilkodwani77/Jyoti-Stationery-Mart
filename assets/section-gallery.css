@@ -39,6 +39,24 @@
   .gallery-dot:focus-visible{ outline:none; }
   .gallery-dot:focus-visible::before{ outline:2px solid var(--indigo); outline-offset:3px; }
 
+  /* Below the two-column breakpoint the photograph is the whole argument, so
+     the strip runs to both screen edges instead of sitting inside the 24px
+     content inset. The pull is exactly the wrap's own padding, so it lands
+     flush with the viewport and cannot overflow it — no 100vw, which would
+     overshoot by the scrollbar width on desktop browsers.
+
+     The 4:5 box is untouched and the source art is 4:5, so this is purely
+     size: 354 -> 402px wide and 442 -> 502px tall at 402px, with nothing
+     cropped and nothing upscaled. aspect-ratio still reserves the space, so
+     there is no CLS, and scroll-snap, the dots, the zoom trigger and lazy
+     loading all sit inside the slide and are unaffected.
+
+     The radius goes with it. A rounded corner cut off by the screen edge reads
+     as a rendering fault rather than a detail. */
+  @media(max-width:899px){
+    .gallery-main{ margin-inline:calc(var(--s-5) * -1); border-radius:0; }
+  }
+
   @media(max-width:899px){ .gallery-dots{ display:flex; } .gallery-thumbs{ display:none; } }
   @media(min-width:900px){ .gallery-dots{ display:none; } .gallery-thumbs{ display:flex; } }
   @media(min-width:900px){

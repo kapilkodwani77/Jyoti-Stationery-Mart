@@ -114,16 +114,52 @@
 
     function paint() { bar.classList.toggle('on', pastAnchor && !atHide); }
 
+    /* Shopify's theme-preview chrome is a bar pinned to the bottom edge at a
+       z-index nothing in a theme can outrank, and it is very close to this
+       bar's own height — so at bottom:0 the buy bar paints correctly and is
+       completely hidden behind it on every preview link. It is injected by
+       Shopify, never ships to a live storefront, and is absent in production,
+       where this measures 0 and the rule is inert. */
+    function lift() {
+      var chrome = document.querySelector('#preview-bar-iframe, [id^="preview-bar"]');
+      if (!chrome) { bar.style.setProperty('--buybar-lift', '0px'); return; }
+      /* Measured from the chrome's top edge to the bottom of the viewport
+         rather than from its own height, so it is expressed in the same
+         coordinate space `bottom` resolves against. Plus one small step, so
+         the two bars read as separate objects instead of one seam. */
+      var r = chrome.getBoundingClientRect();
+      var h = Math.max(0, Math.round(window.innerHeight - r.top)) + 8;
+      bar.style.setProperty('--buybar-lift', h + 'px');
+    }
+    lift();
+    /* The preview bar is injected after the theme's own scripts run, so the
+       first measurement can legitimately be zero. */
+    window.addEventListener('load', lift);
+    window.addEventListener('resize', lift);
+
+    /* Past, not merely absent. !isIntersecting is equally true when the buy box
+       is still below the fold and has never been reached — and the immersive
+       gallery is now tall enough that this is the state a PDP *opens* in on a
+       tablet, so the bar was arriving on first paint, before the shopper had
+       scrolled at all or seen a price. bottom <= 0 is the difference between
+       "you have left the buy box behind" and "you have not got to it yet". */
     new IntersectionObserver(function (entries) {
-      pastAnchor = !entries[0].isIntersecting;
+      var e = entries[entries.length - 1];
+      pastAnchor = !e.isIntersecting && e.boundingClientRect.bottom <= 0;
       paint();
     }, { threshold: 0 }).observe(anchor);
 
     if (hideEl) {
+      /* threshold 0, not 0.25. The requirement is "stand down as the footer
+         arrives", and a ratio threshold on an element whose height depends on
+         how many link columns a merchant configured fires at a different
+         scroll position on every page — and on a footer taller than four
+         viewports it can never be reached at all, which would leave the bar
+         sitting over the footer forever. */
       new IntersectionObserver(function (entries) {
         atHide = entries[0].isIntersecting;
         paint();
-      }, { threshold: 0.25 }).observe(hideEl);
+      }, { threshold: 0 }).observe(hideEl);
     }
   })();
 

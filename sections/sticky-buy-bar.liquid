@@ -1,7 +1,8 @@
 {%- comment -%}
-  Mobile sticky buy bar. Fixed to the bottom of the viewport with safe-area
-  inset for iPhone, hidden on desktop where the buy box is already sticky in
-  the page.
+  Sticky buy bar. Fixed to the bottom of the viewport with safe-area inset for
+  iPhone, and present at every width — the desktop buy box is sticky only for
+  as long as the PDP's first section lasts, and past it there is no way to buy
+  without scrolling back up.
 
   It appears once [data-buybar-anchor] leaves the screen and hides again over
   [data-buybar-hide]. On the product template the anchor is the buy box itself,
@@ -33,9 +34,9 @@
       {% render 'responsive-image',
          img: p.featured_image,
          alt: '',
-         widths: '80,120',
-         sizes: '40px',
-         base_width: 80,
+         widths: '88,132',
+         sizes: '44px',
+         base_width: 88,
          loading: 'lazy' %}
     {%- endif -%}
   </div>

@@ -4,7 +4,7 @@
   main-collection (.pg-card) and their two duplicate stylesheets.
 
   Usage:
-    {% render 'product-card', product: p, sizes: '(min-width:900px) 25vw, 45vw' %}
+    {% render 'product-card', product: p, sizes: '(min-width:900px) 25vw, 47vw' %}
 
   Params:
     product      (required)
@@ -25,7 +25,7 @@
 
 {%- liquid
   assign v = product.selected_or_first_available_variant
-  assign card_sizes = sizes | default: '(min-width:900px) 25vw, 45vw'
+  assign card_sizes = sizes | default: '(min-width:900px) 25vw, 47vw'
   assign img_loading = loading | default: 'lazy'
   assign do_quick_add = true
   if quick_add == false

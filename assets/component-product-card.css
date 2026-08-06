@@ -23,6 +23,29 @@
   display:grid; grid-template-columns:repeat(2,1fr);
   gap:var(--s-5) var(--s-4);
 }
+
+/* Phones: the photography runs nearer the screen edge than the 24px content
+   inset allows, and the column gap tightens to the smallest step. That is
+   where the size comes from — at 402px the card goes 169 -> 185px and the
+   photograph 211 -> 231px. All of it is real resolution rather than upscale,
+   because the source art is 4:5 and so is the box, so nothing is cropped and
+   nothing is stretched to get it.
+
+   Deliberately not full-bleed to 0: the title and price sit on the
+   photograph's own left edge, and running that to the screen edge would leave
+   the type with no margin at all. 12px is the smallest inset the text can
+   hold while the image still reads as the dominant object.
+
+   The row gap opens a full step in exchange. Editorial weight comes from the
+   space between rows, not from space inside a card — a wide gutter separating
+   generous images is what a considered grid looks like; padding around small
+   ones is what a template looks like. */
+@media(max-width:699px){
+  .pc-grid{
+    margin-inline:calc(var(--s-3) - var(--s-5));
+    gap:var(--s-6) var(--s-2);
+  }
+}
 @media(min-width:700px){
   .pc-grid{ grid-template-columns:repeat(3,1fr); gap:var(--s-6) var(--s-5); }
 }
@@ -154,18 +177,19 @@
 .pc-badge--sale{ color:var(--indigo); border-color:var(--edge-strong); }
 
 /* ---- body ---------------------------------------------------------- */
-/* Asymmetric on purpose: the photograph above already supplies the optical
-   space at the top, so a full step there was reading as a gap rather than as
-   padding. Sides and bottom keep the full step. */
 /* No panel to inset from, so the inline padding goes and the title starts on
    the photograph's own left edge. That hands the text the 32px the padding was
    holding — a 26% wider column on a phone — which is what buys the photography
    its share back without the card growing. Bottom padding goes too: the grid
    gap already separates one card from the next, and a second gap underneath
-   was spacing measured twice. */
+   was spacing measured twice.
+
+   One step above on a phone rather than one-and-a-half. The caption belongs to
+   the photograph, and the tighter coupling both reads as more considered and
+   hands the four pixels back to the image. */
 .pc-body{
   flex:1 1 auto; display:flex; flex-direction:column;
-  padding:var(--s-3) 0 0;
+  padding:var(--s-2) 0 0;
 }
 @media(min-width:700px){ .pc-body{ padding:var(--s-4) 0 0; } }
 
