@@ -41,11 +41,15 @@
           <p class="lede body-copy">{{ short_desc }}</p>
         {%- endif -%}
 
+        {%- comment -%}
+          The compare-at used to be printed twice here: once by the price
+          snippet, which has always emitted it, and again by this row. On a
+          product with a compare-at set, the struck figure appeared two times
+          in a row — it only went unnoticed because no product on the store
+          has ever carried one.
+        {%- endcomment -%}
         <div class="fp-price-row">
           {% render 'price', variant: v %}
-          {%- if v.compare_at_price and v.compare_at_price > v.price -%}
-            <span class="price-compare">{{ v.compare_at_price | money }}</span>
-          {%- endif -%}
           {%- unless v.available -%}<span class="fp-sold">Sold out</span>{%- endunless -%}
         </div>
 

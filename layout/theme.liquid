@@ -40,7 +40,21 @@
 
   <a class="skip-link" href="#main">Skip to content</a>
 
-  {% sections 'header-group' %}
+  {%- comment -%}
+    The announcement bar and the header are one navigation system, so they are
+    pinned as one element rather than two that happen to touch. The wrapper is
+    what carries position:sticky, and it has to: a sticky element can only
+    travel inside its own parent, and each section's parent is the
+    <div class="shopify-section"> Shopify emits around it — which is exactly
+    header-height. That is why the header was declared sticky and still scrolled
+    away on every page in the theme.
+
+    One element also means one z-index, one shadow and one scroll position, so
+    the two can never separate, flicker apart or shift against each other.
+  {%- endcomment -%}
+  <div class="masthead" data-masthead>
+    {% sections 'header-group' %}
+  </div>
 
   <main id="main">
     {{ content_for_layout }}

@@ -279,8 +279,26 @@
      These are used by more than one section (price by the buy box, sticky bar
      and product card; the stepper by the buy box, cart drawer AND cart page),
      so they live here rather than being duplicated into each section file. */
-  .price{ font-size:24px; font-weight:500; font-variant-numeric:tabular-nums; }
-  .price-compare{ font-size:14px; color:var(--ink-2); text-decoration:line-through; margin-left:var(--s-2); }
+  /* Price pair. baseline alignment rather than centre, so two different sizes
+     sit on one reading line instead of floating against each other; wrap so a
+     four-digit pair on a narrow phone breaks cleanly instead of overflowing. */
+  .price-group{ display:inline-flex; align-items:baseline; gap:var(--s-2); flex-wrap:wrap; }
+  .price-now{
+    font-size:24px; font-weight:500; color:var(--ink);
+    font-variant-numeric:tabular-nums; letter-spacing:-.01em;
+  }
+  /* One step down and secondary ink — the whole differentiation. Deliberately
+     not --danger and not a badge: a struck figure already says "was", and
+     colouring it would spend the page's only alarm colour on a price cut. */
+  .price-was{
+    font-size:15px; color:var(--ink-2); text-decoration:line-through;
+    font-variant-numeric:tabular-nums;
+  }
+  /* Compact: the card, the sticky bar and the cart line, where the pair has to
+     live inside a row rather than own one. */
+  .price-group--compact{ gap:var(--s-2); }
+  .price-group--compact .price-now{ font-size:16px; letter-spacing:-.005em; }
+  .price-group--compact .price-was{ font-size:13px; }
 
   .stepper{ display:flex; align-items:center; border:1px solid var(--jute); border-radius:var(--r-md); }
   .qty-btn{
@@ -359,6 +377,34 @@
    templates at will.
 =================================================================== */
 @layer sections {
+  /* ---- masthead ---------------------------------------------------
+     The announcement bar and the header, pinned as one object. Everything
+     that used to be negotiated between them — stacking, offset, when each
+     one pins — is now a property of this single element, so there is no gap
+     to open, nothing to flicker and no second scroll position.
+
+     Templates carrying a hero keep the existing behaviour, where the header
+     floats transparent over the photograph and goes solid on scroll: that is
+     the homepage's whole opening move and pinning the pair in flow would push
+     the hero down and take it away. Everywhere else — the PDP included — the
+     whole masthead is sticky and the page scrolls underneath it.
+
+     :has() is the accurate test and the @supports fallback below covers the
+     browsers without it, the same pattern the header already uses for the
+     flash-of-transparent fix. */
+  .masthead{
+    position:relative; z-index:20;
+    transition:box-shadow var(--dur-fast) var(--ease);
+  }
+  body:not(:has(.hero)) .masthead{ position:sticky; top:0; }
+  @supports not selector(:has(*)){
+    body:not(.template-index) .masthead{ position:sticky; top:0; }
+  }
+  /* Elevation belongs to the pair, not to either half. It arrives only once
+     the page has actually moved, so at rest the masthead sits flat on the
+     page and nothing is casting a shadow onto content it is not covering. */
+  .masthead.is-pinned{ box-shadow:0 1px 0 var(--edge), 0 6px 20px rgba(20,22,26,.06); }
+
   /* ---- announcement bar ------------------------------------------ */
   /* The bar and the header are one masthead, not two slabs that happen to
      touch. z-index drops below the header's so that when the header pins, the
@@ -467,8 +513,13 @@
      the script attached. This resolves it at paint time for those templates.
      Written as progressive enhancement: where :has() is unsupported the rule
      is simply dropped and the previous JS-driven behaviour still applies. */
+  /* static, because the masthead above is what pins now. This rule used to say
+     sticky and could never work: .hdr's parent is the section wrapper Shopify
+     emits, which is exactly header-height, and a sticky element cannot travel
+     outside its own parent — so the header scrolled away the instant the page
+     moved, on every template without a hero. */
   body:not(:has(.hero)) .hdr{
-    position:sticky; top:0; background:var(--chalk); color:var(--ink); border-color:var(--edge);
+    position:static; background:var(--chalk); color:var(--ink); border-color:var(--edge);
   }
   body:not(:has(.hero)) .hdr a{ color:var(--ink); text-shadow:none; }
   body:not(:has(.hero)) .hdr .mark{ color:var(--indigo); }
@@ -485,7 +536,7 @@
      through that change; the rest get the answer that is correct today. */
   @supports not selector(:has(*)) {
     body:not(.template-index) .hdr{
-      position:sticky; top:0; background:var(--chalk); color:var(--ink); border-color:var(--edge);
+      position:static; background:var(--chalk); color:var(--ink); border-color:var(--edge);
     }
     body:not(.template-index) .hdr a{ color:var(--ink); text-shadow:none; }
     body:not(.template-index) .hdr .mark{ color:var(--indigo); }
@@ -648,6 +699,10 @@
   .cart-line-img{ width:72px; height:72px; border-radius:var(--r-sm); overflow:hidden; background:var(--chalk); border:1px solid var(--jute); }
   .cart-line-title{ font-size:15px; font-weight:500; }
   .cart-line-price{ font-size:14px; color:var(--ink-2); margin-top:2px; }
+  /* The unit price is context here — the line total to its right is the figure
+     being totted up — so the pair steps down rather than carrying the row. */
+  .cart-line-price .price-now{ font-size:14px; }
+  .cart-line-price .price-was{ font-size:12px; }
   .cart-line-stepper{ display:flex; align-items:center; gap:var(--s-3); margin-top:var(--s-3); }
   .cart-line-remove{ font-size:13px; text-decoration:underline; text-underline-offset:3px;
                      color:var(--ink-2); margin-top:var(--s-2); min-height:var(--tap);
@@ -710,12 +765,11 @@
 }
 @layer sections {
   /* ---- sticky buy bar -------------------------------------------------------- */
-  /* Thumbnail, name, one unmissable action. It has to read as a material the
-     page is sliding under rather than a banner stuck on top of it, so the wash
-     is low-opacity — .96 was effectively opaque and wasted the blur behind it —
-     and the separation is a soft shadow plus a hairline rather than a rule
-     alone. Deliberately still no price: the buy box states it and the drawer
-     states it again on open.
+  /* Thumbnail, name, price, one unmissable action. It has to read as a material
+     the page is sliding under rather than a banner stuck on top of it, so the
+     wash is low-opacity — .96 was effectively opaque and wasted the blur behind
+     it — and the separation is a soft shadow plus a hairline rather than a rule
+     alone.
 
      --buybar-lift is 0px on a live storefront and theme.js only raises it when
      Shopify's theme-preview chrome is on screen. That chrome is a ~98px bar
@@ -750,11 +804,21 @@
     box-shadow:inset 0 0 0 1px var(--edge);
   }
   .buybar-media img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+  /* min-width:0 is what actually lets the name truncate: a flex item's floor is
+     its content, so without it the title pushes the CTA off the row instead of
+     ellipsing. The column owns the shrinking for the whole middle of the bar. */
+  .buybar-info{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  /* Secondary — it names the thing, the price and the button carry the moment.
+     One line, always: a wrapped title changes the bar's height mid-scroll. */
   .buybar-title{
-    flex:1 1 auto; min-width:0;
-    font-size:14px; font-weight:500; line-height:1.35; color:var(--ink);
+    margin:0; font-size:13px; line-height:1.3; color:var(--ink-2);
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
+  .buybar-info .price-group{ flex-wrap:nowrap; gap:var(--s-2); min-width:0; }
+  .buybar-info .price-now{ font-size:15px; }
+  .buybar-info .price-was{ font-size:12px; }
+
   .buybar-form{ flex:0 0 auto; display:flex; margin:0; }
 
   /* The one obvious thing to do. Solid indigo and a floor of 132px so it stays
@@ -786,7 +850,9 @@
       gap:var(--s-4);
       padding-inline:max(var(--s-6), calc((100% - 1240px) / 2 + var(--s-6)));
     }
-    .buybar-title{ font-size:15px; }
+    .buybar-title{ font-size:14px; }
+    .buybar-info .price-now{ font-size:17px; }
+    .buybar-info .price-was{ font-size:13px; }
     .buybar-cta{ min-height:52px; min-width:180px; font-size:16px; }
   }
 }

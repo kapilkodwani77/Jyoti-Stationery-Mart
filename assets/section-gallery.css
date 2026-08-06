@@ -55,6 +55,12 @@
      as a rendering fault rather than a detail. */
   @media(max-width:899px){
     .gallery-main{ margin-inline:calc(var(--s-5) * -1); border-radius:0; }
+    /* The photograph meets the navigation directly. The 48px of chalk that sat
+       between them was section rhythm applied to a section that opens the page,
+       where there is nothing above to be separated from. Padding only — the
+       gallery keeps its own box and aspect-ratio, so nothing moves and there is
+       no shift to reserve against. */
+    .pdp-open{ padding-top:0; }
   }
 
   @media(max-width:899px){ .gallery-dots{ display:flex; } .gallery-thumbs{ display:none; } }

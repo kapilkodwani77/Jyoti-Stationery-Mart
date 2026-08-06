@@ -112,11 +112,20 @@
     {%- endcomment -%}
     {% render 'product-rating', product: product %}
 
+    {%- comment -%}
+      Same order as every other price in the theme: the compare-at leads and is
+      struck, the live price follows and carries the weight. The pair is read
+      once, aloud, as one sentence rather than as two loose numbers — <s> is
+      not announced by most screen readers, so the bare pair says "1800 1299"
+      with nothing marking which one is being charged.
+    {%- endcomment -%}
     <p class="pc-price">
-      <span class="pc-price-now">{{ v.price | money }}</span>
       {%- if on_sale -%}
-        <s class="pc-price-was">{{ v.compare_at_price | money }}</s>
-        <span class="visually-hidden">, reduced from {{ v.compare_at_price | money }}</span>
+        <s class="pc-price-was" aria-hidden="true">{{ v.compare_at_price | money }}</s>
+        <span class="visually-hidden">Was {{ v.compare_at_price | money }}, now {{ v.price | money }}</span>
+        <span class="pc-price-now" aria-hidden="true">{{ v.price | money }}</span>
+      {%- else -%}
+        <span class="pc-price-now">{{ v.price | money }}</span>
       {%- endif -%}
     </p>
 

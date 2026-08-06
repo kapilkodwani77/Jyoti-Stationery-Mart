@@ -1,6 +1,13 @@
 {{ 'section-gallery.css' | asset_url | stylesheet_tag }}
 {{ 'component-buy-box.css' | asset_url | stylesheet_tag }}
-<section class="sec sec--tight">
+{%- comment -%}
+  pdp-open drops this section's top padding below the two-column breakpoint, so
+  the first photograph starts directly under the navigation instead of after
+  48px of chalk. Above 900px the padding stays: there the gallery shares a row
+  with the buy box, and pulling it up would hang the buy box's title off the
+  underside of the header.
+{%- endcomment -%}
+<section class="sec sec--tight pdp-open">
   <div class="wrap pdp-grid">
 
     <div class="gallery" data-gallery>

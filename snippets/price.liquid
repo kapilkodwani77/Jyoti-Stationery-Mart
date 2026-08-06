@@ -1,9 +1,37 @@
 {%- comment -%}
   Usage: {% render 'price', variant: product.selected_or_first_available_variant %}
+         {% render 'price', variant: v, compact: true %}
+
+  The compare-at leads and is struck; the price actually being charged follows
+  and carries the weight. That order is deliberate — reading "was, now" resolves
+  in the direction the shopper is already going, where "now, was" makes them
+  double back to find out which number they are paying.
+
+  Restraint is the point: the saving is carried by one struck figure in
+  secondary ink at a smaller step, not by red, not by a badge, and not by
+  making the live price shout. The discount is information, not an argument.
+
+  Screen readers get one clean sentence instead of two loose numbers — an <s>
+  element is not announced as "struck through" by most of them, so a bare pair
+  reads as "1800 1299" with nothing saying which is which.
+
+  compare_at_price is Shopify's own field and is read straight off the variant.
+  Where a merchant has not set one — which is every product on this store as
+  it stands — the whole block collapses to the single price with no empty
+  wrapper, no stray gap and no placeholder.
 {%- endcomment -%}
-<span class="price">
-  {{- variant.price | money -}}
-  {%- if variant.compare_at_price > variant.price -%}
-    <s class="price-compare">{{ variant.compare_at_price | money }}</s>
+{%- liquid
+  assign on_sale = false
+  if variant.compare_at_price > variant.price
+    assign on_sale = true
+  endif
+-%}
+<span class="price-group{% if compact %} price-group--compact{% endif %}">
+  {%- if on_sale -%}
+    <s class="price-was" aria-hidden="true">{{ variant.compare_at_price | money }}</s>
+    <span class="visually-hidden">Was {{ variant.compare_at_price | money }}, now {{ variant.price | money }}</span>
+    <span class="price-now" aria-hidden="true">{{ variant.price | money }}</span>
+  {%- else -%}
+    <span class="price-now">{{ variant.price | money }}</span>
   {%- endif -%}
 </span>

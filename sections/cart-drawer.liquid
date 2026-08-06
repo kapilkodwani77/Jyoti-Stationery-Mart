@@ -53,7 +53,25 @@
             {%- unless item.variant.title == 'Default Title' -%}
               <p class="cart-line-variant">{{ item.variant.title }}</p>
             {%- endunless -%}
-            <p class="cart-line-price">{{ item.final_price | money }}</p>
+            {%- comment -%}
+              original_price rather than the variant's compare_at_price, and
+              deliberately. /cart.js carries no compare-at field at all, so the
+              JS re-render below cannot know it — showing it here would mean the
+              struck figure appeared on load and vanished the first time a
+              quantity changed. original_price is in both payloads, so the two
+              render paths agree by construction and this can never go stale.
+              The compare-at story is told on the card and the PDP, where the
+              decision is actually made.
+            {%- endcomment -%}
+            <p class="cart-line-price">
+              {%- if item.original_price > item.final_price -%}
+                <span class="price-group price-group--compact">
+                  <s class="price-was" aria-hidden="true">{{ item.original_price | money }}</s>
+                  <span class="visually-hidden">Was {{ item.original_price | money }}, now {{ item.final_price | money }}</span>
+                  <span class="price-now" aria-hidden="true">{{ item.final_price | money }}</span>
+                </span>
+              {%- else -%}{{ item.final_price | money }}{%- endif -%}
+            </p>
             <p class="micro">Qty {{ item.quantity }}</p>
           </div>
           <div class="cart-line-total">{{ item.final_line_price | money }}</div>

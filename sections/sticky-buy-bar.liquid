@@ -14,10 +14,10 @@
   the same delegated handler the buy box and the product card submit through.
   Off the product page there is nothing to add, so it links to the product.
 
-  Deliberately no price. The buy box states it, the cart drawer states it on
-  open, and a third copy inside a 68px bar is one number too many to be
-  scanning while reading. What the bar owes the shopper is *what* they are
-  buying, which is the thumbnail and the name, and one way to act on it.
+  What the bar owes the shopper is what they are buying, what it costs, and one
+  way to act on it: thumbnail, name, price, CTA. The price is set compact and
+  the name truncates to one line, so the row stays a single band rather than
+  growing a second one on a long product title.
 {%- endcomment -%}
 {%- liquid
   assign p = product | default: settings.featured_product
@@ -41,7 +41,17 @@
     {%- endif -%}
   </div>
 
-  <p class="buybar-title">{{ p.title }}</p>
+  {%- comment -%}
+    Name over price, both in one column. The name is context and truncates to a
+    single line; the price is the number being committed to and is the only
+    thing in this stack carrying full ink. The CTA still outweighs both by an
+    order of magnitude — it is solid, 48px and the only saturated object in the
+    bar — which is what keeps a three-part row from turning into a toolbar.
+  {%- endcomment -%}
+  <div class="buybar-info">
+    <p class="buybar-title">{{ p.title }}</p>
+    {% render 'price', variant: v, compact: true %}
+  </div>
 
   {%- if on_pdp -%}
     <form class="buybar-form" data-buybox-form>

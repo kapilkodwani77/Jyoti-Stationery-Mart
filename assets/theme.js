@@ -33,6 +33,26 @@
   /* ---------------------------------------------------------------
      Header: solid on scroll, mobile nav overlay
   --------------------------------------------------------------- */
+  /* Shared elevation for the pinned masthead. One class on the wrapper, so the
+     announcement bar and the header lift together and can never disagree about
+     whether the page has moved. rAF-throttled and passive: this runs on every
+     scroll frame on the longest page in the theme. */
+  (function masthead() {
+    var el = document.querySelector('[data-masthead]');
+    if (!el) return;
+    var ticking = false;
+    function paint() {
+      ticking = false;
+      el.classList.toggle('is-pinned', window.scrollY > 0);
+    }
+    window.addEventListener('scroll', function () {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(paint);
+    }, { passive: true });
+    paint();
+  })();
+
   (function header() {
     var hdr = document.querySelector('[data-header]');
     if (!hdr) return;
@@ -137,17 +157,33 @@
     window.addEventListener('load', lift);
     window.addEventListener('resize', lift);
 
-    /* Past, not merely absent. !isIntersecting is equally true when the buy box
-       is still below the fold and has never been reached — and the immersive
-       gallery is now tall enough that this is the state a PDP *opens* in on a
-       tablet, so the bar was arriving on first paint, before the shopper had
-       scrolled at all or seen a price. bottom <= 0 is the difference between
-       "you have left the buy box behind" and "you have not got to it yet". */
-    new IntersectionObserver(function (entries) {
-      var e = entries[entries.length - 1];
-      pastAnchor = !e.isIntersecting && e.boundingClientRect.bottom <= 0;
+    /* Past, not merely absent — and read rather than observed.
+
+       "Have we left the buy box behind" has three answers: it is above the
+       viewport, inside it, or still below it. IntersectionObserver reports two,
+       and deriving the third from boundingClientRect only works while every
+       transition passes through the intersecting state. Jump from below the buy
+       box to above it in one frame — scroll restoration, an in-page anchor, any
+       programmatic scrollTo — and isIntersecting is false on both sides, so no
+       notification is delivered at all and the bar holds whatever it had. On the
+       immersive gallery the buy box now starts below the fold, which makes that
+       stale state "bar showing on a page you just returned to the top of".
+
+       One rect read, throttled to a frame and passive, cannot go stale. */
+    var ticking = false;
+    function measure() {
+      ticking = false;
+      pastAnchor = anchor.getBoundingClientRect().bottom <= 0;
       paint();
-    }, { threshold: 0 }).observe(anchor);
+    }
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(measure);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    measure();
 
     if (hideEl) {
       /* threshold 0, not 0.25. The requirement is "stand down as the footer
@@ -669,6 +705,25 @@
     return clean + (clean.indexOf('?') === -1 ? '?' : '&') + 'width=' + w;
   }
 
+  /* The unit price for one cart line, struck original first where the shopper
+     is paying less than list. Mirrors the Liquid in sections/cart-drawer.liquid
+     exactly, including the class names, so a line looks identical whether it
+     was server-rendered on load or rebuilt here after a quantity change.
+
+     original_price, not the variant's compare_at_price: /cart.js carries no
+     compare-at field, so this path could not read one, and a struck figure that
+     showed on load and disappeared on the first AJAX update would be worse than
+     not showing it at all. */
+  function unitPrice(item) {
+    if (!(item.original_price > item.final_price)) return money(item.final_price);
+    return '<span class="price-group price-group--compact">' +
+             '<s class="price-was" aria-hidden="true">' + money(item.original_price) + '</s>' +
+             '<span class="visually-hidden">Was ' + money(item.original_price) +
+               ', now ' + money(item.final_price) + '</span>' +
+             '<span class="price-now" aria-hidden="true">' + money(item.final_price) + '</span>' +
+           '</span>';
+  }
+
   function renderDrawer(cart) {
     if (!drawer) return;
     var body = drawer.querySelector('[data-cart-body]');
@@ -702,7 +757,7 @@
           '</div>' +
           '<div>' +
             '<p class="cart-line-title">' + title + '</p>' + variant +
-            '<p class="cart-line-price">' + money(item.final_price) + '</p>' +
+            '<p class="cart-line-price">' + unitPrice(item) + '</p>' +
             '<div class="cart-line-stepper stepper" data-qty-stepper>' +
               /* Every control is named with the product it belongs to. The old
                  markup gave every row the identical label "Quantity", so with

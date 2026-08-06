@@ -45,7 +45,15 @@
                     </div>
                     <div>
                       <p class="cart-line-title">{{ item.product.title }}</p>
-                      <p class="cart-line-price">{{ item.final_price | money }}</p>
+                      <p class="cart-line-price">
+                        {%- if item.original_price > item.final_price -%}
+                          <span class="price-group price-group--compact">
+                            <s class="price-was" aria-hidden="true">{{ item.original_price | money }}</s>
+                            <span class="visually-hidden">Was {{ item.original_price | money }}, now {{ item.final_price | money }}</span>
+                            <span class="price-now" aria-hidden="true">{{ item.final_price | money }}</span>
+                          </span>
+                        {%- else -%}{{ item.final_price | money }}{%- endif -%}
+                      </p>
                       <a class="cart-remove-link" href="{{ item.url_to_remove }}">Remove</a>
                     </div>
                   </div>
