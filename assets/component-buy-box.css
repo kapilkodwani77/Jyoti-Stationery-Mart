@@ -40,5 +40,12 @@
      away, so the two are never both on screen and neither is redundant. */
   @media(max-width:899px){
     .buybox [data-add-to-cart]{ display:none; }
+
+    /* The dots row used to sit between the photograph and this panel and was
+       doing double duty as the separation between them. With the dots moved
+       onto the image the panel would start hard against the frame, so it
+       carries its own gap now — one step rather than the 56px the row cost,
+       which is the whole point of moving them. */
+    .buybox{ margin-top:var(--s-4); }
   }
 }

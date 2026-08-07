@@ -11,14 +11,20 @@
      products is now 1:1 (771, 983, 1029, 1040, 1062, 1104, 1115x1122, 1122).
      The box matches the source, so nothing is cropped and nothing upscaled.
 
-     It is also what puts the price on the first screen. A full-bleed frame's
-     height is its width times the inverse of its ratio, so at 4:5 the image
-     alone was 1.25 screen-widths tall; at 1:1 it is exactly one. Measured with
-     the eyebrow present and no review row: the name and price clear the footer
-     CTA with 21px to spare at 390x750, the landing state with Safari's chrome
-     still on screen, and with far more at 390x844 and 430x932. They do not
-     clear at 375x667 or on a portrait tablet, where the square frame is still
-     taller than the room left over — the footer CTA is what covers those. */
+     A full-bleed frame's height is its width times the inverse of its ratio,
+     so at 4:5 the image alone was 1.25 screen-widths tall; at 1:1 it is exactly
+     one. That bought back a quarter of the first screen and is what makes the
+     product name readable on landing.
+
+     It does not buy the price. Measured on the real device rather than a
+     spec sheet: an iPhone 16 Pro is 402x874, but Safari's URL bar and toolbar
+     leave 679 of it on first paint, and the real product name wraps to two
+     lines. 88 of masthead + 402 of photograph + 16 + the name + the price is
+     more than 679 minus the 78 the footer CTA occupies, and no arrangement of
+     the remainder closes it. The name clears; the price sits below the bar
+     until the first scroll, at which point Safari's chrome retracts and it is
+     comfortably in view. Shortening the photograph is the only lever left and
+     it costs either a crop or the full bleed, both of which are deliberate. */
   .gallery-slide{ flex:0 0 100%; aspect-ratio:1/1; scroll-snap-align:start; position:relative; }
   .gallery-thumbs{ display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; padding-bottom:2px; }
   .gallery-thumbs::-webkit-scrollbar{ display:none; }
@@ -34,13 +40,7 @@
      now carry their own breathing room — spacing them further would only push
      the row wider without making anything easier to hit. margin-top drops from
      12px for the same reason: the button already contributes 19px above the
-     dot, so the old value read as a gap twice the size of the design's.
-
-     In flow, under the photograph, and never over it. The hero images carry
-     their own overlay copy, badges and a feature-icon panel, so anything drawn
-     on top of the art is covering the merchandising — there is no position on
-     an unknown composition that is reliably empty. The row costs 44px and buys
-     a guarantee. */
+     dot, so the old value read as a gap twice the size of the design's. */
   .gallery-dots{ display:flex; gap:0; justify-content:center; margin-top:0; }
   .gallery-dot{
     width:var(--tap); height:var(--tap); padding:0; border:0; background:none;
@@ -82,10 +82,33 @@
     .gallery{
       width:calc(100% + var(--s-5) * 2);
       margin-inline:calc(var(--s-5) * -1);
+      position:relative;
     }
     /* A rounded corner cut off by the screen edge reads as a rendering fault
        rather than a detail. */
     .gallery-main{ border-radius:0; }
+
+    /* Out of flow, over the photograph, and with no surface of its own. In
+       flow the row cost 44px plus the 12px grid gap above it, and that band
+       sat between the product and its price on the one screen where both have
+       to be readable.
+
+       Deliberately no pill, plate or scrim: a blurred panel would hide a strip
+       of artwork that carries overlay copy and a feature-icon panel. The only
+       thing that covers any pixel is the 6px dot itself. Legibility comes from
+       the dot instead of from a background — a hairline ring plus a soft drop
+       shadow read against both a bright floor and a dark one, which is the
+       same problem the header icons solve with currentColor. */
+    .gallery-dots{
+      position:absolute; left:0; right:0; bottom:var(--s-2);
+      margin:0;
+    }
+    .gallery-dot::before{
+      background:rgba(241,240,236,.72);
+      box-shadow:0 0 0 1px rgba(20,22,26,.30), 0 1px 3px rgba(20,22,26,.45);
+    }
+    .gallery-dot.is-active::before{ background:var(--chalk); }
+    .gallery-dot:focus-visible::before{ outline-color:var(--chalk); }
     /* The photograph meets the navigation directly. The 48px of chalk that sat
        between them was section rhythm applied to a section that opens the page,
        where there is nothing above to be separated from. Padding only — the
