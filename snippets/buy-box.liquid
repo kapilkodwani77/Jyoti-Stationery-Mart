@@ -8,7 +8,8 @@
 {%- liquid
   assign v = product.selected_or_first_available_variant
   assign prepaid_code = settings.prepaid_discount_code
-  assign prepaid_label = settings.prepaid_discount_label
+  assign prepaid_pct = settings.prepaid_discount_percent | default: 5
+  assign prepaid_saving = v.price | times: prepaid_pct | divided_by: 100
 -%}
 <div class="buybox {% if compact %}buybox--compact{% endif %}" data-buybox id="buybox">
 
@@ -39,6 +40,35 @@
   {%- form 'product', product, data-buybox-form: '' -%}
     <input type="hidden" name="id" value="{{ v.id }}" data-variant-id>
 
+    {%- comment -%}
+      The offer, before the quantity rather than under the button. A shopper
+      decides how to pay while they are still deciding what to pay, and an
+      incentive introduced after the primary action has already been offered is
+      an upsell; introduced before it, it is a reason.
+
+      It states rupees, not a percentage. 5% is a number to be evaluated;
+      "an extra Rs. 64.95" is a number to be taken, and it is multiplied out of
+      the live price so it can never disagree with what the code actually does.
+
+      One tap really is one tap: the shared handler adds the item, then sends
+      the shopper to /discount/CODE?redirect=/checkout, which is Shopify's own
+      mechanism for applying a code without the shopper typing it. The code is
+      still shown, because a saving a shopper cannot see the shape of reads as
+      a trick. The caption names the destination rather than saying "one tap":
+      below 900px this is the only visible button in the panel, and a control
+      that silently leaves for checkout with an item added is a surprise even
+      when the outcome is the one the shopper wanted.
+    {%- endcomment -%}
+    {%- if prepaid_code != blank and v.available -%}
+      <button type="button" class="prepaid" data-buy-prepaid data-discount-code="{{ prepaid_code }}">
+        <span class="btn-label prepaid-body">
+          <span class="prepaid-main">Save an extra {{ prepaid_saving | money }} paying online</span>
+          <span class="prepaid-sub">Tap to apply <b class="prepaid-code">{{ prepaid_code }}</b> and go to checkout</span>
+        </span>
+        <span class="btn-pending" aria-hidden="true">Redirecting&hellip;</span>
+      </button>
+    {%- endif -%}
+
     <div class="qty-row">
       <span class="qty-label" id="qtyLabel-{{ section.id }}">Quantity</span>
       <div class="stepper" data-qty-stepper>
@@ -59,16 +89,24 @@
       {%- else -%}Sold out{%- endif -%}
     </button>
 
-    {%- if prepaid_code != blank and v.available -%}
-      <button type="button" class="cta-outline cta-block" data-buy-prepaid data-discount-code="{{ prepaid_code }}">
-        {{ prepaid_label | default: 'Save 5% paying online' }}
-      </button>
-    {%- endif -%}
-
     <p class="buybox-error" data-buybox-error role="alert" hidden></p>
   {%- endform -%}
 
-  <p class="buybox-trust">
-    Cash on delivery &middot; 30-day returns &middot; Free shipping
-  </p>
+  {%- comment -%}
+    Four facts, each one true and each one already promised elsewhere on the
+    site: the announcement bar, the FAQ and the shipping accordion all say the
+    same things. No countdown, no visitor count, no invented stock figure —
+    the only urgency here is the kind that survives a shopper checking it.
+
+    A list rather than a sentence, because these are four separate claims and a
+    screen reader should be able to count them. The tick is the theme's own
+    icon, marked decorative: the words already carry the meaning and a repeated
+    "check" announcement four times over is noise.
+  {%- endcomment -%}
+  <ul class="buybox-trust">
+    <li>{% render 'icon', name: 'check', size: 14 %}Cash on delivery</li>
+    <li>{% render 'icon', name: 'check', size: 14 %}Free shipping</li>
+    <li>{% render 'icon', name: 'check', size: 14 %}30-day returns</li>
+    <li>{% render 'icon', name: 'check', size: 14 %}Secure checkout</li>
+  </ul>
 </div>

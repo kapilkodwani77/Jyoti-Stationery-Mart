@@ -1116,16 +1116,22 @@
        double the order — there, the button only applies the code. */
     var form = btn.closest('[data-buybox-form]');
 
+    /* aria-busy, not textContent. The prepaid control is no longer a single
+       string — it carries the saving, the code and a caption in separate
+       elements — and assigning textContent would collapse all of that to one
+       text node and lose it permanently, since the recovery path could only
+       ever write back a flat string. Same swap the add-to-cart buttons use:
+       both words ship in the markup, CSS shows one, the DOM is never rewritten,
+       and assistive tech is told directly that the control is busy. */
     btn.disabled = true;
-    var originalText = btn.textContent;
-    btn.textContent = 'Redirecting…';
+    btn.setAttribute('aria-busy', 'true');
 
     var go = function () {
       window.location.href = routes.root + 'discount/' + encodeURIComponent(code) + '?redirect=/checkout';
     };
     var recover = function () {
       btn.disabled = false;
-      btn.textContent = originalText;
+      btn.removeAttribute('aria-busy');
     };
 
     if (!form) { go(); return; }

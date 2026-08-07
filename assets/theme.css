@@ -295,6 +295,23 @@
     font-size:15px; color:var(--ink-2); text-decoration:line-through;
     font-variant-numeric:tabular-nums;
   }
+  /* The saving, as a figure rather than an argument. Same quiet pill the card
+     badges and the verified-buyer badge use: indigo type, a firmer hairline, no
+     fill. Deliberately not --danger and not a solid chip — the theme spends
+     exactly one loud colour, on Add to Cart, and a discount that out-shouts the
+     purchase button is working against the page it is on.
+
+     Baseline-aligned with the pair via the row's align-items, and one step down
+     in size, so it reads as a footnote to the price rather than as a third
+     price. */
+  .price-save{
+    display:inline-flex; align-items:center;
+    padding:2px var(--s-2); border-radius:100px;
+    border:1px solid var(--edge-strong); color:var(--indigo);
+    font-size:11px; font-weight:500; letter-spacing:.04em; text-transform:uppercase;
+    white-space:nowrap;
+  }
+
   /* Compact: the card and the cart line, where the pair has to live inside a
      row rather than own one. */
   .price-group--compact{ gap:var(--s-2); }
@@ -885,7 +902,49 @@
   .buybar-cta:hover{ background:#263852; box-shadow:var(--sh-2); }
   .buybar-cta:active{ transform:scale(.985); box-shadow:var(--sh-1); }
   .buybar-cta:disabled{ opacity:.45; cursor:not-allowed; }
-  .buybar-cta[aria-busy="true"]{ cursor:progress; }
+
+  /* The breath.
+
+     A shadow that swells and settles once every seven seconds, and nothing
+     else: no scale, no bounce, no colour change. The button never moves, so
+     there is no geometry to shift and nothing for a thumb to chase.
+
+     Drawn on a pseudo-element and animated on opacity rather than animating
+     box-shadow directly. A box-shadow keyframe repaints the button on every
+     frame of every cycle, for the whole life of the page, on the one element
+     that is permanently on screen — that is a Core Web Vitals cost for a
+     decoration. Opacity on a sibling layer is composited, so this runs off the
+     main thread and costs nothing measurable.
+
+     Held at rest for 80% of the cycle. The point is that it is noticed
+     peripherally, once, and never becomes a thing that is happening. */
+  .buybar-cta{ position:relative; }
+  .buybar-cta::after{
+    content:''; position:absolute; inset:0; border-radius:inherit;
+    box-shadow:0 4px 10px rgba(20,22,26,.10), 0 18px 44px rgba(20,22,26,.18);
+    opacity:0; pointer-events:none;
+    animation:buybarBreathe 7s var(--ease) 4s infinite;
+  }
+  @keyframes buybarBreathe{ 0%,80%,100%{ opacity:0; } 90%{ opacity:1; } }
+
+  /* Stops the instant it is touched, hovered or focused, and does not resume
+     while the pointer is on it. Something that keeps breathing under a finger
+     reads as an animation playing at you rather than as an invitation. */
+  .buybar-cta:hover::after,
+  .buybar-cta:active::after,
+  .buybar-cta:focus-visible::after,
+  .buybar-cta[aria-busy="true"]::after{ animation-play-state:paused; opacity:0; }
+
+  /* In flight. The label swap to "Adding…" is handled by the shared
+     [aria-busy] rule; this is the surface behind it settling back and holding
+     still, so the button reads as working rather than as available. */
+  .buybar-cta[aria-busy="true"]{
+    cursor:progress; background:#263852; box-shadow:var(--sh-1);
+  }
+
+  @media(prefers-reduced-motion:reduce){
+    .buybar-cta::after{ animation:none; opacity:0; }
+  }
 
   .buybar-error{
     margin:var(--s-2) 0 0; font-size:13px; line-height:1.4;

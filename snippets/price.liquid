@@ -7,9 +7,13 @@
   in the direction the shopper is already going, where "now, was" makes them
   double back to find out which number they are paying.
 
-  Restraint is the point: the saving is carried by one struck figure in
-  secondary ink at a smaller step, not by red, not by a badge, and not by
-  making the live price shout. The discount is information, not an argument.
+  Restraint is the point. The saving is carried by a struck figure in secondary
+  ink and one small pill, not by red, not by a countdown, and not by making the
+  live price shout. --danger stays reserved for things that have actually gone
+  wrong; a price cut is good news and does not belong in the same colour as a
+  failed payment. The pill states the percentage because "Save 28%" is the
+  figure a shopper can act on without doing arithmetic, and it is computed from
+  the two prices rather than typed by hand, so it cannot drift from them.
 
   Screen readers get one clean sentence instead of two loose numbers — an <s>
   element is not announced as "struck through" by most of them, so a bare pair
@@ -24,13 +28,23 @@
   assign on_sale = false
   if variant.compare_at_price > variant.price
     assign on_sale = true
+    assign saved_pct = variant.compare_at_price | minus: variant.price | times: 100 | divided_by: variant.compare_at_price
   endif
 -%}
 <span class="price-group{% if compact %} price-group--compact{% endif %}">
   {%- if on_sale -%}
     <s class="price-was" aria-hidden="true">{{ variant.compare_at_price | money }}</s>
-    <span class="visually-hidden">Was {{ variant.compare_at_price | money }}, now {{ variant.price | money }}</span>
+    <span class="visually-hidden">Was {{ variant.compare_at_price | money }}, now {{ variant.price | money }}, saving {{ saved_pct }} percent</span>
     <span class="price-now" aria-hidden="true">{{ variant.price | money }}</span>
+    {%- comment -%}
+      Suppressed in compact mode. The card already carries the percentage in the
+      badge over its photograph and the cart line has no room for a third
+      figure; printing it twice in one card is the clutter this is meant to
+      avoid.
+    {%- endcomment -%}
+    {%- unless compact -%}
+      <span class="price-save" aria-hidden="true">Save {{ saved_pct }}%</span>
+    {%- endunless -%}
   {%- else -%}
     <span class="price-now">{{ variant.price | money }}</span>
   {%- endif -%}

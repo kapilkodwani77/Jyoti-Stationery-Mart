@@ -137,6 +137,17 @@
         "id": "prepaid_discount_label",
         "label": "Prepaid discount label",
         "default": "Save 5% paying online"
+      },
+      {
+        "type": "range",
+        "id": "prepaid_discount_percent",
+        "label": "Prepaid discount percent",
+        "info": "Must match the value of the discount code above. The buy box multiplies the price by this to show the shopper what they actually save in rupees.",
+        "min": 1,
+        "max": 25,
+        "step": 1,
+        "unit": "%",
+        "default": 5
       }
     ]
   }
