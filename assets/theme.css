@@ -102,9 +102,9 @@
     font-family:var(--font-body); font-size:17px; line-height:1.65;
     -webkit-font-smoothing:antialiased;
     /* Sticky buy bar clearance, plus the iOS home-indicator inset. The bar is
-       12 + 54 + 12 = 78px now that the button is the whole of it, so this
-       keeps a couple of pixels in hand. */
-    padding-bottom:calc(80px + env(safe-area-inset-bottom));
+       8 + 54 + 8 = 70px on a phone, so this keeps a couple of pixels in hand.
+       Desktop pads to 16 either side and zeroes this reserve below. */
+    padding-bottom:calc(72px + env(safe-area-inset-bottom));
   }
   @media(min-width:900px){ body{ padding-bottom:0; } }
   body.nav-open,body.cart-open,body.zoom-open{ overflow:hidden; }
@@ -777,10 +777,14 @@
      pinned to this exact edge at a z-index no theme can outrank, so a bar at
      bottom:0 renders perfectly and is invisible to anyone reviewing a preview
      link. Costs production nothing; it is what makes this reviewable at all. */
+  /* 8px above and below the button rather than 12. The band is the last thing
+     between the price and the bottom of a landing screen, and four pixels at
+     each end is the difference between the price clearing it and touching it.
+     The button itself is untouched at 54px, well past the 44px floor. */
   .buybar{
     position:fixed; left:0; right:0; bottom:var(--buybar-lift,0px); z-index:40;
-    padding:var(--s-3) var(--s-4);
-    padding-bottom:calc(var(--s-3) + env(safe-area-inset-bottom));
+    padding:var(--s-2) var(--s-4);
+    padding-bottom:calc(var(--s-2) + env(safe-area-inset-bottom));
     background:rgba(241,240,236,.72);
     backdrop-filter:blur(20px) saturate(180%); -webkit-backdrop-filter:blur(20px) saturate(180%);
     box-shadow:0 -1px 0 var(--edge), 0 -12px 32px rgba(20,22,26,.10);

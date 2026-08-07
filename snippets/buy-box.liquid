@@ -1,8 +1,9 @@
 {%- comment -%}
   Usage: {% render 'buy-box', product: product, compact: false %}
   compact: true  -> tighter spacing, no product title repeat
-  Product-agnostic: eyebrow reads product.type, no hardcoded fallbacks.
-  Button says only "Add to Cart" - no price, no spinner.
+  Product-agnostic: every string comes from the product, no hardcoded fallbacks.
+  Button says only "Add to Cart" - no price, no spinner. Below 900px the button
+  is hidden and the permanent footer bar is the only Add to Cart.
 {%- endcomment -%}
 {%- liquid
   assign v = product.selected_or_first_available_variant
@@ -12,9 +13,13 @@
 <div class="buybox {% if compact %}buybox--compact{% endif %}" data-buybox id="buybox">
 
   {%- unless compact -%}
-    {%- if product.type != blank -%}
-      <p class="eyebrow">{{ product.type }}</p>
-    {%- endif -%}
+    {%- comment -%}
+      No product.type eyebrow. It printed "PLAY MAT" directly above "MamaJoy
+      Baby Play Mat – Toys & Cars", so it repeated a word the heading already
+      carried and cost 36px of the one screen where the name and the price
+      both have to be readable. A category label earns its place when it says
+      something the title does not; this one did not.
+    {%- endcomment -%}
     <h1 class="buybox-title">{{ product.title }}</h1>
     {%- comment -%}
       Evidence sits between the name and the price, the order the questions

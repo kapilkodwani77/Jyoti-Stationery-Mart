@@ -10,7 +10,17 @@
     font-size:clamp(1.625rem,4vw,2.25rem); line-height:1.12;
     margin-top:var(--s-2); letter-spacing:-.015em;
   }
-  .buybox-price-row{ display:flex; align-items:baseline; gap:var(--s-3); margin-top:var(--s-4); flex-wrap:wrap; }
+  /* The 8px was the gap under the eyebrow. With that gone the heading leads
+     the panel, and the panel's own top margin is already the separation from
+     the photograph — this was the second half of a gap measured twice. */
+  .buybox-title:first-child{ margin-top:0; }
+  /* line-height 1.25, not the body's inherited 1.65. That value is leading for
+     running paragraphs; this row is one line of numerals, and the extra 10px it
+     was adding sat directly between the price and the footer CTA. */
+  .buybox-price-row{
+    display:flex; align-items:baseline; gap:var(--s-3); flex-wrap:wrap;
+    margin-top:var(--s-4); line-height:1.25;
+  }
   .buybox .price-now{ font-size:22px; }
   .buybox-tax-note{ font-size:12px; color:var(--ink-2); }
   .buybox-price-row + p{ font-size:12px; color:var(--ink-2); margin-top:var(--s-1); }
@@ -41,11 +51,16 @@
   @media(max-width:899px){
     .buybox [data-add-to-cart]{ display:none; }
 
+    /* One step tighter than the desktop rhythm. The panel is four items long
+       on a phone and every gap in it is competing with the photograph above
+       and the CTA below for the same first screen. */
+    .buybox-price-row{ margin-top:var(--s-3); }
+
     /* The dots row used to sit between the photograph and this panel and was
        doing double duty as the separation between them. With the dots moved
        onto the image the panel would start hard against the frame, so it
        carries its own gap now — one step rather than the 56px the row cost,
        which is the whole point of moving them. */
-    .buybox{ margin-top:var(--s-4); }
+    .buybox{ margin-top:var(--s-3); }
   }
 }
