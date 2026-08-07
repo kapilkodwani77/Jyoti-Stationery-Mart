@@ -1,0 +1,359 @@
+/* ===================================================================
+   JUDGE.ME, WEARING MAMAJOY
+   Loaded only by sections/product-reviews.liquid, which is the only place
+   the widget is hosted.
+
+   Deliberately NOT inside @layer. Every other stylesheet in this theme is
+   layered, but Judge.me ships unlayered CSS, and unlayered declarations beat
+   layered ones no matter how specific the layered rule is. A rule written as
+   @layer sections { .jdgm-rev__title{...} } would lose to Judge.me's own
+   .jdgm-rev__title every time. Staying out of the layer system is what lets
+   these win on ordinary specificity instead of on !important.
+
+   Scoped under .mj-reviews throughout for the same reason: it adds a class to
+   every selector, which is usually enough to outrank the app without any
+   !important at all. Where !important does appear it is because Judge.me uses
+   it at that exact property, and each one is marked.
+
+   Nothing here changes Judge.me's markup, behaviour, submission flow or
+   schema.org output. It is a skin, so the app keeps its own upgrade path.
+=================================================================== */
+
+/* ---- the app's own chrome, removed ---------------------------------
+   Judge.me draws a boxed widget: outer border, section rules, a panel
+   background and its own web-safe type stack. All of that is a second design
+   system sitting inside this one. The reviews keep their content and lose
+   their packaging, which is the whole job. */
+.mj-reviews .jdgm-widget,
+.mj-reviews .jdgm-rev-widg,
+.mj-reviews .jdgm-rev-widg__header,
+.mj-reviews .jdgm-rev-widg__body,
+.mj-reviews .jdgm-rev-widg__reviews{
+  border:0;
+  background:transparent;
+  padding:0;
+  margin:0;
+  font-family:var(--font-body);
+  color:var(--ink);
+}
+.mj-reviews .jdgm-widget *{ font-family:inherit; }
+
+/* Judge.me prints its own "Customer Reviews" heading and its own average line.
+   The section above it already carries the theme's h2 and the same average in
+   the theme's own type, and stating one number twice within 200px is what makes
+   an embedded app read as embedded. Both are hidden from sight and from
+   assistive tech, because they are duplicates rather than supplements — the
+   histogram below them is kept, since the distribution is the part the summary
+   line cannot say. */
+.mj-reviews .jdgm-rev-widg__title,
+.mj-reviews .jdgm-rev-widg__summary{ display:none; }
+
+/* ---- stars ---------------------------------------------------------
+   One colour, the brand's, at reading size. Judge.me defaults to a saturated
+   gold that exists nowhere else in this palette and reads as a marketplace
+   badge rather than as this brand. The empty half uses the same wash the
+   product card's rating track uses, so a partial score is legible as a
+   measure rather than as two different colours. */
+.mj-reviews .jdgm-star{
+  color:var(--indigo);
+  font-size:15px;
+  letter-spacing:.06em;
+}
+.mj-reviews .jdgm-star.jdgm--off{ color:var(--indigo-wash); }
+
+/* ---- summary + histogram -------------------------------------------
+   The average is a trust signal, not a headline: it sits at body size in the
+   theme's own numerals rather than being blown up. The section's own
+   .pc-rating line above already states it, so this block earns its place by
+   showing the distribution, which is the part a shopper actually reads to
+   decide whether the average is honest. */
+.mj-reviews .jdgm-rev-widg__summary{ margin-bottom:var(--s-5); }
+.mj-reviews .jdgm-rev-widg__summary-stars{ font-size:16px; }
+.mj-reviews .jdgm-rev-widg__summary-text{
+  font-size:13px; color:var(--ink-2); font-weight:400; margin-top:var(--s-1);
+}
+
+.mj-reviews .jdgm-histogram{ max-width:420px; margin:0 0 var(--s-7); }
+.mj-reviews .jdgm-histogram__row{
+  display:flex; align-items:center; gap:var(--s-3);
+  min-height:var(--tap);          /* the rows are filter controls, so 44px */
+  padding:0; background:none;
+}
+.mj-reviews .jdgm-histogram__row:hover .jdgm-histogram__bar-content{ background:var(--indigo); }
+.mj-reviews .jdgm-histogram__star{ flex:0 0 auto; font-size:12px; }
+.mj-reviews .jdgm-histogram__bar{
+  flex:1 1 auto; height:6px; border-radius:100px;
+  background:var(--jute); overflow:hidden;
+}
+.mj-reviews .jdgm-histogram__bar-content{
+  height:100%; border-radius:100px; background:var(--indigo-wash);
+  transition:background var(--dur-fast) var(--ease);
+}
+.mj-reviews .jdgm-histogram__percentage{ display:none; }
+.mj-reviews .jdgm-histogram__frequency{
+  flex:0 0 2.5ch; text-align:right;
+  font-size:13px; color:var(--ink-2); font-variant-numeric:tabular-nums;
+}
+/* The active filter has to be legible as a state, not just as a hover. */
+.mj-reviews .jdgm-histogram__row--selected .jdgm-histogram__bar-content{ background:var(--indigo); }
+
+/* ---- sort + filter controls ----------------------------------------
+   Judge.me renders a bare <select>. Given the theme's own form language it
+   becomes a quiet field with a real 44px target rather than a browser default
+   floating in the middle of the page. */
+.mj-reviews .jdgm-rev-widg__sort-wrapper{ margin-bottom:var(--s-5); }
+.mj-reviews .jdgm-sort-dropdown,
+.mj-reviews select.jdgm-sort-dropdown{
+  min-height:var(--tap); padding:0 var(--s-4);
+  border:1px solid var(--jute); border-radius:var(--r-md);
+  background:var(--chalk); color:var(--ink);
+  font-size:14px; cursor:pointer;
+  transition:border-color var(--dur-fast) var(--ease);
+}
+.mj-reviews .jdgm-sort-dropdown:focus-visible{ outline:2px solid var(--indigo); outline-offset:2px; }
+.mj-reviews .jdgm-sort-dropdown:hover{ border-color:var(--edge-strong); }
+
+/* ---- a review ------------------------------------------------------
+   Frameless, exactly like the product card: no panel, no border box, no
+   alternating background. A hairline between entries and generous vertical
+   rhythm do the separating, which is what makes a column of reviews read as
+   editorial rather than as a table of user-generated content. */
+.mj-reviews .jdgm-rev{
+  border:0; border-top:1px solid var(--edge);
+  padding:var(--s-6) 0; margin:0;
+  background:none;
+}
+.mj-reviews .jdgm-rev:first-child{ border-top:0; padding-top:0; }
+
+.mj-reviews .jdgm-rev__header{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--s-2) var(--s-3);
+  margin-bottom:var(--s-3);
+}
+/* The name is the person, so it carries the weight in the row. */
+.mj-reviews .jdgm-rev__author{
+  font-size:15px; font-weight:500; color:var(--ink); order:1;
+}
+.mj-reviews .jdgm-rev__location,
+.mj-reviews .jdgm-rev__timestamp{
+  font-size:13px; color:var(--ink-2); font-weight:400; order:3;
+}
+.mj-reviews .jdgm-rev__rating{ order:0; flex:0 0 100%; margin-bottom:var(--s-1); }
+
+/* Verified buyer: the single most load-bearing piece of information in the
+   card, and Judge.me draws it as a loud green pill. Same quiet pill the
+   product card's badges use, distinguished by indigo type and a firmer
+   hairline rather than by colour volume. A tick carries the meaning without
+   the shout. */
+.mj-reviews .jdgm-rev__buyer-badge{
+  order:2;
+  display:inline-flex; align-items:center; gap:4px;
+  padding:2px var(--s-2); border-radius:100px;
+  background:transparent; border:1px solid var(--edge-strong);
+  color:var(--indigo);
+  font-size:11px; font-weight:500; letter-spacing:.04em; text-transform:uppercase;
+}
+
+.mj-reviews .jdgm-rev__title{
+  display:block;
+  font-family:var(--font-body);
+  font-size:16px; font-weight:500; letter-spacing:-.005em; color:var(--ink);
+  margin:0 0 var(--s-2);
+}
+/* 65ch, the same measure the rest of the theme's prose uses. An unconstrained
+   review line on a 1440px screen runs past 130 characters, which is roughly
+   twice a comfortable reading measure. */
+.mj-reviews .jdgm-rev__body{
+  font-size:16px; line-height:1.65; color:var(--ink); max-width:65ch;
+}
+.mj-reviews .jdgm-rev__body p{ margin:0 0 var(--s-3); }
+.mj-reviews .jdgm-rev__body p:last-child{ margin-bottom:0; }
+
+/* A shop reply is the brand talking, so it is set apart as an inset aside
+   rather than as another review. */
+.mj-reviews .jdgm-rev__reply{
+  margin-top:var(--s-4); padding:var(--s-4) var(--s-5);
+  border-left:2px solid var(--indigo-wash);
+  background:rgba(222,216,204,.42);
+  border-radius:0 var(--r-md) var(--r-md) 0;
+  font-size:15px; color:var(--ink-2);
+}
+
+/* ---- photo reviews -------------------------------------------------
+   The most persuasive thing on the page: a real floor, a real room, a real
+   baby. Judge.me's default is a row of ~60px squares, which is small enough
+   that a shopper cannot tell what they are looking at and does not bother
+   tapping. These are big enough to read as photographs.
+
+   A grid rather than a scroller on desktop, and a scroll-snap strip on a
+   phone, matching the gallery's own behaviour so the gesture is the one the
+   page has already taught. */
+.mj-reviews .jdgm-rev__pics{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(132px, 1fr));
+  gap:var(--s-2); margin-top:var(--s-4);
+}
+.mj-reviews .jdgm-rev__pic-link{
+  display:block; position:relative; aspect-ratio:1;
+  border-radius:var(--r-md); overflow:hidden;
+  background:var(--jute); box-shadow:inset 0 0 0 1px var(--edge);
+  cursor:zoom-in;
+}
+.mj-reviews .jdgm-rev__pic-img{
+  width:100%; height:100%; object-fit:cover; display:block;
+  transition:transform var(--dur-slow) var(--ease);
+}
+@media(hover:hover) and (pointer:fine){
+  .mj-reviews .jdgm-rev__pic-link:hover .jdgm-rev__pic-img{ transform:scale(1.04); }
+}
+.mj-reviews .jdgm-rev__pic-link:focus-visible{ outline:2px solid var(--indigo); outline-offset:3px; }
+
+@media(max-width:699px){
+  /* Full-bleed to the content edge and swipeable, so four photos are
+     reachable without the grid squeezing each one to a thumbnail. */
+  .mj-reviews .jdgm-rev__pics{
+    display:flex; gap:var(--s-2);
+    overflow-x:auto; scroll-snap-type:x proximity;
+    scrollbar-width:none; overscroll-behavior-x:contain;
+    margin-inline:calc(var(--s-5) * -1); padding-inline:var(--s-5);
+    /* scroll-padding is load-bearing, not polish. Snapping aligns a child's
+       start edge to the scrollport's start edge, and the scrollport ignores
+       padding — so on first paint the strip silently scrolled itself to 24px,
+       cancelling the inset and parking the first photo hard against the screen
+       edge with its left radius clipped, 24px out of line with the review text
+       above it. Insetting the snapport by the same step puts the resting
+       position back at 0. */
+    scroll-padding-inline:var(--s-5);
+  }
+  .mj-reviews .jdgm-rev__pics::-webkit-scrollbar{ display:none; }
+  .mj-reviews .jdgm-rev__pic-link{ flex:0 0 132px; scroll-snap-align:start; }
+}
+
+/* The all-reviews photo strip at the top of the widget, same treatment. */
+.mj-reviews .jdgm-medias-wrapper .jdgm-media-thumbnail{
+  border-radius:var(--r-md); overflow:hidden; background:var(--jute);
+  box-shadow:inset 0 0 0 1px var(--edge);
+}
+
+/* ---- lightbox ------------------------------------------------------
+   The theme already has a full-screen image viewer with a settled look, and a
+   shopper should not meet two different ones on the same page. Same near-black
+   ground, same chalk focus ring, same 44px controls. */
+.mj-reviews .jdgm-lbox,
+.jdgm-lbox{ background:rgba(20,22,26,.97); }
+.jdgm-lbox__content{ border-radius:var(--r-lg); overflow:hidden; }
+.jdgm-lbox :focus-visible{ outline:2px solid var(--chalk); outline-offset:2px; }
+.jdgm-lbox__close,
+.jdgm-lbox__arrow{
+  width:var(--tap); height:var(--tap); border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(20,22,26,.55); color:var(--chalk);
+  border:1px solid rgba(241,240,236,.22); backdrop-filter:blur(6px);
+}
+
+/* ---- buttons -------------------------------------------------------
+   "Write a review", "Load more" and pagination all become the theme's outline
+   button. The solid indigo CTA stays reserved for the one primary action on a
+   page, which on the PDP is Add to Cart — a solid review button would compete
+   with the thing the page is for. */
+.mj-reviews .jdgm-write-rev-link,
+.mj-reviews .jdgm-btn,
+.mj-reviews .jdgm-paginate__load-more{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:var(--tap); padding:0 var(--s-6);
+  background:transparent; color:var(--indigo);
+  border:1px solid var(--indigo); border-radius:var(--r-md);
+  font-size:15px; font-weight:500; text-decoration:none;
+  transition:background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+@media(hover:hover) and (pointer:fine){
+  .mj-reviews .jdgm-write-rev-link:hover,
+  .mj-reviews .jdgm-btn:hover{ background:rgba(47,66,96,.06); }
+}
+.mj-reviews .jdgm-write-rev-link:active,
+.mj-reviews .jdgm-btn:active{ transform:scale(.985); }
+
+.mj-reviews .jdgm-paginate{
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
+  gap:var(--s-1); margin-top:var(--s-7);
+}
+/* Page numbers were 20px text links sitting 4px apart — under the 44px floor
+   and close enough together to mis-tap. */
+.mj-reviews .jdgm-paginate__page{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:var(--tap); min-height:var(--tap);
+  border-radius:var(--r-md); color:var(--ink-2);
+  font-size:14px; font-variant-numeric:tabular-nums; text-decoration:none;
+  transition:background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.mj-reviews .jdgm-paginate__page:hover{ background:rgba(47,66,96,.06); color:var(--ink); }
+.mj-reviews .jdgm-paginate__page.jdgm-curt{
+  color:var(--ink); font-weight:500; background:var(--jute);
+}
+
+/* ---- helpful votes -------------------------------------------------
+   Present, quiet, and properly tappable. These are secondary to the review
+   itself and are sized to say so. */
+.mj-reviews .jdgm-rev__actions{ margin-top:var(--s-4); }
+.mj-reviews .jdgm-rev__votes{ display:flex; gap:var(--s-2); align-items:center; }
+.mj-reviews .jdgm-rev__thumb-btn{
+  min-height:var(--tap); min-width:var(--tap);
+  display:inline-flex; align-items:center; justify-content:center; gap:var(--s-1);
+  color:var(--ink-2); font-size:13px; border-radius:var(--r-md);
+}
+.mj-reviews .jdgm-rev__thumb-btn:hover{ color:var(--ink); background:rgba(47,66,96,.06); }
+
+/* ---- section frame -------------------------------------------------- */
+.mj-reviews-head{ margin-bottom:var(--s-7); }
+.mj-reviews-head .h2{ margin-bottom:var(--s-4); }
+/* The summary line is the theme's own rating component, one step up from the
+   size it takes on a card because here it is the section's evidence rather
+   than a caption. */
+.mj-reviews-rating{ font-size:14px; }
+.mj-reviews-rating .pc-rating-stars{ font-size:16px; }
+.mj-reviews-rating .pc-rating-avg{ font-size:16px; }
+.mj-reviews-head .lede{ margin-top:var(--s-4); }
+
+/* ---- empty state ----------------------------------------------------
+   Judge.me prints "Be the first to write a review" in the middle of an
+   otherwise empty box. The section renders nothing at all when there are no
+   blocks, and when the widget is present but has no reviews this at least
+   makes the invitation look intentional. */
+.mj-reviews .jdgm-rev-widg--empty .jdgm-rev-widg__reviews{
+  padding:var(--s-8) 0; text-align:center; color:var(--ink-2); font-size:15px;
+}
+
+/* ---- motion ---------------------------------------------------------
+   The global reduced-motion block is !important and already covers durations.
+   This kills the one transform the skin adds, which that block does not reach
+   because it targets [data-reveal] rather than app markup. */
+@media(prefers-reduced-motion:reduce){
+  .mj-reviews .jdgm-rev__pic-link:hover .jdgm-rev__pic-img{ transform:none; }
+}
+
+/* ---- desktop rhythm -------------------------------------------------
+   Two columns from the three-column breakpoint: the reviews stay a single
+   readable column and the summary sits beside them rather than above, which
+   keeps the average on screen while a shopper reads down the list. */
+@media(min-width:900px){
+  .mj-reviews .jdgm-rev-widg{
+    /* Column gap only. A bare `gap` sets both axes, and the 96px row gap it
+       was also creating landed between the sort control and the first review. */
+    display:grid; grid-template-columns:280px minmax(0,1fr); gap:0 var(--s-9);
+    align-items:start;
+    /* auto / 1fr / auto, so the header spanning all three rows pushes its
+       spare height into the reading column rather than inflating the sort row
+       above it — which was opening a 200px gap before the first review. */
+    grid-template-rows:auto 1fr auto;
+  }
+  /* Explicit rows, because auto-placement put the header in row 1 and the
+     reviews in row 2 — so the first review started below the whole histogram
+     and opened a 400px void beside it. The header owns column 1 for the full
+     height and the reading column stacks sort / reviews / pagination. */
+  .mj-reviews .jdgm-rev-widg__header{
+    grid-column:1; grid-row:1 / span 3;
+    position:sticky; top:calc(var(--header-h) + var(--s-6));
+  }
+  .mj-reviews .jdgm-rev-widg__sort-wrapper{ grid-column:2; grid-row:1; justify-self:end; margin-bottom:var(--s-4); }
+  .mj-reviews .jdgm-rev-widg__reviews{ grid-column:2; grid-row:2; }
+  .mj-reviews .jdgm-paginate{ grid-column:2; grid-row:3; }
+  .mj-reviews .jdgm-histogram{ margin-bottom:var(--s-5); }
+}

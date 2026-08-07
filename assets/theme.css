@@ -301,6 +301,32 @@
   .price-group--compact .price-now{ font-size:16px; letter-spacing:-.005em; }
   .price-group--compact .price-was{ font-size:13px; }
 
+  /* Evidence about the title, so it is grouped with the title: 4px above,
+     against the 8px that separates it from the price. Spacing carries the
+     relationship, which is why the rating needs no rule, box or divider. */
+  .pc-rating{
+    margin:var(--s-1) 0 0;
+    display:flex; align-items:center; gap:var(--s-2);
+    font-size:12px; line-height:1.2; color:var(--ink-2);
+  }
+  /* Fractional stars: an unfilled track with a filled copy clipped over it, so
+     4.6 draws as 4.6 stars. The previous row rounded to whole stars, printed
+     five solid stars for anything at or above 4.5, and contradicted its own
+     aria-label while doing it. The track's contrast is low by design — it is
+     the empty half of a measure, and the accessible name plus the numeral
+     beside it both carry the real value. */
+  .pc-rating-stars{
+    position:relative; display:inline-block; flex:0 0 auto;
+    font-size:12px; line-height:1; color:var(--indigo-wash);
+  }
+  .pc-rating-track{ display:block; }
+  .pc-rating-fill{
+    position:absolute; top:0; left:0; height:100%;
+    overflow:hidden; white-space:nowrap; color:var(--indigo);
+  }
+  .pc-rating-avg{ font-weight:500; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .pc-rating-count{ font-variant-numeric:tabular-nums; }
+
   .stepper{ display:flex; align-items:center; border:1px solid var(--jute); border-radius:var(--r-md); }
   .qty-btn{
     width:var(--tap); height:var(--tap); display:flex; align-items:center; justify-content:center;

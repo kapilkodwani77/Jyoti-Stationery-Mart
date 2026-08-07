@@ -1,0 +1,77 @@
+{{ 'component-judgeme.css' | asset_url | stylesheet_tag }}
+{%- comment -%}
+  The frame around Judge.me, not a replacement for it.
+
+  Judge.me owns the reviews: the data, the submission form, the moderation, the
+  photo lightbox, the pagination and the schema.org markup. This section owns
+  everything around them — the section rhythm, the surface, the heading in the
+  theme's own voice, the entry in the PDP jump nav, and the summary line that
+  reads the same metafields Judge.me writes.
+
+  The reviews themselves arrive through the @app block slot below, which is
+  where a merchant drags the "Judge.me Review Widget" block in the theme
+  editor. That is the supported OS 2.0 way to host an app inside a theme
+  section: the app keeps its own upgrade path and this file never has to know
+  what its markup looks like. component-judgeme.css is what makes that markup
+  wear MamaJoy's tokens.
+
+  Renders nothing at all when there are no reviews and no blocks, rather than
+  an empty band with a heading over it.
+{%- endcomment -%}
+{%- liquid
+  assign p = product | default: settings.featured_product
+  assign n = p.metafields.reviews.rating_count.value | default: 0
+-%}
+{%- if section.blocks.size > 0 -%}
+  <section class="sec {% render 'surface-class', s: section.settings.surface %} mj-reviews"
+           id="jump-{{ section.id }}"
+           {% if section.settings.jump_label != blank %}data-jump="{{ section.settings.jump_label | escape }}"{% endif %}>
+    <div class="wrap">
+
+      <div class="mj-reviews-head">
+        <h2 class="h2">{{ section.settings.heading }}</h2>
+        {%- comment -%}
+          The summary is the theme's own type, not Judge.me's, because it is the
+          one number a shopper reads before deciding whether to read anything
+          else. Same snippet as the buy box and the product card, reading the
+          same metafields Judge.me maintains, so the figure here cannot drift
+          from the figure in the widget below it.
+        {%- endcomment -%}
+        {%- if n > 0 -%}
+          {% render 'product-rating', product: p, verbose: true, class: 'mj-reviews-rating' %}
+        {%- endif -%}
+        {%- if section.settings.body != blank -%}
+          <p class="lede body-copy">{{ section.settings.body }}</p>
+        {%- endif -%}
+      </div>
+
+      {%- comment -%}
+        Judge.me's widget, unmodified. No wrapper div of our own inside this —
+        the app block brings its own root and our CSS hooks that.
+      {%- endcomment -%}
+      {%- for block in section.blocks -%}
+        {%- case block.type -%}
+          {%- when '@app' -%}
+            {% render block %}
+        {%- endcase -%}
+      {%- endfor -%}
+
+    </div>
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Product reviews",
+  "tag": "section",
+  "settings": [
+    { "type": "paragraph", "content": "Add the Judge.me Review Widget as a block below. This section supplies the heading, spacing and rating summary; Judge.me supplies the reviews." },
+    { "type": "text", "id": "jump_label", "label": "Jump-nav label", "default": "Reviews", "info": "Short label for the in-page nav at the top of the product page. Clear it to leave this section out of the nav." },
+    { "type": "select", "id": "surface", "label": "Surface", "default": "chalk", "options": [{ "value": "chalk", "label": "Chalk" }, { "value": "jute", "label": "Jute wash" }] },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "What parents say." },
+    { "type": "textarea", "id": "body", "label": "Body", "default": "" }
+  ],
+  "blocks": [{ "type": "@app" }],
+  "presets": [{ "name": "Product reviews" }]
+}
+{% endschema %}
