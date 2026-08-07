@@ -7,9 +7,19 @@
     background:var(--jute); scrollbar-width:none;
   }
   .gallery-main::-webkit-scrollbar{ display:none; }
-  /* 4:5 portrait - matches the approved product photography and the
-     homepage/collection card image ratio exactly. */
-  .gallery-slide{ flex:0 0 100%; aspect-ratio:4/5; scroll-snap-align:start; position:relative; }
+  /* Square, because the product photography is square: every image on both
+     products is now 1:1 (771, 983, 1029, 1040, 1062, 1104, 1115x1122, 1122).
+     The box matches the source, so nothing is cropped and nothing upscaled.
+
+     It is also what puts the price on the first screen. A full-bleed frame's
+     height is its width times the inverse of its ratio, so at 4:5 the image
+     alone was 1.25 screen-widths tall; at 1:1 it is exactly one. Measured with
+     the eyebrow present and no review row: the name and price clear the footer
+     CTA with 21px to spare at 390x750, the landing state with Safari's chrome
+     still on screen, and with far more at 390x844 and 430x932. They do not
+     clear at 375x667 or on a portrait tablet, where the square frame is still
+     taller than the room left over — the footer CTA is what covers those. */
+  .gallery-slide{ flex:0 0 100%; aspect-ratio:1/1; scroll-snap-align:start; position:relative; }
   .gallery-thumbs{ display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; padding-bottom:2px; }
   .gallery-thumbs::-webkit-scrollbar{ display:none; }
   .gallery-thumb{
@@ -48,9 +58,10 @@
   /* Below the two-column breakpoint the photograph carries the page, so the
      strip leaves the 24px content inset and runs the full width of the screen.
 
-     Nothing here crops or rescales. The 4:5 box is untouched and aspect-ratio
-     still reserves the space, so there is no CLS, and scroll-snap, the zoom
-     trigger and lazy loading all sit inside the slide and are unaffected. */
+     Nothing here crops or rescales. The square box matches the square source
+     and aspect-ratio still reserves the space, so there is no CLS, and
+     scroll-snap, the zoom trigger and lazy loading all sit inside the slide
+     and are unaffected. */
   @media(max-width:899px){
     /* One element, one property pair, and every ancestor is already clear.
        Traced at 390: html, body, main, .shopify-section and .sec--tight all

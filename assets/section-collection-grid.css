@@ -6,7 +6,7 @@
 
 .cg-card{ display:block; text-decoration:none; color:inherit; }
 .cg-media{
-  position:relative; aspect-ratio:4/5; border-radius:var(--r-lg); overflow:hidden;
+  position:relative; aspect-ratio:1/1; border-radius:var(--r-lg); overflow:hidden;
   background:var(--jute);
 }
 .cg-media img{ transition:transform 600ms var(--ease); }
