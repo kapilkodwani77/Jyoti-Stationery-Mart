@@ -117,6 +117,58 @@
     ]
   },
   {
+    "name": "Trust and urgency",
+    "settings": [
+      {
+        "type": "header",
+        "content": "Sticky buy bar trust line"
+      },
+      {
+        "type": "paragraph",
+        "content": "One line above the Add to Cart on product pages. Keep each entry to two or three words: three fit on one line at 375px, and a fourth is hidden on small phones. Leave any of them blank to drop it."
+      },
+      {
+        "type": "text",
+        "id": "buybar_trust_1",
+        "label": "Fact 1",
+        "default": "Cash on delivery"
+      },
+      {
+        "type": "text",
+        "id": "buybar_trust_2",
+        "label": "Fact 2",
+        "default": "Free shipping"
+      },
+      {
+        "type": "text",
+        "id": "buybar_trust_3",
+        "label": "Fact 3",
+        "default": "Easy returns"
+      },
+      {
+        "type": "header",
+        "content": "Dispatch promise"
+      },
+      {
+        "type": "text",
+        "id": "dispatch_promise",
+        "label": "Dispatch promise",
+        "info": "Shown first in the trust line, e.g. \"Ships within 24 hours\". Deliberately blank by default: only fill this in if it is true of every order, every day. It is a delivery promise a customer can hold you to, not a marketing line."
+      },
+      {
+        "type": "header",
+        "content": "Announcement bar"
+      },
+      {
+        "type": "checkbox",
+        "id": "pdp_announce_mobile",
+        "label": "Show the announcement bar on product pages (mobile)",
+        "default": false,
+        "info": "Off by default. On a phone the announcement bar repeats the trust line above the Add to Cart, and the masthead is sticky, so it holds 32px out of the viewport for the whole visit. Switch it on if the bar carries something else — a sale, a shipping cut-off, a festival message."
+      }
+    ]
+  },
+  {
     "name": "Checkout",
     "settings": [
       {

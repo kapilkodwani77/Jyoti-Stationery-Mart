@@ -1,4 +1,16 @@
-<div class="announce" role="region" aria-label="Store information">
+{%- comment -%}
+  On the product page below 900px this bar stands down by default, because the
+  sticky buy bar carries the same promises one line above the Add to Cart —
+  where a shopper is actually deciding — and two copies of "free shipping" on
+  one screen is one copy too many. It is worth 32px of permanent viewport on
+  the longest, most fold-constrained page in the theme, on the template where
+  the photograph already takes a full screen width of height.
+
+  A setting rather than a hard rule: a merchant who puts something here that
+  is not a trust fact — a sale, a shipping cut-off, a festival message — needs
+  it read on every template, and can switch it back on.
+{%- endcomment -%}
+<div class="announce{% unless settings.pdp_announce_mobile %} announce--stand-down{% endunless %}" role="region" aria-label="Store information">
   <span class="inner narrow">{{ section.settings.item_1 }}<span class="sep">&middot;</span>{{ section.settings.item_2 }}</span>
   <span class="inner wide">{{ section.settings.item_1 }}<span class="sep">&middot;</span>{{ section.settings.item_2 }}<span class="sep">&middot;</span>{{ section.settings.item_3 }}</span>
 </div>

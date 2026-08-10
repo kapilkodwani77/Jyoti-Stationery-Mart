@@ -101,11 +101,17 @@
     background:var(--chalk); color:var(--ink);
     font-family:var(--font-body); font-size:17px; line-height:1.65;
     -webkit-font-smoothing:antialiased;
-    /* Sticky buy bar clearance, plus the iOS home-indicator inset. The bar is
-       8 + 54 + 8 = 70px on a phone, so this keeps a couple of pixels in hand.
-       Desktop pads to 16 either side and zeroes this reserve below. */
-    padding-bottom:calc(72px + env(safe-area-inset-bottom));
+    /* Sticky buy bar clearance, plus the iOS home-indicator inset. Stated once
+       as a variable because the bar is not one height any more: off the
+       product page it is 8 + 54 + 8 = 70px, and on it the trust line above the
+       button adds 17. A reserve that disagrees with the bar either covers the
+       last line of the page or leaves a gap under it, and the two drifting
+       apart is exactly the kind of bug nobody sees until a footer link stops
+       being tappable. Desktop pads to 16 either side and zeroes this below. */
+    --bar-reserve:72px;
+    padding-bottom:calc(var(--bar-reserve) + env(safe-area-inset-bottom));
   }
+  body.template-product{ --bar-reserve:88px; }
   @media(min-width:900px){ body{ padding-bottom:0; } }
   body.nav-open,body.cart-open,body.zoom-open{ overflow:hidden; }
 
@@ -475,6 +481,22 @@
     .announce{ padding-inline:var(--s-6); letter-spacing:.05em; }
     .announce .wide{ display:inline; } .announce .narrow{ display:none; }
     .announce .sep{ margin-inline:var(--s-3); }
+  }
+
+  /* Stands down on the product page below the two-column breakpoint, where the
+     sticky buy bar states the same facts one line above the Add to Cart. Two
+     things are bought with it: the duplication goes, and the product page gets
+     back 32px of *permanent* height — the masthead is sticky, so this band was
+     not merely first-screen furniture, it was a strip held out of the viewport
+     for the entire visit on the one template where the photograph is already a
+     full screen-width tall.
+
+     display:none rather than a height collapse, so it leaves the accessibility
+     tree with the pixels and nothing announces a region that is not there. The
+     class only exists when the merchant leaves the setting off, so switching it
+     back on is a checkbox and no CSS is overridden. */
+  @media(max-width:899px){
+    body.template-product .announce--stand-down{ display:none; }
   }
 }
 .nav-desktop{ display:none; }
@@ -882,6 +904,57 @@
   body.zoom-open .buybar{ opacity:0; visibility:hidden; }
 
   .buybar-form{ margin:0; }
+
+  /* ---- the trust line ---------------------------------------------------
+     One line, above the button, and quieter than everything around it: 11px,
+     secondary ink, the theme's own tick at 12px. It sits above rather than
+     below because below the button is where the home indicator lives on an
+     iPhone, and because the reading order that works is reassurance and then
+     action — a shopper's eye lands on the button last and leaves from it.
+
+     Deliberately weightless. This is not a feature list and it is not selling
+     anything; it is the row a shopper's eye passes over on the way to the
+     button, and if it competes with the button for attention it has failed.
+     Nothing in it is a link or a control, so it costs no tab stops and adds
+     no targets next to the one target that matters.
+
+     nowrap on the items, not the list: the facts break between each other but
+     never inside one, so "Cash on / delivery" cannot happen. */
+  .buybar-trust{
+    display:flex; justify-content:center; align-items:center;
+    gap:var(--s-1) var(--s-4);
+    margin:0 0 var(--s-1); padding:0; list-style:none;
+    font-size:11px; line-height:1.2; letter-spacing:.01em;
+    /* --ink, not the --ink-2 every other caption in the theme uses, and this is
+       the one place that exception is right. The band is a 72% wash with a blur
+       behind it, not a surface: what passes under it on this template is the
+       product photography, which is dark. Measured on the worst case — the wash
+       over a black frame, #AEADAA — --ink-2 lands at 2.99:1, under the 4.5:1
+       floor for 11px text, while --ink holds 8.07:1. On chalk it is 15.9:1.
+       The row still reads as subordinate: it is 11px against a 16px button in
+       reversed indigo, and weight is doing that job rather than contrast. */
+    color:var(--ink);
+    /* Merchant copy is not under this file's control. The setting asks for two
+       or three words per fact; this is what happens when it gets a sentence —
+       the line clips at the bar's edge instead of widening it and pushing the
+       button off centre. A guard, not a layout mechanism. */
+    overflow:hidden;
+  }
+  .buybar-trust li{ display:flex; align-items:center; gap:var(--s-1); white-space:nowrap; }
+  .buybar-trust svg{ flex:0 0 auto; color:var(--indigo); }
+
+  /* Three facts below 560px and no more. The fourth is not dropped because it
+     is unimportant — it is dropped because a line that wraps to two is no
+     longer a strip, and the buy box states all four in full above 900px.
+
+     560 rather than a number measured off the default strings: four facts
+     including a dispatch promise measure ~434px, which overflowed a 430px
+     phone by 2px on each side when this was set at 429. It is the theme's own
+     next breakpoint up, and it leaves room for merchant copy that is a word
+     longer than the default rather than being tuned to the exact strings that
+     ship. Order in the markup is priority order, so the dispatch promise —
+     first when it is set — is never the one that goes. */
+  @media(max-width:559px){ .buybar-trust li:nth-child(n+4){ display:none; } }
 
   /* The button is the bar. With nothing to share the width with it runs the
      full measure, inset by one step on each side so it reads as an object

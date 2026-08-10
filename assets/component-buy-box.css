@@ -101,8 +101,22 @@
 
     /* One step tighter than the desktop rhythm. The panel is four items long
        on a phone and every gap in it is competing with the photograph above
-       and the CTA below for the same first screen. */
-    .buybox-price-row{ margin-top:var(--s-3); }
+       and the CTA below for the same first screen. Now one step tighter still:
+       with the rating row between the title and the price there are three
+       things stacked here where there were two, and this is the gap that can
+       give up 4px without the price reading as attached to the stars. */
+    .buybox-price-row{ margin-top:var(--s-2); }
+
+    /* The four facts move to the sticky bar at this width, where they sit one
+       line above the button that is permanently on screen. Restating them here
+       — roughly 200px below the price, on a page where the same promises are
+       also in the shipping accordion and the footer — is the "say it three
+       times" habit this theme has already had to unlearn once.
+
+       Not deleted from the markup: above 900px the bar only arrives after this
+       panel has scrolled away, so the two are never on screen together there
+       and the fuller four-item list still earns its place. */
+    .buybox-trust{ display:none; }
 
     /* The dots row used to sit between the photograph and this panel and was
        doing double duty as the separation between them. With the dots moved

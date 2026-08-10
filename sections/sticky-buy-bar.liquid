@@ -41,6 +41,42 @@
 {%- if p -%}
 <div class="buybar" data-buybar role="region" aria-label="Quick purchase">
   {%- if on_pdp -%}
+    {%- comment -%}
+      One line of facts, directly above the button, on the product page only.
+
+      These are not new claims. Below 900px the announcement bar carries the
+      same two promises at the very top of the page, which is the wrong end of
+      the visit: a shopper reads them before they have decided they want
+      anything, and by the time their thumb is over Add to Cart the bar is
+      several screens away. This moves them to where the hesitation actually
+      happens. The announcement bar stands down on this template at this width
+      so the two are never both on screen saying the same thing — see the
+      setting on the announcement bar section — which also hands the first
+      screen back the 32px it was spending to say it twice.
+
+      Every string is a theme setting with no invented fallback, and the
+      dispatch line ships blank. Nothing here can claim a delivery speed, a
+      stock level or a follower count that the merchant has not entered, which
+      is the whole difference between urgency and pressure.
+    {%- endcomment -%}
+    {%- capture trust_facts -%}
+      {%- if settings.dispatch_promise != blank -%}
+        <li>{% render 'icon', name: 'check', size: 12 %}{{ settings.dispatch_promise }}</li>
+      {%- endif -%}
+      {%- if settings.buybar_trust_1 != blank -%}
+        <li>{% render 'icon', name: 'check', size: 12 %}{{ settings.buybar_trust_1 }}</li>
+      {%- endif -%}
+      {%- if settings.buybar_trust_2 != blank -%}
+        <li>{% render 'icon', name: 'check', size: 12 %}{{ settings.buybar_trust_2 }}</li>
+      {%- endif -%}
+      {%- if settings.buybar_trust_3 != blank -%}
+        <li>{% render 'icon', name: 'check', size: 12 %}{{ settings.buybar_trust_3 }}</li>
+      {%- endif -%}
+    {%- endcapture -%}
+    {%- assign trust_facts = trust_facts | strip -%}
+    {%- if trust_facts != blank -%}
+      <ul class="buybar-trust">{{ trust_facts }}</ul>
+    {%- endif -%}
     <form class="buybar-form" data-buybox-form>
       <input type="hidden" name="id" value="{{ v.id }}">
       <input type="hidden" name="quantity" value="1">
