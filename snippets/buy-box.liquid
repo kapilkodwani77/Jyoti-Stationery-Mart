@@ -11,28 +11,29 @@
   assign prepaid_pct = settings.prepaid_discount_percent | default: 5
 
   comment
-    Rounded to the rupee, and to the nearest one rather than up or down.
+    The percentage is the offer, so nothing about it may be able to delete the
+    offer. That is not hypothetical: it already happened once.
 
-    Five percent of Rs. 1,299 is Rs. 64.95, and printing the paise is false
-    precision in two directions at once: there has been no sub-rupee tender in
-    circulation here for years, and the figure is per-unit anyway, since the
-    code applies to the cart and a shopper who takes two saves twice this. A
-    round number is the honest register for what a shopper keeps, and the code
-    and the percentage are both on screen for anyone who wants to check it.
+    A previous pass rendered this block only when a computed rupee saving was
+    greater than zero. In Liquid, zero is truthy, so `default: 5` does not
+    replace a zero the way it replaces nil, and this setting is not written
+    into config/settings_data.json at all. A percentage arriving as 0 therefore
+    survived the default, multiplied the price to a saving of 0, failed the
+    greater-than-zero test, and removed the whole control from the page with no
+    error anywhere. A guard meant to prevent an offer reading "save Rs. 0"
+    deleted the offer instead.
 
-    Assumes a two-decimal currency, which this store is. In a zero-decimal
-    currency, adding 50 would round to the nearest hundred rather than to the
-    nearest unit, so this is the line to revisit if such a market is added.
-
-    floor is written out rather than left to divided_by. Shopify's divided_by
-    truncates when both sides are integers, which is the only reason this
-    returns whole rupees at all — an undeclared dependency on the types of two
-    values this file does not own. Stated explicitly it produces exactly the
-    same figure and stops being a trick: without it, a price that ever arrives
-    as a float prints Rs. 65.45 in a slot designed for Rs. 65.
+    So the value is coerced to a number and clamped to the schema's own default
+    before anything reads it, and the block below tests only what it actually
+    needs: that a code is configured and the variant can be bought. plus: 0
+    first because the comparison must be number-to-number — a range setting
+    that ever arrives as the string "5" would otherwise be compared against 0
+    as text.
   endcomment
-  assign prepaid_exact = v.price | times: prepaid_pct | divided_by: 100 | floor
-  assign prepaid_saving = prepaid_exact | plus: 50 | divided_by: 100 | floor | times: 100
+  assign prepaid_pct = prepaid_pct | plus: 0
+  if prepaid_pct <= 0
+    assign prepaid_pct = 5
+  endif
 
   comment
     The urgency line, and the only two things it is ever allowed to say.
@@ -129,10 +130,16 @@
       incentive introduced after the primary action has already been offered is
       an upsell; introduced before it, it is a reason.
 
-      It states rupees, not a percentage. 5% is a number to be evaluated;
-      "save Rs. 65" is a number to be taken, and it is multiplied out of the
-      live price and the configured percentage so it can never disagree with
-      what the code actually does at checkout.
+      It leads with "Prepay", because that is the condition attached to the
+      saving and a shopper who reads the discount before the condition has to
+      re-read the line. "an additional" is the other half of the same job: the
+      price above already carries a discount, and without that word this reads
+      as restating it rather than as a second one stacked on top.
+
+      The figure is the configured percentage, printed straight. Nothing here
+      derives a rupee amount any more, so there is no rounding to disagree with
+      what checkout charges, and no arithmetic that can fail quietly and take
+      the control down with it.
 
       One tap really is one tap: the shared handler adds the item, then sends
       the shopper to /discount/CODE?redirect=/checkout, which is Shopify's own
@@ -146,14 +153,14 @@
       cannot, which is why the caption is four words on screen and a full one
       in the accessible name.
     {%- endcomment -%}
-    {%- if prepaid_code != blank and prepaid_saving > 0 and v.available -%}
+    {%- if prepaid_code != blank and v.available -%}
       <button type="button" class="prepaid" data-buy-prepaid data-discount-code="{{ prepaid_code }}">
         <span class="btn-label prepaid-body">
-          <span class="prepaid-main">Pay online &amp; save {{ prepaid_saving | money_without_trailing_zeros }}</span>
+          <span class="prepaid-main">Prepay &amp; get an additional {{ prepaid_pct }}% OFF</span>
           {%- comment -%}
-            The visible caption is four words and an arrow, because the rupee
-            figure above it is the message and this line only has to say how to
-            get it. The arrow is the disclosure: this control leaves the page.
+            The visible caption is four words and an arrow, because the line
+            above it is the message and this one only has to say how to take
+            it. The arrow is the disclosure: this control leaves the page.
 
             The sentence a screen reader hears is longer on purpose. Sighted
             shoppers have the arrow, the code and the position of the button
