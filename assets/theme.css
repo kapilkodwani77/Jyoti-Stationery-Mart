@@ -976,6 +976,83 @@
   .buybar-cta:active{ transform:scale(.985); box-shadow:var(--sh-1); }
   .buybar-cta:disabled{ opacity:.45; cursor:not-allowed; }
 
+  /* ---- the mark ---------------------------------------------------------
+     A bag with a heart in it, 20px, ahead of the label.
+
+     Decoration with a job. On a phone this bar is on screen for the entire
+     visit, and a bag says "this is the control that buys it" before a word of
+     it has been read. The heart is the register rather than a second message:
+     this is a shop for people buying for a baby, and one small solid shape
+     says so more quietly than any line of copy would.
+
+     Geometry is untouched by construction. The button is min-height:54px and
+     this is 20px sitting inside it, so the bar's height, the button's height,
+     its radius, its colour, its width and its position are all exactly what
+     they were. The label re-centres around the pair; that is the whole visible
+     difference.
+
+     display:block kills the inline baseline gap under an svg — left inline it
+     carries descender space and the flex line measures taller than the glyph.
+
+     A shade under full strength. The mark is the first thing the eye lands on
+     and the last thing it should stay on; at 1.0 a solid heart beside 16px
+     type pulls harder than the words it is introducing. */
+     Sized here as well as on the element. Every other icon in the theme takes
+     its box from the width/height the snippet writes, which is fine inside a
+     block that would not care if it were wrong. This one is a flex child of a
+     stretch-aligned button: an svg that arrives without usable dimensions has
+     no intrinsic size to fall back on, so it fills the line box and takes the
+     bar's whole layout with it. Two declarations to make that unreachable. */
+  .buybar-cta > svg{
+    flex:0 0 auto; display:block; width:20px; height:20px;
+    margin-right:var(--s-2); opacity:.92;
+  }
+
+  /* The beat.
+
+     Two soft beats once every nine seconds, on the heart alone: about a second
+     and a half of movement in a nine-second cycle, and stillness for the rest.
+     That ratio is the design. Something that moves continuously stops being
+     seen within a minute and costs a frame budget forever; something that
+     moves at you is a nag on a band that never leaves the screen. This is
+     meant to be caught once, peripherally, while the shopper is reading
+     something else.
+
+     transform on one small filled path, so the compositor handles it on its
+     own layer: nothing reflows, the svg's box does not change, and the label
+     beside it does not move. The bag itself never moves at all.
+
+     transform-box:fill-box because an SVG child resolves transform-origin
+     against the viewBox otherwise — 50% of a 20x20 viewBox is not the middle
+     of a heart drawn in its lower half, and the heart would swing instead of
+     beat.
+
+     Six seconds of delay: nothing is in motion while the page is still
+     settling, and the first beat lands long after the first paint. */
+  .buybar-cta .icon-heart{
+    transform-box:fill-box; transform-origin:50% 50%;
+    animation:buybarHeart 9s var(--ease) 6s infinite;
+  }
+  @keyframes buybarHeart{
+    0%,82%,100%{ transform:scale(1); }
+    86%{ transform:scale(1.22); }
+    90%{ transform:scale(1.04); }
+    94%{ transform:scale(1.15); }
+    98%{ transform:scale(1); }
+  }
+
+  /* Still under a finger, and still while the add is in flight — the same
+     states that stop the breath below, for the same reason.
+
+     animation:none rather than animation-play-state:paused. A paused animation
+     still wins the cascade for transform, so pausing would freeze the heart
+     mid-beat at whatever scale it had reached; removing it lets the path fall
+     back to the size it is drawn at. */
+  .buybar-cta:hover .icon-heart,
+  .buybar-cta:active .icon-heart,
+  .buybar-cta:focus-visible .icon-heart,
+  .buybar-cta[aria-busy="true"] .icon-heart{ animation:none; }
+
   /* The breath.
 
      A shadow that swells and settles once every seven seconds, and nothing
@@ -1015,8 +1092,12 @@
     cursor:progress; background:#263852; box-shadow:var(--sh-1);
   }
 
+  /* The mark stays; only its motion goes. A reduced-motion preference is a
+     request about movement, not about iconography, and removing the bag would
+     change the button for the one group whose button should change least. */
   @media(prefers-reduced-motion:reduce){
     .buybar-cta::after{ animation:none; opacity:0; }
+    .buybar-cta .icon-heart{ animation:none; }
   }
 
   .buybar-error{

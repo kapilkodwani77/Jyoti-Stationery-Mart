@@ -20,6 +20,20 @@
     <svg width="{{ s }}" height="{{ s }}" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4.5 4.5l11 11M15.5 4.5l-11 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
   {%- when 'cart' -%}
     <svg width="{{ s }}" height="{{ s }}" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 4h1.6L6 13.2a1.4 1.4 0 0 0 1.4 1.2h6.7a1.4 1.4 0 0 0 1.38-1.16L16.6 7H5.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="17" r="1.1" fill="currentColor"/><circle cx="13.5" cy="17" r="1.1" fill="currentColor"/></svg>
+  {%- when 'bag-heart' -%}
+    {%- comment -%}
+      The mark on the sticky Add to Cart. Same hairline weight as the rest of
+      the set, so it reads as part of this theme rather than as a sticker: a
+      1.3px stroked bag, and one filled heart on its face as the only solid
+      shape in the icon set. Not an emoji — an emoji renders in the platform's
+      own colours and style, which is the fastest way to make a premium page
+      look like a marketplace listing.
+
+      The heart carries a class because it is animated on its own in
+      theme.css. Nothing else in this file is animated, and nothing else needs
+      to be: the bag stays perfectly still.
+    {%- endcomment -%}
+    <svg width="{{ s }}" height="{{ s }}" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4.5 6.9h11l-.6 8.6a1.6 1.6 0 0 1-1.6 1.5H6.7a1.6 1.6 0 0 1-1.6-1.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M7.7 6.9V5.5a2.3 2.3 0 0 1 4.6 0v1.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path class="icon-heart" d="M10 13.9c-2-1.35-2.9-2.2-2.9-3.15a1.45 1.45 0 0 1 2.9-.55 1.45 1.45 0 0 1 2.9.55c0 .95-.9 1.8-2.9 3.15z" fill="currentColor"/></svg>
   {%- when 'chevron' -%}
     <svg width="{{ s }}" height="{{ s }}" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 4.5l6 5.5-6 5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
   {%- when 'drag' -%}

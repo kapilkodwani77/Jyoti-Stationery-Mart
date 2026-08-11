@@ -87,6 +87,23 @@
       {%- endcomment -%}
       <button type="submit" class="buybar-cta" data-add-to-cart {% unless v.available %}disabled{% endunless %}>
         {%- if v.available -%}
+          {%- comment -%}
+            A bag with a heart in it, ahead of the label. It is decorative in
+            the strict sense — "Add to Cart" already says everything the bag
+            says — so it is out of the accessibility tree entirely and the
+            button's accessible name is unchanged.
+
+            Nothing about the button's box moves for it: the bar's CTA is
+            min-height 54px and this is 20px, so the height, radius, colour,
+            width and position are all exactly what they were. The label
+            re-centres around it, which is the only visible difference.
+
+            Only on the purchase button. Off the product page this bar is a
+            "View product" link, and a bag on a link that does not add
+            anything to a bag would be a promise the control does not keep.
+            Sold out gets no mark either, for the same reason.
+          {%- endcomment -%}
+          {% render 'icon', name: 'bag-heart', size: 20 %}
           <span class="btn-label">Add to Cart<span class="visually-hidden"> — {{ p.title }}</span></span>
           <span class="btn-pending" aria-hidden="true">Adding&hellip;</span>
         {%- else -%}Sold out{%- endif -%}

@@ -48,7 +48,27 @@
     for p in collections.all.products limit: 50
       assign c = p.metafields.reviews.rating_count.value | default: 0
       if c > 0
-        assign total = total | plus: p.metafields.reviews.rating.value.rating | times: c
+        comment
+          Two statements, and they have to stay two. Liquid applies filters
+          left to right with no precedence, so writing this as one line —
+          total, plus rating, times c — evaluates as (total + rating) * c
+          rather than total + (rating * c). It compounds: every product after
+          the first multiplies the whole running total by that product's
+          review count again. Two products at 4.25 stars and 12 reviews each
+          came out as 27.6, printed beside five full stars on the homepage, on
+          a scale whose maximum is 5.
+
+          Multiplying by 1.0 first keeps the sum a float. Liquid's divided_by
+          does integer division when both sides are integers, so a catalogue
+          that happened to average a whole number would truncate instead of
+          rounding: 4.0 would survive, and 4.9 would land as 4.
+
+          Every line here starts with a word on purpose. Inside a liquid tag
+          each line is parsed as its own tag, and a comment line opening with
+          punctuation is read as a tag name by stricter parsers than Shopify's.
+        endcomment
+        assign weighted = p.metafields.reviews.rating.value.rating | times: 1.0 | times: c
+        assign total = total | plus: weighted
         assign n = n | plus: c
       endif
     endfor
@@ -82,6 +102,21 @@
       <span class="pc-rating-fill" aria-hidden="true" style="width:{{ pct }}%">★★★★★</span>
     </span>
     <span class="pc-rating-avg" aria-hidden="true">{{ avg }}</span>
+    {%- comment -%}
+      A middot, on the store-level row only. That row is the one place in the
+      theme where two bare numerals sit next to each other with nothing between
+      them to say they are different quantities — "4.3 24 reviews". A card and
+      the buy box print "(12)", where the brackets already do that job, and
+      both are left exactly as they are.
+
+      An element of its own rather than a character inside the count, so the
+      row's own flex gap falls on both sides of it and the spacing is even.
+      Tucked into the count and it would have 8px on its left and a word space
+      on its right. It needs no rule in any stylesheet for the same reason.
+    {%- endcomment -%}
+    {%- if verbose and want == 'store' -%}
+      <span aria-hidden="true">&middot;</span>
+    {%- endif -%}
     <span class="pc-rating-count" aria-hidden="true">
       {%- if verbose -%}{{ n }} review{% if n != 1 %}s{% endif %}{%- else -%}({{ n }}){%- endif -%}
     </span>

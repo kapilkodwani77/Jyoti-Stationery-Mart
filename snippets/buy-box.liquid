@@ -9,7 +9,61 @@
   assign v = product.selected_or_first_available_variant
   assign prepaid_code = settings.prepaid_discount_code
   assign prepaid_pct = settings.prepaid_discount_percent | default: 5
-  assign prepaid_saving = v.price | times: prepaid_pct | divided_by: 100
+
+  comment
+    Rounded to the rupee, and to the nearest one rather than up or down.
+
+    Five percent of Rs. 1,299 is Rs. 64.95, and printing the paise is false
+    precision in two directions at once: there has been no sub-rupee tender in
+    circulation here for years, and the figure is per-unit anyway, since the
+    code applies to the cart and a shopper who takes two saves twice this. A
+    round number is the honest register for what a shopper keeps, and the code
+    and the percentage are both on screen for anyone who wants to check it.
+
+    Assumes a two-decimal currency, which this store is. In a zero-decimal
+    currency, adding 50 would round to the nearest hundred rather than to the
+    nearest unit, so this is the line to revisit if such a market is added.
+
+    floor is written out rather than left to divided_by. Shopify's divided_by
+    truncates when both sides are integers, which is the only reason this
+    returns whole rupees at all — an undeclared dependency on the types of two
+    values this file does not own. Stated explicitly it produces exactly the
+    same figure and stops being a trick: without it, a price that ever arrives
+    as a float prints Rs. 65.45 in a slot designed for Rs. 65.
+  endcomment
+  assign prepaid_exact = v.price | times: prepaid_pct | divided_by: 100 | floor
+  assign prepaid_saving = prepaid_exact | plus: 50 | divided_by: 100 | floor | times: 100
+
+  comment
+    The urgency line, and the only two things it is ever allowed to say.
+
+    A discount that is actually configured on the variant, or a dispatch
+    promise the merchant has actually entered. Nothing else: no countdown, no
+    stock figure, no shopper count, no deadline. Each of those would have to be
+    invented here, because the theme has no source for any of them — and an
+    invented one is a claim a customer can catch, on a store selling to
+    parents, for a few percent of lift at most.
+
+    The percentage is the same expression as the pill in snippets/price.liquid,
+    deliberately, on the same two variant fields in the same order. It has to
+    truncate the way the pill does, or the page would state two different
+    discounts one line apart. If that expression ever changes, this one changes
+    with it. The trailing floor is what the pill gets for free from integer
+    division and is written out here for the same reason as above: on Shopify
+    it is the identical 31, and without it a float price would print a
+    seventeen-digit percentage in red at the top of the page.
+  endcomment
+  assign saved_pct = 0
+  if v.compare_at_price > v.price
+    assign saved_pct = v.compare_at_price | minus: v.price | times: 100 | divided_by: v.compare_at_price | floor
+  endif
+
+  assign urgency = ''
+  if saved_pct > 0
+    assign urgency = saved_pct | append: '% OFF &middot; Limited-time price'
+  elsif settings.dispatch_promise != blank
+    assign urgency = settings.dispatch_promise
+  endif
 -%}
 <div class="buybox {% if compact %}buybox--compact{% endif %}" data-buybox id="buybox">
 
@@ -37,6 +91,35 @@
     <span class="buybox-tax-note">Inclusive of taxes</span>
   </div>
 
+  {%- comment -%}
+    Under the price, above the offer. This is the answer to "why now", and it
+    belongs after the shopper knows the number and before they are asked to
+    act on it — a reason to hurry that arrives after the button has already
+    been offered is a nag rather than a reason.
+
+    Red, and the only red on the page. --danger is otherwise reserved for
+    things that have gone wrong, which is exactly what earns it attention
+    here; it is 6.06:1 on chalk, so it passes as body text and not merely as a
+    decoration. One line, 13px, medium — a step below the price it qualifies
+    and two below the button it points at. It does not blink, count down,
+    animate or fill a box, because every one of those reads as a marketplace
+    listing rather than as a brand, and this store's whole argument is that it
+    is not one.
+
+    It says nothing at all when there is nothing true to say. No sale on the
+    variant and no dispatch promise entered means no element, no empty space
+    and no placeholder.
+
+    Full buy box only. The compact one already drops the title and the rating;
+    on the PDP it is the closing module, and the same red line twice on one
+    page is how a true statement starts sounding like a technique.
+  {%- endcomment -%}
+  {%- if urgency != blank -%}
+    {%- unless compact -%}
+      <p class="buybox-urgency">{{ urgency }}</p>
+    {%- endunless -%}
+  {%- endif -%}
+
   {%- form 'product', product, data-buybox-form: '' -%}
     <input type="hidden" name="id" value="{{ v.id }}" data-variant-id>
 
@@ -47,23 +130,44 @@
       an upsell; introduced before it, it is a reason.
 
       It states rupees, not a percentage. 5% is a number to be evaluated;
-      "an extra Rs. 64.95" is a number to be taken, and it is multiplied out of
-      the live price so it can never disagree with what the code actually does.
+      "save Rs. 65" is a number to be taken, and it is multiplied out of the
+      live price and the configured percentage so it can never disagree with
+      what the code actually does at checkout.
 
       One tap really is one tap: the shared handler adds the item, then sends
       the shopper to /discount/CODE?redirect=/checkout, which is Shopify's own
       mechanism for applying a code without the shopper typing it. The code is
-      still shown, because a saving a shopper cannot see the shape of reads as
-      a trick. The caption names the destination rather than saying "one tap":
-      below 900px this is the only visible button in the panel, and a control
-      that silently leaves for checkout with an item added is a surprise even
-      when the outcome is the one the shopper wanted.
+      shown rather than hidden behind the offer, because a saving whose shape a
+      shopper cannot see reads as a trick.
+
+      Below 900px this is the only visible button in the panel, so leaving for
+      checkout has to be disclosed rather than sprung. The arrow does that for
+      anyone who can see it; the sentence after the code does it for anyone who
+      cannot, which is why the caption is four words on screen and a full one
+      in the accessible name.
     {%- endcomment -%}
-    {%- if prepaid_code != blank and v.available -%}
+    {%- if prepaid_code != blank and prepaid_saving > 0 and v.available -%}
       <button type="button" class="prepaid" data-buy-prepaid data-discount-code="{{ prepaid_code }}">
         <span class="btn-label prepaid-body">
-          <span class="prepaid-main">Save an extra {{ prepaid_saving | money }} paying online</span>
-          <span class="prepaid-sub">Tap to apply <b class="prepaid-code">{{ prepaid_code }}</b> and go to checkout</span>
+          <span class="prepaid-main">Pay online &amp; save {{ prepaid_saving | money_without_trailing_zeros }}</span>
+          {%- comment -%}
+            The visible caption is four words and an arrow, because the rupee
+            figure above it is the message and this line only has to say how to
+            get it. The arrow is the disclosure: this control leaves the page.
+
+            The sentence a screen reader hears is longer on purpose. Sighted
+            shoppers have the arrow, the code and the position of the button
+            on the page to tell them this is a shortcut to checkout rather than
+            a second Add to Cart; a caption read out on its own has none of
+            that, and "apply in 1 tap" alone would not say that the tap also
+            adds the item and leaves. The visible copy and the accessible name
+            describe the same action — one of them just has more room.
+          {%- endcomment -%}
+          <span class="prepaid-sub">
+            <b class="prepaid-code">{{ prepaid_code }}</b>
+            <span aria-hidden="true">&middot; Apply in 1 tap &rarr;</span>
+            <span class="visually-hidden">is applied for you. Adds this item and continues to checkout.</span>
+          </span>
         </span>
         <span class="btn-pending" aria-hidden="true">Redirecting&hellip;</span>
       </button>

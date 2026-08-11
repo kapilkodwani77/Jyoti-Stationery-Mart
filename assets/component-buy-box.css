@@ -25,6 +25,39 @@
   .buybox-tax-note{ font-size:12px; color:var(--ink-2); }
   .buybox-price-row + p{ font-size:12px; color:var(--ink-2); margin-top:var(--s-1); }
 
+  /* ---- urgency ---------------------------------------------------------
+     The one red line on the page, and the only one this theme allows itself:
+     a discount actually configured on the variant, or a dispatch promise the
+     merchant has actually entered. What it is permitted to say — and the list
+     of things it is not — is in snippets/buy-box.liquid.
+
+     --danger, the theme's existing alarm colour, rather than a red invented
+     for this. It measures 6.06:1 on chalk, which clears the 4.5:1 floor for
+     13px text with room to spare: this is readable copy, not a decorative
+     flourish that happens to contain words.
+
+     Restraint is what makes it land. 13px against a 24px price and a 16px
+     reversed button; medium rather than bold; no fill, no border, no box, no
+     icon, no animation, no capitals. Colour alone carries the emphasis, which
+     is the quietest instrument available for it — and since the sentence
+     states the discount in words, colour is not the only thing carrying the
+     meaning, which is the accessibility half of the same decision.
+
+     Sits nearer the price than the offer below it: 12px up against the 24px
+     the form carries. It qualifies the number above it, so it is grouped with
+     it.
+
+     Scoped through .buybox to clear `.buybox-price-row + p` directly above,
+     which also matches this element and would otherwise repaint it as a 12px
+     secondary caption. Winning on specificity rather than by editing that
+     rule, which belongs to the price block and is not this change's to move. */
+  .buybox .buybox-urgency{
+    margin:var(--s-3) 0 0;
+    font-size:13px; font-weight:500; line-height:1.35;
+    letter-spacing:.005em; color:var(--danger);
+    font-variant-numeric:tabular-nums;
+  }
+
   .qty-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--s-4); margin-top:var(--s-5); }
   .qty-label{ font-size:14px; font-weight:500; }
 
@@ -106,6 +139,12 @@
        things stacked here where there were two, and this is the gap that can
        give up 4px without the price reading as attached to the stars. */
     .buybox-price-row{ margin-top:var(--s-2); }
+
+    /* One step tighter for the same reason as the row above it. The urgency
+       line is new weight on the one screen the whole fold budget was built
+       around, and this is the gap that can give up 4px without the sentence
+       reading as detached from the price it is about. */
+    .buybox .buybox-urgency{ margin-top:var(--s-2); }
 
     /* The four facts move to the sticky bar at this width, where they sit one
        line above the button that is permanently on screen. Restating them here
