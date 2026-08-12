@@ -101,23 +101,34 @@
     </div>
 
     {%- comment -%}
-      One primary action, one secondary, one tertiary. Checkout and View cart
-      were previously both full-width buttons of near-equal weight, which made
-      the customer choose between two things that look equally like the way
-      forward. View cart is a quieter text link now.
+      One primary action and one tertiary. Checkout and View cart were once both
+      full-width buttons of near-equal weight, which made the customer choose
+      between two things that look equally like the way forward. View cart is a
+      quieter text link now.
 
-      The prepaid nudge already existed in the buy box and stopped there, so a
-      customer who added from a card and opened the drawer never saw the offer
-      at all — the one moment with the most intent behind it.
+      There is no prepaid button here any more, and it must not come back.
+
+      It was not merely a second CTA competing with Checkout. It navigated to
+      /discount/CODE?redirect=/checkout, and that endpoint does not preview a
+      saving — it writes the discount code onto the shopper's cart, where
+      Shopify keeps it for the rest of the session. One tap and every later read
+      of /cart.js comes back 5% lower, on this drawer, on the cart page and at
+      checkout, whether or not the shopper ever pays online. A customer who
+      tapped it and then chose cash on delivery still got the online-payment
+      price, because nothing in the flow ever takes the code back off.
+
+      That is the whole explanation for the subtotal reported as wrong: the
+      figure was Shopify's real cart total for a cart that really did carry a
+      discount code. The theme calculates no prices at all — see the comment
+      over money() in assets/theme.js — so the only way that number could move
+      was for something to change the cart, and this button was the something.
+
+      The buy box keeps its prepaid offer, where the shopper is choosing how to
+      pay and the trip to checkout is the point. Reaching the same endpoint from
+      the cart drawer, after the decision to buy has already been made, only
+      discounted orders that were going to be placed anyway.
     {%- endcomment -%}
     <a class="cta cta-block" href="/checkout">Checkout</a>
-
-    {%- if settings.prepaid_discount_code != blank -%}
-      <button type="button" class="cta-outline cta-block cart-prepaid"
-              data-buy-prepaid data-discount-code="{{ settings.prepaid_discount_code }}">
-        {{ settings.prepaid_discount_label | default: 'Save 5% paying online' }}
-      </button>
-    {%- endif -%}
 
     <a class="cart-view-link" href="{{ routes.cart_url }}">View cart</a>
 

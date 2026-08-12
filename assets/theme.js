@@ -835,6 +835,36 @@
       );
     }).join('');
 
+    /* Everything the shopper had going when the rebuild landed has to survive
+       it. innerHTML is the truth of the cart as Shopify last described it, and
+       that is exactly why it cannot be the last word on two things:
+
+       A removal still in flight. Remove two rows quickly and the first one's
+       re-render replaces the second row's node, taking its pending dim with it
+       and handing back a control that looks ready to be tapped again while its
+       own request is still out.
+
+       A quantity the shopper has typed or tapped but that has not been sent, or
+       has been sent and not answered. patchTotals is careful about this and
+       renderDrawer was not, so a removal on one line — which always forces a
+       full rebuild — would silently revert an edit in progress on another. The
+       edit still went out and still won on the server, so the number returned a
+       moment later; the shopper watched their entry flip back and then flip
+       forward again for no reason they could see.
+
+       Both survive because both live in state that outlives the DOM. */
+    Object.keys(removing).forEach(function (key) {
+      var line = lineFor(key);
+      if (line) { line.classList.add('is-removing'); line.setAttribute('aria-busy', 'true'); }
+    });
+    cart.items.forEach(function (item) {
+      var held = qtyPending[item.key] || qtyInflight[item.key];
+      if (!held || held.quantity === undefined) return;
+      var line = lineFor(item.key);
+      var input = line && line.querySelector('[data-cart-qty-input]');
+      if (input) input.value = held.quantity;
+    });
+
     var subtotal = drawer.querySelector('[data-cart-subtotal]');
     if (subtotal) subtotal.textContent = money(cart.total_price);
   }
@@ -928,8 +958,7 @@
     if (subtotal) subtotal.textContent = money(cart.total_price);
 
     cart.items.forEach(function (item) {
-      var key = String(item.key).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-      var line = drawer.querySelector('.cart-line[data-line-key="' + key + '"]');
+      var line = lineFor(item.key);
       if (!line) return;
 
       var unit = line.querySelector('.cart-line-price');
@@ -937,11 +966,22 @@
       var total = line.querySelector('.cart-line-total');
       if (total) total.textContent = money(item.final_line_price);
 
-      /* Never overwrite a field the shopper is still working in, or one with
-         an edit already queued behind this response — their number is newer
-         than the cart we are holding. */
+      /* Never overwrite a field the shopper is still working in, or one whose
+         own edit has not come back yet — their number is newer than the cart we
+         are holding.
+
+         qtyPending covers the debounce window only. It is deleted the moment
+         the request goes out, which left the input unguarded for the whole
+         round trip: change line A, change line B, and A's response — which
+         predates B's tap and still carries B's old quantity — would land while
+         B was in flight and write that stale number back into B's input. The
+         shopper watched their own entry revert. qtyInflight closes that window:
+         a line is protected from the tap until its own answer arrives, and its
+         own answer decrements the count before it repaints, so a line can still
+         be corrected by the response that belongs to it. */
       var input = line.querySelector('[data-cart-qty-input]');
-      if (input && document.activeElement !== input && !qtyPending[item.key]) {
+      if (input && document.activeElement !== input
+          && !qtyPending[item.key] && !qtyInflight[item.key]) {
         input.value = item.quantity;
       }
     });
@@ -955,13 +995,23 @@
     updateBadges(cart.item_count);
     var shown = drawer ? drawer.querySelectorAll('.cart-line').length : 0;
 
-    /* A row mid-exit is collapsed to 0fr and transparent. If the removal that
-       started it did not go through, the line-up is unchanged, patchTotals is
-       chosen, and that row stays invisible for the rest of the session — the
-       drawer reads as empty while the cart still holds the item and the
-       subtotal still counts it. That is the regression the exit animation
-       introduced, and it is fixed here rather than by deleting the animation:
-       any row still leaving forces the full re-render that rebuilds it.
+    /* A row carrying .is-leaving is collapsed to 0fr and transparent, so it
+       must never be left standing by a patch: patchTotals would keep the
+       line-up as it found it and that row would stay invisible over a subtotal
+       that still counts it. Any row still leaving forces the full re-render
+       that rebuilds it.
+
+       This is now a backstop rather than the fix. .is-leaving is only applied
+       after Shopify has confirmed the line is gone, and the rebuild that
+       follows is already forced, so the state this guards against is no longer
+       reachable through the removal path — but the guard costs one selector and
+       the invariant it protects (nothing invisible survives a patch) is worth
+       stating in the one function every cart response goes through.
+
+       .is-removing deliberately does not appear here. It is the pending state,
+       it changes only opacity and pointer-events, and a patched line-up that
+       still contains it is correct: renderDrawer re-applies it from `removing`
+       either way.
 
        `force` is set by every failure path. After an error the drawer must be
        rebuilt from the cart we just re-read, never patched, because the thing
@@ -997,6 +1047,81 @@
   var CART_GENERIC = 'Could not update your cart.';
   var cartQueue = Promise.resolve();
 
+  /* Lines with a quantity change in flight, and lines with a removal in flight.
+     qtyInflight guards an input against a response that belongs to a different
+     line (see patchTotals). removing is both the double-tap guard and the way
+     the pending dim survives a re-render: a row rebuilt while its own removal
+     is still out must come back dimmed, not fresh and tappable. */
+  var qtyInflight = {};
+  var removing = {};
+
+  /* A count, because a line can have more than one change in flight, and the
+     quantity alongside it, because a rebuild has to be able to put the
+     shopper's number back into an input it just replaced. Same shape as an
+     entry in qtyPending, so the two read identically at the call site. */
+  function inflight(key, delta, quantity) {
+    var cur = qtyInflight[key];
+    var n = (cur ? cur.n : 0) + delta;
+    if (n > 0) qtyInflight[key] = { n: n, quantity: quantity === undefined ? cur && cur.quantity : quantity };
+    else delete qtyInflight[key];
+  }
+
+  /* data-line-key values come from Shopify and contain colons; they are safe in
+     an attribute selector but the quoting still has to be right. */
+  function lineFor(key) {
+    if (!drawer) return null;
+    var k = String(key).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    return drawer.querySelector('.cart-line[data-line-key="' + k + '"]');
+  }
+
+  /* Long enough for the collapse in theme.css to finish. The sequence is
+     advanced by this timer and never by transitionend: a transition that is
+     switched off by reduced motion, dropped by a busy main thread, or cancelled
+     because the element was replaced fires no event at all, and gating the
+     rebuild on one would strand the drawer showing a row the cart no longer
+     has. Animation cannot hold up state — at worst it is not seen. */
+  var REMOVE_MS = 200;
+
+  /* Shopify has confirmed the line is gone. Publish that fact first — the badge
+     is state and does not wait for anything — then let the row leave, then
+     rebuild the drawer from the cart Shopify actually returned. Nothing here
+     recomputes a total: `cart` is the response body. */
+  /* The rebuild throws away the button that was just activated, so a keyboard
+     shopper who removes a line lands on document.body — outside an aria-modal
+     dialog, with the next Tab going to the page behind it. Focus is put back on
+     something inside the drawer, preferring the control nearest to the one that
+     disappeared. Only when focus was actually in the drawer to begin with: a
+     removal triggered by a pointer must not steal focus. */
+  function restoreDrawerFocus(had) {
+    if (!had || !drawer) return;
+    var a = document.activeElement;
+    if (a && a !== document.body && drawer.contains(a)) return;
+    var next = drawer.querySelector('[data-cart-remove]')
+            || drawer.querySelector('[data-cart-close]')
+            || drawer.querySelector('a[href],button:not([disabled])');
+    if (next) next.focus();
+  }
+
+  function playRemoval(key, cart, done) {
+    updateBadges(cart.item_count);
+    var line = lineFor(key);
+    var hadFocus = !!(drawer && document.activeElement && drawer.contains(document.activeElement));
+    /* One finish, whichever branch gets there. `done` releases the removal
+       claim, and it must not be released before the row is actually gone —
+       until then the Remove button is still on screen and still focused. */
+    function finish() {
+      if (done) done();
+      applyCart(cart, true);
+      restoreDrawerFocus(hadFocus);
+    }
+    if (!line || RM) { finish(); return cart; }
+    line.classList.remove('is-removing');
+    line.classList.add('is-leaving');
+    return new Promise(function (resolve) {
+      window.setTimeout(function () { finish(); resolve(cart); }, REMOVE_MS);
+    });
+  }
+
   /* Mutations are serialised by cartQueue, so two changes can never land out of
      order. The unserialised read is the one in openDrawer: a shopper who opens
      the drawer and immediately taps + has a GET and a POST in flight together,
@@ -1007,6 +1132,37 @@
 
   function changeLine(key, quantity, label) {
     cartRev++;
+    inflight(key, 1, quantity);
+
+    /* Exactly once, on whichever path gets there first. A network failure never
+       reaches the response handler, and a rejected response throws out of it, so
+       neither end can be trusted to do this bookkeeping on its own — and
+       double-decrementing would unguard an input that is still in flight. */
+    var settled = false;
+    function settle() {
+      if (settled) return;
+      settled = true;
+      inflight(key, -1);
+    }
+
+    /* A removal is claimed here rather than in the click handler, because the
+       stepper is a second way to reach quantity 0: min="0" on the drawer input
+       means the minus button can step the last unit away, and that path never
+       went through the Remove button at all. Claiming it in the one function
+       both routes share is what stops a stepper-driven removal and a tap on
+       Remove queueing the same line twice. */
+    if (quantity === 0) removing[key] = true;
+
+    /* Released only once the row is gone or has been put back, never at the
+       moment the response lands. Between those two points the row is still on
+       screen with a focused Remove button on it, and a keyboard user holding
+       Enter would otherwise send a second removal for a line the cart no longer
+       has — which Shopify answers 404, so a removal that worked would end in an
+       error banner. */
+    function releaseRemoval() {
+      if (quantity === 0) delete removing[key];
+    }
+
     cartQueue = cartQueue.then(function () {
       return fetch(routes.cartChange, {
         method: 'POST',
@@ -1015,6 +1171,7 @@
       })
         .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
         .then(function (res) {
+          settle();
           /* description only. `message` is Shopify's internal error class and
              is the literal string "Cart Error" on every cart failure there is —
              surfacing it just replaces one unhelpful message with a
@@ -1022,19 +1179,47 @@
           if (!res.ok) throw new Error(res.data.description || CART_GENERIC);
           var cart = res.data;
           showCartError('');
+          if (quantity === 0) {
+            announce((label ? label + ' removed' : 'Item removed') + ' from cart.');
+            /* The row has not moved yet. It moves now, because the cart in hand
+               is Shopify's and it no longer contains this line. The returned
+               promise keeps the queue closed until the drawer has been rebuilt,
+               so a second removal cannot start painting over an exit already
+               under way. */
+            return Promise.resolve(playRemoval(key, cart, releaseRemoval));
+          }
           applyCart(cart);
-          if (quantity === 0) announce((label ? label + ' removed' : 'Item removed') + ' from cart.');
-          else announce('Cart updated. Subtotal ' + money(cart.total_price) + '.');
+          announce('Cart updated. Subtotal ' + money(cart.total_price) + '.');
           return cart;
         })
         .catch(function (err) {
+          settle();
           showCartError(err.message);
           announce(err.message);
-          /* Whatever went wrong, the drawer is now showing a quantity the cart
-             may not hold. Re-read the real cart and put the drawer back on it,
-             through the same path a successful change takes — a failed edit
-             should leave the shopper looking at the truth, not at their own
-             optimistic tap. */
+
+          /* The claim is dropped before anything is repainted, so the row that
+             comes back is tappable again and the shopper can retry. */
+          releaseRemoval();
+
+          /* The pending dim is taken off the live node here rather than being
+             left to the re-render. If the cart re-read below also fails — one
+             offline shopper, two failed requests — nothing repaints at all, and
+             a row left at .5 opacity with pointer-events:none would be
+             permanently unusable: no remove, no stepper, and no error the
+             shopper could act on. Clearing it first means the worst case is a
+             stale quantity with a message explaining it, not a dead row. */
+          var line = lineFor(key);
+          if (line) {
+            line.classList.remove('is-removing', 'is-leaving');
+            line.removeAttribute('aria-busy');
+          }
+
+          /* Whatever went wrong, the drawer may be showing a quantity the cart
+             does not hold. Re-read the real cart and put the drawer back on it —
+             force, so it is rebuilt rather than patched, because the thing that
+             failed may have left DOM state that no longer matches anything. A
+             failed edit should leave the shopper looking at the truth, not at
+             their own optimistic tap. */
           return fetchCart()
             .then(function (fresh) { applyCart(fresh, true); })
             .catch(function () {});
@@ -1075,30 +1260,38 @@
 
   if (drawer) {
     drawer.addEventListener('pointerdown', function (e) {
-      /* Every way out of the footer, not just the links: the prepaid button is
-         a <button> and navigates the same as Checkout does. */
+      /* Every way out of the footer. Only links leave it today, but the
+         selector covers buttons too: a control that navigates and does not
+         flush the held edit sends the shopper to checkout with the quantity
+         they had before their last tap, and that failure is silent. */
       if (e.target.closest('[data-cart-foot] a, [data-cart-foot] button')) flushQty();
     });
     drawer.addEventListener('click', function (e) {
       var rm = e.target.closest('[data-cart-remove]');
-      if (rm) {
-        var line = rm.closest('.cart-line');
-        var t = line && line.querySelector('.cart-line-title');
-        /* Removals go straight out: the line-up changes either way, so there
-           is nothing for a debounce to coalesce. */
-        delete qtyPending[rm.dataset.lineKey];
+      if (!rm) return;
+      var key = rm.dataset.lineKey;
+      /* pointer-events:none on the dimmed row stops the second tap, but not a
+         second Enter from a keyboard user whose focus is still on the button.
+         The guard is the state, not the styling. */
+      if (removing[key]) return;
 
-        /* The row leaves before the drawer re-renders. Without this the item
-           teleports and everything below snaps up with nothing bridging it.
+      var line = rm.closest('.cart-line');
+      var t = line && line.querySelector('.cart-line-title');
+      /* Removals go straight out: the line-up changes either way, so there is
+         nothing for a debounce to coalesce. */
+      delete qtyPending[key];
 
-           The request is not gated on the animation — changeLine fires
-           immediately and the collapse runs alongside it, so a slow network
-           never leaves a half-faded row and a fast one simply re-renders over
-           it. The class also drops pointer-events, so a second tap during the
-           200ms cannot re-fire this handler on a row already on its way out. */
-        if (line && !RM) { line.classList.add('is-leaving'); }
-        changeLine(rm.dataset.lineKey, 0, t ? t.textContent : '');
+      /* Asked, not done. The row dims and stops taking input so the tap is
+         acknowledged, and that is all it does — it keeps its height and its
+         place, and everything below it stays put. If Shopify refuses the
+         removal this comes straight back off with nothing to undo. The row is
+         only allowed to collapse in playRemoval, after the response. */
+      removing[key] = true;
+      if (line) {
+        line.classList.add('is-removing');
+        line.setAttribute('aria-busy', 'true');
       }
+      changeLine(key, 0, t ? t.textContent : '');
     });
     drawer.addEventListener('change', function (e) {
       var input = e.target.closest('[data-cart-qty-input]');

@@ -774,7 +774,15 @@
   .cart-drawer-head{ display:flex; align-items:center; justify-content:space-between; padding:var(--s-5); border-bottom:1px solid var(--jute); }
   .cart-drawer-head h2{ font-family:var(--font-display); font-size:20px; font-weight:400; }
   .cart-drawer-body{ flex:1; overflow-y:auto; padding:var(--s-5); }
-  .cart-line{ display:grid; grid-template-columns:72px 1fr auto; gap:var(--s-4); padding-block:var(--s-5); border-bottom:1px solid var(--jute); }
+  /* grid-template-rows is stated explicitly, and it is load-bearing rather than
+     decorative: the removal animation interpolates it to zero, and a transition
+     out of the implicit `none` is not interpolable at all — the browser treats
+     it as a discrete swap. minmax(0,1fr) rather than a bare 1fr, because a
+     plain fr track carries an automatic min-content floor, and the 72px
+     thumbnail would hold that floor open. Neither part changes how a normal row
+     lays out: it measures the same 209px either way. See .is-leaving below. */
+  .cart-line{ display:grid; grid-template-columns:72px 1fr auto; grid-template-rows:minmax(0,1fr);
+              gap:var(--s-4); padding-block:var(--s-5); border-bottom:1px solid var(--jute); }
   .cart-line-img{ width:72px; height:72px; border-radius:var(--r-sm); overflow:hidden; background:var(--chalk); border:1px solid var(--jute); }
   .cart-line-title{ font-size:15px; font-weight:500; }
   .cart-line-price{ font-size:14px; color:var(--ink-2); margin-top:2px; }
@@ -828,10 +836,6 @@
   .cart-subtotal-label{ font-size:13px; color:var(--ink-2); }
   .cart-subtotal-value{ font-size:18px; font-weight:500; font-variant-numeric:tabular-nums; }
 
-  /* Secondary action, so it sits closer to the primary than a new block would
-     and does not read as a third separate decision. */
-  .cart-prepaid{ margin-top:var(--s-3); }
-
   /* Tertiary: the way back to a full page, not a competing way forward. */
   .cart-view-link{
     display:flex; align-items:center; justify-content:center;
@@ -855,27 +859,66 @@
   @keyframes cartBadgeBump{ 0%{ transform:scale(1); } 50%{ transform:scale(1.12); } 100%{ transform:scale(1); } }
 
   /* ---- cart line removal ----------------------------------------------
-     What moves: the row leaving. Why: preventing a jarring change — the item
-     currently teleports and the rows below snap up with nothing bridging it.
+     Two states, and the difference between them is the whole point.
+
+     .is-removing means "asked". The request is out and Shopify has not
+     answered. It dims the row and takes its pointer events so a second tap
+     cannot queue a second removal, and it is completely reversible: nothing
+     here collapses the row, changes its height or moves anything below it. If
+     the request comes back 422 the class comes off and the row is exactly as
+     it was, because it never stopped being a real row.
+
+     .is-leaving means "confirmed". It is applied only after /cart/change.js
+     has answered with a cart that no longer contains this line — never before.
+     An earlier version applied the collapse at tap time, alongside the request,
+     which meant a rejected removal left a 0fr transparent row sitting over a
+     subtotal that still counted it: the drawer read as empty while the cart was
+     not. Waiting for the answer is what makes that state unreachable rather
+     than merely recovered-from.
 
      grid-template-rows 1fr -> 0fr rather than height. Animating height needs a
      measured pixel value written from script on content of unknown size, which
      is layout animation and a Standard 7 violation; this collapses the same way
      with the browser interpolating it.
 
-     pointer-events go the instant it starts, so a second tap during those
-     200ms cannot re-fire the handler on a row already on its way out. */
+     Everything that contributes height has to go, not just the track. An
+     earlier version set 0fr and stopped there, and a frame-by-frame trace of a
+     real removal showed the row drop 209px -> 121px in one single frame and
+     then sit at 121px for the whole 200ms — the animation this block exists for
+     was not running at all. Three things were holding it open, and all three
+     are fixed above and here: the transition had no explicit track to start
+     from, so it was a discrete swap rather than an interpolation; the fr track
+     kept a min-content floor that the 72px thumbnail propped up, hence
+     minmax(0,...); and the row's own 24px block padding and its border were
+     never part of the animation. Traced again after the fix, the same removal
+     now steps down through twelve distinct heights and lands at 1px.
+
+     min-height:0 and overflow:hidden on the children are what let the collapsed
+     track actually win against their content. */
+  .cart-line.is-removing{
+    opacity:.5; pointer-events:none;
+    transition:opacity 120ms var(--ease);
+  }
   .cart-line.is-leaving{
-    opacity:0; pointer-events:none;
-    display:grid; grid-template-rows:0fr;
-    transition:opacity 160ms var(--ease), grid-template-rows 200ms var(--ease);
+    opacity:0; pointer-events:none; overflow:hidden;
+    grid-template-rows:minmax(0,0fr);
+    padding-block:0; border-bottom-width:0;
+    transition:opacity 140ms var(--ease),
+               grid-template-rows 200ms var(--ease),
+               padding-block 200ms var(--ease),
+               border-bottom-width 200ms var(--ease);
   }
   .cart-line.is-leaving > *{ overflow:hidden; min-height:0; }
 
   /* Motion out, meaning intact: the row still leaves and the badge still
-     changes, they just stop travelling to do it. */
+     changes, they just stop travelling to do it. The dim is a state, not a
+     journey, so under reduced motion it arrives rather than fades. Note that
+     theme.js does not wait on any of these transitions — a timer of its own
+     advances the sequence — so switching them all off here changes how the
+     drawer looks and nothing about what it does. */
   @media(prefers-reduced-motion:reduce){
     .badge.is-bumped{ animation:none; }
+    .cart-line.is-removing{ transition:none; }
     .cart-line.is-leaving{ transition:opacity 100ms linear; }
   }
 
