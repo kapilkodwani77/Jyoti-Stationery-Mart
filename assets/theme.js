@@ -1037,6 +1037,26 @@
   });
   if (scrim) scrim.addEventListener('click', closeDrawer);
 
+  /* The summary accordion. Display state and nothing else: it reads no cart and
+     writes no cart, so it cannot participate in the class of bug the rest of
+     this module is built to prevent.
+
+     Its open/closed state survives every cart mutation for a structural reason
+     rather than by being restored — renderDrawer rebuilds [data-cart-body] and
+     the footer is not inside it, so a quantity change never touches this
+     button or its panel. hidden is the whole mechanism, so a shopper who opens
+     the breakdown and then changes a quantity watches the figures update
+     underneath an accordion that stayed where they left it. */
+  document.addEventListener('click', function (e) {
+    var toggle = e.target.closest('[data-cart-summary-toggle]');
+    if (!toggle) return;
+    var panel = drawer && drawer.querySelector('[data-cart-summary-panel]');
+    if (!panel) return;
+    var open = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+    panel.hidden = open;
+  });
+
   /* Updates only the numbers, leaving the line markup where it is. A full
      re-render replaces the very input being tapped, which drops focus and
      discards anything typed since the request went out — so it is reserved
@@ -1047,8 +1067,18 @@
       var line = lineFor(item.key);
       if (!line) return;
 
+      /* unitPrice, not money, and innerHTML, not textContent. These two paths
+         have to agree: renderDrawer builds this element from unitPrice, which
+         emits a struck original beside the current price whenever the shopper
+         is paying under list. Writing textContent here flattened that to a
+         single number, so a line that showed "₹1,299 ₹1,499 struck" on load
+         silently lost the struck figure the first time anyone touched the
+         stepper — the discount stopped being visible at the exact moment the
+         shopper was changing how much of it they were getting. The only input
+         is money() output, digits and a rupee sign, so there is nothing here
+         to escape. */
       var unit = line.querySelector('.cart-line-price');
-      if (unit) unit.textContent = money(item.final_price);
+      if (unit) unit.innerHTML = unitPrice(item);
       var total = line.querySelector('.cart-line-total');
       if (total) total.textContent = money(item.final_line_price);
 
@@ -1078,8 +1108,66 @@
     });
   }
 
+  /* The Total Price summary, written from the same cart, on the same single
+     path, as the subtotal it sits under.
+
+     This puts a second set of figures on screen, which is the exact shape of
+     problem this drawer has been bitten by before — so it is deliberately not a
+     second source of them. writeSummary reads the cart it is handed and keeps
+     no state of its own. There is nothing here to go stale because there is
+     nothing here to remember, and it is called from one place, applyCart, so
+     the single writer stays single.
+
+       MRP Total     original_total_price, the cart before any discount
+       MRP Discount  the gap between the two totals
+       Cart Total    total_price, after every discount Shopify applied
+       To Pay        total_price
+
+     The discount is the difference between the two authoritative totals rather
+     than cart.total_discount read on its own. Two fields that are supposed to
+     agree are two fields that can disagree; a difference cannot. Whatever
+     Shopify took off, by whatever mechanism — the prepaid code sitting in the
+     session, a line-level allocation, an automatic discount added next month —
+     MRP Total minus MRP Discount is Cart Total by construction.
+
+     The guard is a type check rather than a truthiness check on purpose: an
+     empty cart totals zero, and zero is falsy. A mangled body should render
+     nothing here; it should never render NaN. */
+  function writeSummary(cart) {
+    if (!drawer) return;
+
+    var gross = cart.original_total_price;
+    var net = cart.total_price;
+    if (typeof gross !== 'number' || typeof net !== 'number') return;
+
+    var saving = gross - net;
+
+    var set = function (sel, text) {
+      var el = drawer.querySelector(sel);
+      if (el) el.textContent = text;
+    };
+    var show = function (sel, on) {
+      var el = drawer.querySelector(sel);
+      if (el) el.hidden = !on;
+    };
+
+    set('[data-cart-mrp]', money(gross));
+    set('[data-cart-carttotal]', money(net));
+    set('[data-cart-topay]', money(net));
+    set('[data-cart-discount]', '−' + money(saving));
+    set('[data-cart-save]', money(saving));
+
+    /* A cart with nothing off it has no discount to explain. "MRP Discount ₹0"
+       and "You Save ₹0" would both be true and both be useless, and they would
+       put a zero in front of the shopper at the moment they are deciding
+       whether the price is good. Both rows return the instant a discount does,
+       because both are written on every paint rather than once on load. */
+    show('[data-cart-discount-row]', saving > 0);
+    show('[data-cart-save-row]', saving > 0);
+  }
+
   /* The single writer. Every cart that reaches the DOM goes through here, and
-     nothing else may touch the badge, the rows or the subtotal.
+     nothing else may touch the badge, the rows, the subtotal or the summary.
 
      Patch or rebuild is decided by comparing the line keys the DOM is showing
      against the line keys Shopify sent, in order. The previous version compared
@@ -1103,6 +1191,9 @@
        that a future edit could fail to reach. */
     var subtotal = drawer.querySelector('[data-cart-subtotal]');
     if (subtotal) subtotal.textContent = money(cart.total_price);
+
+    /* Same rule, same reason: on every path, never inside a branch. */
+    writeSummary(cart);
 
     var foot = drawer.querySelector('[data-cart-foot]');
     if (foot) foot.hidden = !cart.items.length;

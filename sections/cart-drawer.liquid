@@ -95,16 +95,96 @@
     {%- endcomment -%}
     <p class="cart-drawer-error" data-cart-error role="alert" hidden></p>
 
-    <div class="cart-subtotal">
-      <span class="cart-subtotal-label">Subtotal</span>
-      <span class="cart-subtotal-value" data-cart-subtotal>{{ cart.total_price | money }}</span>
+    {%- comment -%}
+      Total Price summary.
+
+      Every figure here is a field Shopify sent, or the difference between two
+      of them. The theme calculates no prices — see the comment over money() in
+      assets/theme.js — and this section does not change that.
+
+        MRP Total     cart.original_total_price, the cart before any discount
+        MRP Discount  original_total_price - total_price
+        Cart Total    cart.total_price, after every discount Shopify applied
+        Shipping      see below, the one figure that is not a cart field
+        To Pay        cart.total_price
+
+      The discount is taken as the difference of the two authoritative totals
+      rather than read from cart.total_discount, so the column cannot fail to
+      add up. Whatever Shopify discounted, by whatever mechanism — a code in
+      the session, a line-level allocation, an automatic discount added later —
+      MRP Total minus MRP Discount is Cart Total by construction, because the
+      middle row is defined as the gap between the other two rather than
+      sourced independently and hoped to agree.
+
+      This row is also the answer to a subtotal that reads as wrong. A cart
+      carrying the prepaid code came back 5% lower than the lines above it
+      added up to, with nothing on screen accounting for the difference. The
+      money was never missing; it was never labelled. It is labelled now.
+
+      Shipping is the exception and is marked as such deliberately. /cart.js
+      has no shipping field — Shopify does not rate shipping until checkout, so
+      there is nothing authoritative to read this early. FREE is the store's
+      standing promise, stated the same way in the empty-cart note above and in
+      the buy box, not a rate quoted back from Shopify. If free shipping ever
+      stops being universal, this line has to change with it; it cannot find
+      out on its own.
+    {%- endcomment -%}
+    {%- assign cart_saving = cart.original_total_price | minus: cart.total_price -%}
+
+    <div class="cart-summary">
+      {%- comment -%}
+        The panel precedes the bar in the DOM so it opens upward out of the bar,
+        the way the reference does, without absolute positioning or a transform
+        that would lift it out of the footer's flow. aria-controls is happy to
+        point backwards; only the id has to match.
+      {%- endcomment -%}
+      <div class="cart-summary-panel" id="cart-summary-panel" data-cart-summary-panel hidden>
+        <dl class="cart-summary-rows">
+          <div class="cart-summary-row">
+            <dt>MRP Total</dt>
+            <dd data-cart-mrp>{{ cart.original_total_price | money }}</dd>
+          </div>
+          <div class="cart-summary-row" data-cart-discount-row {% if cart_saving <= 0 %}hidden{% endif %}>
+            <dt>MRP Discount</dt>
+            <dd class="cart-summary-cut" data-cart-discount>&minus;{{ cart_saving | money }}</dd>
+          </div>
+          <div class="cart-summary-row">
+            <dt>Cart Total</dt>
+            <dd data-cart-carttotal>{{ cart.total_price | money }}</dd>
+          </div>
+          <div class="cart-summary-row">
+            <dt>Shipping</dt>
+            <dd class="cart-summary-free">FREE</dd>
+          </div>
+          <div class="cart-summary-row cart-summary-row--pay">
+            <dt>To Pay</dt>
+            <dd data-cart-topay>{{ cart.total_price | money }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <button type="button" class="cart-summary-bar"
+              data-cart-summary-toggle
+              aria-expanded="false"
+              aria-controls="cart-summary-panel">
+        <span class="cart-summary-bar-l">
+          <span class="cart-summary-bar-label">Total Price</span>
+          <span class="cart-summary-bar-value" data-cart-subtotal>{{ cart.total_price | money }}</span>
+        </span>
+        <span class="cart-summary-bar-r">
+          <span class="cart-summary-bar-save" data-cart-save-row {% if cart_saving <= 0 %}hidden{% endif %}>You Save <span data-cart-save>{{ cart_saving | money }}</span></span>
+          <span class="cart-summary-chevron">{% render 'icon', name: 'chevron', size: 16 %}</span>
+        </span>
+      </button>
     </div>
 
     {%- comment -%}
-      One primary action and one tertiary. Checkout and View cart were once both
-      full-width buttons of near-equal weight, which made the customer choose
-      between two things that look equally like the way forward. View cart is a
-      quieter text link now.
+      One primary action, and now only one. Checkout and View cart were once
+      both full-width buttons of near-equal weight; View cart was demoted to a
+      text link, and is gone entirely now. In a drawer that already lists every
+      line, carries the stepper for each one and totals the order, a trip to a
+      second page showing the same cart was a way out of the purchase wearing
+      the costume of a way forward.
 
       There is no prepaid button here any more, and it must not come back.
 
@@ -130,9 +210,12 @@
     {%- endcomment -%}
     <a class="cta cta-block" href="/checkout">Checkout</a>
 
-    <a class="cart-view-link" href="{{ routes.cart_url }}">View cart</a>
-
-    <p class="cart-drawer-note">Cash on delivery &middot; 30-day returns</p>
+    {%- comment -%}
+      Three facts, and the separator is the theme's middot rather than a round
+      bullet so this line sits in the same typographic family as the trust lines
+      on the homepage and the closing buy block.
+    {%- endcomment -%}
+    <p class="cart-drawer-note">Secure Payments &middot; Made in India &middot; Easy Returns</p>
   </div>
 </aside>
 

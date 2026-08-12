@@ -818,24 +818,96 @@
     padding-bottom:calc(var(--s-5) + env(safe-area-inset-bottom));
     border-top:1px solid var(--edge);
   }
-  /* Label and amount were both 16px/500, so the word "Subtotal" carried the
-     same weight as the number beside it. The label steps back; the figure gets
-     the size and tabular digits so it stays put as quantities change. */
-  /* Sits above the subtotal so the reason arrives before the number it
+  /* Sits above the total so the reason arrives before the number it
      explains. Same size and ink as the buy box's error line. */
   .cart-drawer-error{ font-size:13px; color:var(--danger); margin-bottom:var(--s-3); }
   .cart-drawer-error[hidden]{ display:none; }
-  .cart-subtotal{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:var(--s-4); }
-  .cart-subtotal-label{ font-size:13px; color:var(--ink-2); }
-  .cart-subtotal-value{ font-size:18px; font-weight:500; font-variant-numeric:tabular-nums; }
 
-  /* Tertiary: the way back to a full page, not a competing way forward. */
-  .cart-view-link{
-    display:flex; align-items:center; justify-content:center;
-    min-height:var(--tap); margin-top:var(--s-2);
-    font-size:14px; color:var(--ink-2); text-decoration:none;
+  /* ---- total price summary ---------------------------------------------
+     The breakdown a shopper opens when the figure at the bottom does not
+     obviously follow from the figures above it — which is precisely what a
+     cart-level discount does, since it moves the total and leaves every line
+     untouched.
+
+     Every [hidden] below is spelled out. The attribute's user-agent rule is
+     display:none, but any display declared in a class rule beats it on
+     specificity, so a row set to display:flex and then hidden stays on screen.
+     The error line above needed the same rule for the same reason. */
+  .cart-summary{ margin-bottom:var(--s-3); }
+
+  .cart-summary-panel{ padding-block:var(--s-2) var(--s-1); }
+  .cart-summary-panel[hidden]{ display:none; }
+
+  .cart-summary-rows{ margin:0; }
+  .cart-summary-row{
+    display:flex; justify-content:space-between; align-items:baseline;
+    gap:var(--s-4); padding-block:5px;
   }
-  .cart-view-link:hover{ color:var(--ink); text-decoration:underline; text-underline-offset:4px; }
+  .cart-summary-row[hidden]{ display:none; }
+  .cart-summary-row dt{ font-size:13px; color:var(--ink-2); }
+  .cart-summary-row dd{
+    margin:0; font-size:13px; color:var(--ink);
+    font-variant-numeric:tabular-nums; white-space:nowrap;
+  }
+
+  /* The saving carries indigo and the rest of the column stays ink. It is the
+     one line here a shopper is pleased to find, and indigo is what this theme
+     spends when something is worth looking at — no green, no badge, no red
+     borrowed from somebody else's storefront. */
+  .cart-summary-cut{ color:var(--indigo); }
+  .cart-summary-free{
+    font-size:11px; font-weight:500; letter-spacing:.06em; text-transform:uppercase;
+  }
+
+  /* To Pay closes the column, so it takes the rule above it and a step up in
+     weight — the same move the drawer already makes between a label and the
+     number it labels. */
+  .cart-summary-row--pay{
+    margin-top:var(--s-2); padding-top:var(--s-3);
+    border-top:1px solid var(--edge);
+  }
+  .cart-summary-row--pay dt{ font-size:14px; font-weight:500; color:var(--ink); }
+  .cart-summary-row--pay dd{ font-size:15px; font-weight:500; }
+
+  /* The bar is a real button: full tap height, and the whole row is the target
+     rather than the chevron alone. font:inherit because a <button> otherwise
+     drops to the UA font and would be the one place in the drawer not set in
+     the theme's face. */
+  .cart-summary-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:var(--s-3); width:100%; min-height:var(--tap);
+    padding:var(--s-2) 0; margin:0;
+    background:none; border:0; cursor:pointer;
+    text-align:left; color:inherit; font:inherit;
+  }
+  .cart-summary-bar-l{ display:flex; flex-direction:column; gap:1px; min-width:0; }
+  .cart-summary-bar-label{ font-size:13px; color:var(--ink-2); }
+  .cart-summary-bar-value{
+    font-size:18px; font-weight:500; font-variant-numeric:tabular-nums;
+  }
+  .cart-summary-bar-r{ display:flex; align-items:center; gap:var(--s-2); flex-shrink:0; }
+  .cart-summary-bar-save{ font-size:12px; color:var(--indigo); white-space:nowrap; }
+  .cart-summary-bar-save[hidden]{ display:none; }
+
+  /* The set's chevron points right, so it is rotated into place rather than a
+     second glyph being added for the sake of one control. */
+  .cart-summary-chevron{
+    display:flex; color:var(--ink-2);
+    transform:rotate(90deg); transition:transform 160ms var(--ease);
+  }
+  [aria-expanded="true"] .cart-summary-chevron{ transform:rotate(-90deg); }
+  @media(prefers-reduced-motion:reduce){
+    .cart-summary-chevron{ transition:none; }
+  }
+
+  /* 375px with a four-figure total and "You Save" alongside is the tightest
+     this row gets. The label column is allowed to shrink and the figures are
+     not, so the total and the saving stay whole and legible rather than the
+     row finding its width by wrapping a price. */
+  @media(max-width:380px){
+    .cart-summary-bar-save{ font-size:11px; }
+    .cart-summary-row{ gap:var(--s-3); }
+  }
 
   /* ---- cart badge acknowledgement -------------------------------------
      What moves: the count chip. Why: state indication — the badge is the only
