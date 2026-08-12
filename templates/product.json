@@ -15,9 +15,6 @@
     },
     "benefits": {
       "type": "pdp-benefits",
-      "settings": {
-        "surface": "chalk"
-      },
       "blocks": {
         "b1": {
           "type": "benefit",
@@ -75,35 +72,22 @@
         "b4",
         "b5",
         "b6"
-      ]
-    },
-    "fold": {
-      "type": "fold-sequence",
+      ],
       "settings": {
-        "surface": "jute",
-        "heading": "Folds in seconds. Fits behind a door.",
-        "body": "One motion. No rolling, no straps, no wrestling it back into a bag it never fitted in."
-      }
-    },
-    "roomtest": {
-      "type": "room-test",
-      "settings": {
+        "jump_label": "Benefits",
         "surface": "chalk",
-        "heading": "Down for the day. Gone by dinner.",
-        "body": "A play mat is the largest thing a baby adds to a room you also live in. This one is quiet on both sides, and it is behind the door in seconds."
+        "heading": ""
       }
     },
     "specs": {
       "type": "pdp-specs",
-      "settings": {
-        "surface": "jute"
-      },
       "blocks": {
         "s1": {
           "type": "accordion",
           "settings": {
             "title": "Specifications",
             "content_type": "specs",
+            "text_content": "",
             "row_1_key": "Size (unfolded)",
             "row_1_val": "6.5 x 5 ft (198 x 152 cm)",
             "row_2_key": "Thickness",
@@ -117,7 +101,9 @@
             "row_6_key": "Suitable for",
             "row_6_val": "0 to 3 years",
             "row_7_key": "Surface",
-            "row_7_val": "Double-sided"
+            "row_7_val": "Double-sided",
+            "row_8_key": "",
+            "row_8_val": ""
           }
         },
         "s2": {
@@ -125,7 +111,23 @@
           "settings": {
             "title": "Care instructions",
             "content_type": "text",
-            "text_content": "<p>Wipe clean with a damp cloth. For deeper cleaning, use mild soap and water. Do not machine wash or tumble dry. Keep away from direct sunlight when not in use.</p>"
+            "text_content": "<p>Wipe clean with a damp cloth. For deeper cleaning, use mild soap and water. Do not machine wash or tumble dry. Keep away from direct sunlight when not in use.</p>",
+            "row_1_key": "",
+            "row_1_val": "",
+            "row_2_key": "",
+            "row_2_val": "",
+            "row_3_key": "",
+            "row_3_val": "",
+            "row_4_key": "",
+            "row_4_val": "",
+            "row_5_key": "",
+            "row_5_val": "",
+            "row_6_key": "",
+            "row_6_val": "",
+            "row_7_key": "",
+            "row_7_val": "",
+            "row_8_key": "",
+            "row_8_val": ""
           }
         },
         "s3": {
@@ -133,7 +135,23 @@
           "settings": {
             "title": "Shipping and returns",
             "content_type": "text",
-            "text_content": "<p>Free shipping across India. Cash on delivery available on every order.</p><p>30-day returns from the date of delivery. Contact us to arrange a pickup. Refunds processed within 5-7 business days.</p>"
+            "text_content": "<p>Free shipping across India. Cash on delivery available on every order.</p><p>30-day returns from the date of delivery. Contact us to arrange a pickup. Refunds processed within 5-7 business days.</p>",
+            "row_1_key": "",
+            "row_1_val": "",
+            "row_2_key": "",
+            "row_2_val": "",
+            "row_3_key": "",
+            "row_3_val": "",
+            "row_4_key": "",
+            "row_4_val": "",
+            "row_5_key": "",
+            "row_5_val": "",
+            "row_6_key": "",
+            "row_6_val": "",
+            "row_7_key": "",
+            "row_7_val": "",
+            "row_8_key": "",
+            "row_8_val": ""
           }
         }
       },
@@ -141,14 +159,36 @@
         "s1",
         "s2",
         "s3"
-      ]
+      ],
+      "settings": {
+        "jump_label": "Specs",
+        "surface": "jute"
+      }
+    },
+    "reviews": {
+      "type": "product-reviews",
+      "blocks": {
+        "judge_me_reviews_review_widget_EKtWex": {
+          "type": "shopify://apps/judge-me-reviews/blocks/review_widget/61ccd3b1-a9f2-4160-9fe9-4fec8413e5d8",
+          "settings": {
+            "review_data": "real_data",
+            "max_width": 1000,
+            "show_shop_reviews": false,
+            "empty_state": "empty_widget"
+          }
+        }
+      },
+      "block_order": [
+        "judge_me_reviews_review_widget_EKtWex"
+      ],
+      "settings": {
+        "jump_label": "Reviews",
+        "surface": "chalk",
+        "heading": "What parents say."
+      }
     },
     "faq": {
       "type": "faq-accordion",
-      "settings": {
-        "heading": "Questions about this product.",
-        "surface": "chalk"
-      },
       "blocks": {
         "q1": {
           "type": "faq",
@@ -200,15 +240,20 @@
         "q4",
         "q5",
         "q6"
-      ]
+      ],
+      "settings": {
+        "jump_label": "FAQ",
+        "compact": false,
+        "surface": "chalk",
+        "heading": "Questions about this product."
+      }
     }
   },
   "order": [
     "main",
     "benefits",
-    "fold",
-    "roomtest",
     "specs",
+    "reviews",
     "faq"
   ]
 }

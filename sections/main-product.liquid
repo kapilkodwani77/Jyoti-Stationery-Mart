@@ -153,6 +153,13 @@
   </div>
 {%- endif -%}
 
+{%- comment -%}
+  Structured data last, after the markup it describes. Rendered from the section
+  rather than the layout because this is the only place `product` is guaranteed
+  to be the product being viewed.
+{%- endcomment -%}
+{% render 'product-schema', product: product %}
+
 {% schema %}
 {
   "name": "Product",

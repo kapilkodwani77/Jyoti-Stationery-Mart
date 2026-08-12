@@ -24,6 +24,13 @@
        chalk, below the 3:1 WCAG 1.4.11 floor for meaningful UI boundaries. */
     --edge:rgba(20,22,26,.13);
     --edge-strong:rgba(47,66,96,.32);
+    /* Semantic, derived from the indigo primitive rather than invented: the
+       unfilled half of a rating. --indigo-wash measured 1.81:1 on chalk, so the
+       shape of "4.3 out of 5" could not be read at a glance; this lands at
+       2.53:1 — legible as a form, still obviously empty beside a filled star.
+       Its own token because --indigo-wash is also a border and a ::selection
+       colour, and darkening that would change three unrelated places. */
+    --star-off:rgba(47,66,96,.50);
 
     --font-display:'Gambetta','Iowan Old Style',Georgia,serif;
     --font-body:'Switzer',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
@@ -340,7 +347,7 @@
      beside it both carry the real value. */
   .pc-rating-stars{
     position:relative; display:inline-block; flex:0 0 auto;
-    font-size:12px; line-height:1; color:var(--indigo-wash);
+    font-size:12px; line-height:1; color:var(--star-off);
   }
   .pc-rating-track{ display:block; }
   .pc-rating-fill{
@@ -639,7 +646,13 @@
     flex:1; min-width:0; height:var(--tap); border:0; background:transparent;
     padding-inline:0 var(--s-4); font-size:16px; /* 16px stops iOS zooming on focus */
   }
-  .nav-overlay-search input:focus{ outline:none; }
+  /* Replaced, not deleted. The browser default drew a box around a field that
+     already fills the row; this is the same 2px indigo ring and offset the
+     theme's other 16 :focus-visible rules use, so a keyboard user meets the
+     same shape here as everywhere else. WCAG 2.4.7. */
+  .nav-overlay-search input:focus-visible{
+    outline:2px solid var(--indigo); outline-offset:2px; border-radius:var(--r-sm);
+  }
   .hdr.is-solid a{ color:var(--ink); text-shadow:none; }
   .hdr.is-solid .mark{ color:var(--indigo); }
   .hdr a{ text-decoration:none; text-shadow:0 1px 12px rgba(20,22,26,.34); }
@@ -826,6 +839,45 @@
     font-size:14px; color:var(--ink-2); text-decoration:none;
   }
   .cart-view-link:hover{ color:var(--ink); text-decoration:underline; text-underline-offset:4px; }
+
+  /* ---- cart badge acknowledgement -------------------------------------
+     What moves: the count chip. Why: state indication — the badge is the only
+     confirmation an add landed, and a silent number swap is the one moment in
+     the flow with no feedback at all. Frequency: occasional, the tier that
+     earns standard motion. One beat, 140ms, peak 1.12, no loop, no bounce.
+     Transform only, so nothing around it reflows.
+
+     Driven by a class theme.js toggles rather than a keyframe living on the
+     element, so two adds in quick succession retrigger cleanly instead of the
+     second being swallowed by the first. */
+  .hdr-icon .badge{ transform-origin:50% 50%; }
+  .badge.is-bumped{ animation:cartBadgeBump 140ms var(--ease); }
+  @keyframes cartBadgeBump{ 0%{ transform:scale(1); } 50%{ transform:scale(1.12); } 100%{ transform:scale(1); } }
+
+  /* ---- cart line removal ----------------------------------------------
+     What moves: the row leaving. Why: preventing a jarring change — the item
+     currently teleports and the rows below snap up with nothing bridging it.
+
+     grid-template-rows 1fr -> 0fr rather than height. Animating height needs a
+     measured pixel value written from script on content of unknown size, which
+     is layout animation and a Standard 7 violation; this collapses the same way
+     with the browser interpolating it.
+
+     pointer-events go the instant it starts, so a second tap during those
+     200ms cannot re-fire the handler on a row already on its way out. */
+  .cart-line.is-leaving{
+    opacity:0; pointer-events:none;
+    display:grid; grid-template-rows:0fr;
+    transition:opacity 160ms var(--ease), grid-template-rows 200ms var(--ease);
+  }
+  .cart-line.is-leaving > *{ overflow:hidden; min-height:0; }
+
+  /* Motion out, meaning intact: the row still leaves and the badge still
+     changes, they just stop travelling to do it. */
+  @media(prefers-reduced-motion:reduce){
+    .badge.is-bumped{ animation:none; }
+    .cart-line.is-leaving{ transition:opacity 100ms linear; }
+  }
 
   .cart-drawer-note{ font-size:12px; color:var(--ink-2); margin-top:var(--s-3); text-align:center; }
 }

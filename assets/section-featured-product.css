@@ -4,8 +4,10 @@
 /* 1:1 at every width, matching the square source art. The former 4/3 mobile
    box cropped a quarter of a square image's height to make a landscape one. */
 .fp-media{ display:block; position:relative; aspect-ratio:1; border-radius:var(--r-lg); overflow:hidden; background:var(--jute); }
-.fp-media img{ transition:transform 600ms var(--ease); }
-.fp-media:hover img{ transform:scale(1.03); }
+.fp-media img{ transition:transform 420ms var(--ease); }
+  /* Gated: on a touch device this fires on tap and then stays applied with
+     no pointer-leave to undo it, so the element reads as stuck. */
+  @media(hover:hover) and (pointer:fine){ .fp-media:hover img{ transform:scale(1.03); } }
 .fp-count{
   position:absolute; right:var(--s-3); bottom:var(--s-3); z-index:2;
   background:rgba(20,22,26,.55); color:var(--chalk); font-size:11px; letter-spacing:.04em;

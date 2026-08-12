@@ -24,11 +24,12 @@
   it stands — the whole block collapses to the single price with no empty
   wrapper, no stray gap and no placeholder.
 {%- endcomment -%}
+{%- capture saved_pct -%}{%- render 'saved-percent', variant: variant -%}{%- endcapture -%}
 {%- liquid
+  assign saved_pct = saved_pct | plus: 0
   assign on_sale = false
-  if variant.compare_at_price > variant.price
+  if saved_pct > 0
     assign on_sale = true
-    assign saved_pct = variant.compare_at_price | minus: variant.price | times: 100 | divided_by: variant.compare_at_price
   endif
 -%}
 <span class="price-group{% if compact %} price-group--compact{% endif %}">

@@ -10,7 +10,9 @@
   .cart-summary-row{ display:flex; justify-content:space-between; font-size:16px; margin-bottom:var(--s-4); }
   .cart-remove-link{ font-size:13px; text-decoration:underline; text-underline-offset:3px;
                      color:var(--ink-2); min-height:var(--tap); display:inline-flex; align-items:center; }
-  .cart-remove-link:hover{ color:var(--danger); }
+  /* Gated: on a touch device this fires on tap and then stays applied with
+     no pointer-leave to undo it, so the element reads as stuck. */
+  @media(hover:hover) and (pointer:fine){ .cart-remove-link:hover{ color:var(--danger); } }
   /* Was 640px. On the canonical scale this is the max-side pair of the 700px
      breakpoint, which also means the 660-699px band stops trying to render a
      three-column table in a space that cannot hold one. */

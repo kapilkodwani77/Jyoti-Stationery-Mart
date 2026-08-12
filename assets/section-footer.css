@@ -63,9 +63,13 @@
     color:var(--ink-2);
     transition:color 200ms var(--ease), border-color 200ms var(--ease);
   }
-  .ftr-social a:hover{
-    color:var(--indigo); border-color:var(--indigo);
-    /* .ftr a:hover underlines, which on an icon draws a rule under the glyph. */
-    text-decoration:none;
+  /* Gated: on a touch device this fires on tap and then stays applied with
+     no pointer-leave to undo it, so the element reads as stuck. */
+@media(hover:hover) and (pointer:fine){
+    .ftr-social a:hover{
+      color:var(--indigo); border-color:var(--indigo);
+      /* .ftr a:hover underlines, which on an icon draws a rule under the glyph. */
+      text-decoration:none;
+    }
   }
 }

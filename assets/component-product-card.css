@@ -49,6 +49,12 @@
 @media(min-width:700px){
   .pc-grid{ grid-template-columns:repeat(3,1fr); gap:var(--s-6) var(--s-5); }
 }
+/* 768 is where a tablet stops being a large phone. Two columns held all the way
+   to 1039px, which put 304px cards on an iPad in both orientations. Card design,
+   gap and image ratio are untouched; only the column count moves. */
+@media(min-width:768px){
+  .pc-grid{ grid-template-columns:repeat(3,1fr); }
+}
 @media(min-width:1100px){
   .pc-grid{ grid-template-columns:repeat(4,1fr); gap:var(--s-7) var(--s-6); }
 }
@@ -299,4 +305,6 @@
   border-bottom:1px solid var(--edge-strong); padding-bottom:2px;
   white-space:nowrap; display:inline-flex; align-items:center; min-height:var(--tap);
 }
-.pc-viewall:hover{ border-bottom-color:var(--indigo); }
+  /* Gated: on a touch device this fires on tap and then stays applied with
+     no pointer-leave to undo it, so the element reads as stuck. */
+@media(hover:hover) and (pointer:fine){ .pc-viewall:hover{ border-bottom-color:var(--indigo); } }

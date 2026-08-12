@@ -5,7 +5,9 @@
   Button says only "Add to Cart" - no price, no spinner. Below 900px the button
   is hidden and the permanent footer bar is the only Add to Cart.
 {%- endcomment -%}
+{%- capture saved_pct -%}{%- render 'saved-percent', variant: product.selected_or_first_available_variant -%}{%- endcapture -%}
 {%- liquid
+  assign saved_pct = saved_pct | plus: 0
   assign v = product.selected_or_first_available_variant
   assign prepaid_code = settings.prepaid_discount_code
   assign prepaid_pct = settings.prepaid_discount_percent | default: 5
@@ -45,19 +47,11 @@
     invented one is a claim a customer can catch, on a store selling to
     parents, for a few percent of lift at most.
 
-    The percentage is the same expression as the pill in snippets/price.liquid,
-    deliberately, on the same two variant fields in the same order. It has to
-    truncate the way the pill does, or the page would state two different
-    discounts one line apart. If that expression ever changes, this one changes
-    with it. The trailing floor is what the pill gets for free from integer
-    division and is written out here for the same reason as above: on Shopify
-    it is the identical 31, and without it a float price would print a
-    seventeen-digit percentage in red at the top of the page.
+    The percentage now comes from snippets/saved-percent.liquid, which the price
+    pill and the product card also read. It has to match the pill exactly, or the
+    page would state two different discounts one line apart; sharing the snippet
+    is what makes that structural rather than a promise in a comment.
   endcomment
-  assign saved_pct = 0
-  if v.compare_at_price > v.price
-    assign saved_pct = v.compare_at_price | minus: v.price | times: 100 | divided_by: v.compare_at_price | floor
-  endif
 
   assign urgency = ''
   if saved_pct > 0

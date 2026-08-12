@@ -1,0 +1,32 @@
+{%- comment -%}
+  The discount percentage, in one place.
+
+  It was computed independently in three files — price.liquid, product-card.liquid
+  and buy-box.liquid — and the three had already drifted: only buy-box carried a
+  trailing `floor`. On Shopify they agree today because divided_by truncates two
+  integers, so the drift was invisible rather than absent. The moment any input
+  arrives as a float the card would print one number and the page beside it
+  another, which is a defect a customer notices before a developer does.
+
+  Outputs the integer and nothing else. It cannot assign a variable for its
+  caller: `render` runs in an isolated scope, so anything assigned in here is
+  invisible outside. Callers capture the output and coerce it back to a number:
+
+    {%- capture saved_pct -%}{%- render 'saved-percent', variant: v -%}{%- endcapture -%}
+    {%- assign saved_pct = saved_pct | plus: 0 -%}
+
+  Emits 0 when there is no genuine discount, so a caller tests one number rather
+  than repeating the comparison.
+
+  floor is written out rather than left to divided_by. Shopify truncates when
+  both sides are integers, which is the only reason this returns a whole number
+  at all; stated explicitly it yields the identical figure and stops depending on
+  the types of two values this snippet does not own.
+{%- endcomment -%}
+{%- liquid
+  assign pct = 0
+  if variant.compare_at_price > variant.price
+    assign pct = variant.compare_at_price | minus: variant.price | times: 100 | divided_by: variant.compare_at_price | floor
+  endif
+  echo pct
+-%}

@@ -34,7 +34,9 @@
     transition:opacity var(--dur-fast), border-color var(--dur-fast); padding:0; background:var(--jute);
   }
   .gallery-thumb.is-active{ opacity:1; border-color:var(--indigo); }
-  .gallery-thumb:hover{ opacity:.9; }
+  /* Gated: on a touch device this fires on tap and then stays applied with
+     no pointer-leave to undo it, so the element reads as stuck. */
+  @media(hover:hover) and (pointer:fine){ .gallery-thumb:hover{ opacity:.9; } }
 
   /* The dot is 6px; the button around it is 44px. Gap is 0 because the targets
      now carry their own breathing room — spacing them further would only push

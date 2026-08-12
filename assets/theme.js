@@ -725,8 +725,21 @@
 
   function updateBadges(count) {
     document.querySelectorAll('[data-cart-count]').forEach(function (b) {
+      /* State indication, not decoration: the badge is the only confirmation an
+         add landed, and a silent number swap is the one moment in the flow with
+         no feedback. Only on a real change, so re-renders that leave the count
+         alone stay still. The class is removed before it is re-added so two
+         adds in quick succession each get their own beat instead of the second
+         being swallowed by the first. CSS owns the timing and the
+         reduced-motion opt-out. */
+      var changed = b.textContent !== String(count);
       b.textContent = count;
       b.hidden = count === 0;
+      if (changed && count > 0 && !RM) {
+        b.classList.remove('is-bumped');
+        void b.offsetWidth;
+        b.classList.add('is-bumped');
+      }
     });
     document.querySelectorAll('[data-cart-open]').forEach(function (b) {
       b.setAttribute('aria-label', count === 1 ? 'Open cart, 1 item'
@@ -1042,6 +1055,16 @@
         /* Removals go straight out: the line-up changes either way, so there
            is nothing for a debounce to coalesce. */
         delete qtyPending[rm.dataset.lineKey];
+
+        /* The row leaves before the drawer re-renders. Without this the item
+           teleports and everything below snaps up with nothing bridging it.
+
+           The request is not gated on the animation — changeLine fires
+           immediately and the collapse runs alongside it, so a slow network
+           never leaves a half-faded row and a fast one simply re-renders over
+           it. The class also drops pointer-events, so a second tap during the
+           200ms cannot re-fire this handler on a row already on its way out. */
+        if (line && !RM) { line.classList.add('is-leaving'); }
         changeLine(rm.dataset.lineKey, 0, t ? t.textContent : '');
       }
     });

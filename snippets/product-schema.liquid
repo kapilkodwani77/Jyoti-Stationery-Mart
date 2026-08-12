@@ -1,0 +1,74 @@
+{%- comment -%}
+  Product / Offer / AggregateRating JSON-LD for the PDP.
+
+  What already existed before this: FAQPage, emitted by sections/faq-accordion
+  on the homepage and the product page. Nothing else. Shopify does not output
+  Product schema for a theme — the theme has to — so until now the store gave
+  Google no price, no availability and no rating, and could not qualify for a
+  product rich result.
+
+  Every value is read from the product. Nothing here is written by hand and
+  nothing is inferred: no rating unless Judge.me has actually written one, no
+  brand unless the vendor or the brand setting is filled, no SKU unless the
+  variant carries one, no review count unless there are reviews.
+
+  availability is derived from the variant rather than assumed, and priceValidUntil
+  is deliberately absent: Google treats it as optional, and inventing a date is
+  exactly the kind of unverifiable claim this theme refuses elsewhere.
+
+  ONE node. Duplicate or competing Product nodes on a page are worse than none,
+  because Google picks arbitrarily between them. Judge.me can also emit product
+  rich snippets from its own settings; if it is switched on there, one of the two
+  should be turned off. That cannot be checked from here — see the report.
+{%- endcomment -%}
+{%- liquid
+  assign v = product.selected_or_first_available_variant
+  assign brand = product.vendor | default: settings.brand_name
+  assign n = product.metafields.reviews.rating_count.value | default: 0
+  assign avg = product.metafields.reviews.rating.value.rating
+  assign scale_max = product.metafields.reviews.rating.value.scale_max | default: 5
+  assign scale_min = product.metafields.reviews.rating.value.scale_min | default: 1
+-%}
+{%- capture product_ld -%}
+{
+  "@context": "https://schema.org/",
+  "@type": "Product",
+  "name": {{ product.title | strip_html | json }},
+  "url": {{ shop.url | append: product.url | json }},
+  {%- if product.description != blank %}
+  "description": {{ product.description | strip_html | truncate: 5000 | json }},
+  {%- endif %}
+  {%- if product.images.size > 0 %}
+  "image": [
+    {%- for image in product.images limit: 5 -%}
+      {{ image | image_url: width: 1600 | prepend: 'https:' | json }}{%- unless forloop.last -%},{%- endunless -%}
+    {%- endfor -%}
+  ],
+  {%- endif %}
+  {%- if brand != blank %}
+  "brand": { "@type": "Brand", "name": {{ brand | json }} },
+  {%- endif %}
+  {%- if v.sku != blank %}
+  "sku": {{ v.sku | json }},
+  {%- endif %}
+  {%- if n > 0 and avg %}
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": {{ avg | json }},
+    "reviewCount": {{ n | json }},
+    "bestRating": {{ scale_max | json }},
+    "worstRating": {{ scale_min | json }}
+  },
+  {%- endif %}
+  "offers": {
+    "@type": "Offer",
+    "url": {{ shop.url | append: product.url | json }},
+    "price": {{ v.price | divided_by: 100.0 | json }},
+    "priceCurrency": {{ cart.currency.iso_code | json }},
+    "availability": {% if v.available %}"https://schema.org/InStock"{% else %}"https://schema.org/OutOfStock"{% endif %},
+    "itemCondition": "https://schema.org/NewCondition",
+    "seller": { "@type": "Organization", "name": {{ shop.name | json }} }
+  }
+}
+{%- endcapture -%}
+<script type="application/ld+json">{{ product_ld }}</script>

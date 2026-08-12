@@ -83,7 +83,7 @@
     {%- if v.available == false -%}
       <span class="pc-badge pc-badge--out">Sold out</span>
     {%- elsif on_sale -%}
-      {%- assign pct = v.compare_at_price | minus: v.price | times: 100 | divided_by: v.compare_at_price -%}
+      {%- capture pct -%}{%- render 'saved-percent', variant: v -%}{%- endcapture -%}
       <span class="pc-badge pc-badge--sale">Save {{ pct }}%</span>
     {%- endif -%}
   </div>

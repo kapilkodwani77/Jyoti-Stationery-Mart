@@ -7,6 +7,14 @@
 
   <link rel="preload" as="font" type="font/woff2" href="{{ 'gambetta-light.woff2' | asset_url }}" crossorigin>
   <link rel="preload" as="font" type="font/woff2" href="{{ 'switzer-regular.woff2' | asset_url }}" crossorigin>
+  {%- comment -%}
+    Switzer 500 is the weight every button on the site is set in, including the
+    Add to Cart that is on screen for the whole visit on a phone. Unpreloaded it
+    arrived after first paint and the primary control reflowed as it swapped.
+    The other two faces stay unpreloaded deliberately: 600 appears only in
+    headings below the fold, and Gambetta 400 is a display fallback.
+  {%- endcomment -%}
+  <link rel="preload" as="font" type="font/woff2" href="{{ 'switzer-medium.woff2' | asset_url }}" crossorigin>
   <style>
     @font-face{ font-family:'Gambetta'; font-weight:300; font-style:normal; font-display:swap;
       src:url('{{ "gambetta-light.woff2" | asset_url }}') format('woff2'); }

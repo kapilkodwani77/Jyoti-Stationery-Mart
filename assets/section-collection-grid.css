@@ -9,8 +9,13 @@
   position:relative; aspect-ratio:1/1; border-radius:var(--r-lg); overflow:hidden;
   background:var(--jute);
 }
-.cg-media img{ transition:transform 600ms var(--ease); }
-.cg-card:hover .cg-media img{ transform:scale(1.04); }
+/* 420ms, not 600. A hover zoom is a UI response and Standard 4 puts UI under
+   300ms; 420 is what a 4% scale needs to read as a glide rather than a snap,
+   and it sits inside the 300-420 band this sprint asked for. */
+.cg-media img{ transition:transform 420ms var(--ease); }
+  /* Gated: on a touch device this fires on tap and then stays applied with
+     no pointer-leave to undo it, so the element reads as stuck. */
+  @media(hover:hover) and (pointer:fine){ .cg-card:hover .cg-media img{ transform:scale(1.04); } }
 .cg-card.is-empty .cg-media{ opacity:.55; }
 
 .cg-badge{
