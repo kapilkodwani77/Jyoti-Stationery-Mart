@@ -493,8 +493,10 @@ t('no template navigates to /discount/ outside a comment', () => {
     no(/discount\//.test(markup), name + ' still links to /discount/');
   });
 });
-t('the discount redirect in theme.js has no trigger left to fire it', () => {
-  ok(JS.includes("'discount/'"), 'handler gone — fine, but this test needs updating');
+t('the discount redirect handler is gone from theme.js entirely', () => {
+  /* Stronger than leaving it unreachable. Dead code that still knows how to
+     reach /discount/ is one careless re-render away from reachable again. */
+  no(JS.includes("'discount/'"), 'the redirect still exists in the script');
   TEMPLATES.forEach(([, body]) => no(/data-buy-prepaid/.test(body)));
 });
 t('Add to Cart posts only an id and a quantity', () => {
@@ -552,6 +554,108 @@ t('the reference red/black is not imported', () => {
 });
 t('reduced motion is respected by the chevron', () =>
   ok(/prefers-reduced-motion[\s\S]{0,200}cart-summary-chevron/.test(CSS)));
+
+/* ------------------------------------------------- 12. the offer card
+   Display and copy. The control this replaces wrote a discount code onto the
+   shopper's cart the moment it was tapped, with nothing able to take it back
+   off, so every assertion here is about what this one does NOT do. */
+
+const BUYBOX_RAW = fs.readFileSync(path.join(ROOT, 'snippets/buy-box.liquid'), 'utf8');
+const BUYBOX = BUYBOX_RAW.replace(/\{%-?\s*comment\s*-?%\}[\s\S]*?\{%-?\s*endcomment\s*-?%\}/g, '');
+const BUYCSS = fs.readFileSync(path.join(ROOT, 'assets/component-buy-box.css'), 'utf8');
+
+/* The copy handler, comments stripped — it is documented in prose that has to
+   name the endpoint it must never reach. */
+const OFFER_JS = (() => {
+  const from = JS.indexOf('data-offer-copy');
+  const start = JS.lastIndexOf('document.addEventListener', from);
+  return JS.slice(start, JS.indexOf('\n  });', from) + 6).replace(/\/\*[\s\S]*?\*\//g, '');
+})();
+
+t('the offer renders in the buy box', () => ok(/data-offer-copy/.test(BUYBOX)));
+t('the offer sits below the price and above the quantity', () => {
+  const price = BUYBOX.indexOf("render 'price'");
+  const offer = BUYBOX.indexOf('data-offer-copy');
+  const qty = BUYBOX.indexOf('qty-row');
+  ok(price > -1 && offer > -1 && qty > -1, 'a landmark is missing');
+  ok(price < offer, 'offer is above the price');
+  ok(offer < qty, 'offer is below the quantity selector');
+});
+t('the copy control is type="button" so it cannot submit the buy form', () =>
+  ok(/<button type="button"[^>]*data-offer-copy/.test(BUYBOX),
+     'a default-type button inside the product form is a second Add to Cart'));
+t('the code comes from a setting, not a hardcoded string', () => {
+  ok(BUYBOX.includes('{{ prepaid_code }}'), 'the code is not configurable');
+  no(/data-offer-value="CARE5"/.test(BUYBOX), 'the code is hardcoded in markup');
+});
+t('the percentage comes from a setting too', () => ok(BUYBOX.includes('{{ prepaid_pct }}')));
+t('the offer is hidden entirely when no code is configured', () =>
+  ok(/\{%-?\s*if prepaid_code != blank\s*-?%\}/.test(BUYBOX)));
+
+t('copy puts the code on the clipboard', () =>
+  ok(/navigator\.clipboard[\s\S]{0,80}writeText\(code\)/.test(OFFER_JS)));
+t('copy reads the code off the button rather than inventing one', () =>
+  ok(OFFER_JS.includes("getAttribute('data-offer-value')")));
+t('copy NEVER navigates to a discount URL', () => {
+  no(/discount/i.test(OFFER_JS), 'the copy handler references a discount endpoint');
+  no(/location\s*(\.|=)/.test(OFFER_JS), 'the copy handler navigates');
+});
+t('copy NEVER touches the cart', () => {
+  no(/cartRequest|cartAdd|cartChange|routes\.cart/.test(OFFER_JS), 'the offer can mutate the cart');
+  no(/applyCart|readCart/.test(OFFER_JS), 'the offer can repaint cart state');
+});
+t('copy issues no request of any kind', () =>
+  no(/\bfetch\s*\(|XMLHttpRequest|\.submit\(/.test(OFFER_JS)));
+t('copy does not reload the page', () =>
+  no(/reload|assign\(|replace\(/.test(OFFER_JS)));
+t('copy prevents the default form action', () =>
+  ok(/preventDefault\(\)/.test(OFFER_JS)));
+t('copy confirms, then reverts', () => {
+  ok(/classList\.add\('is-copied'\)/.test(OFFER_JS));
+  ok(/classList\.remove\('is-copied'\)/.test(OFFER_JS));
+  ok(/setTimeout/.test(OFFER_JS), 'the confirmation never reverts');
+});
+t('a clipboard refusal falls back to selecting the code', () => {
+  ok(/catch\(/.test(OFFER_JS), 'no rejection path');
+  ok(/selectNodeContents/.test(OFFER_JS), 'no selectable fallback');
+});
+t('browsers without the clipboard API still get the fallback', () =>
+  ok(/navigator\.clipboard && navigator\.clipboard\.writeText/.test(OFFER_JS),
+     'the API is assumed to exist'));
+t('the confirmation is announced, not just shown', () => {
+  ok(/data-offer-status/.test(OFFER_JS));
+  ok(/role="status"/.test(BUYBOX));
+});
+t('both labels ship in markup so the accessible name survives', () => {
+  ok(BUYBOX.includes('offer-copy-idle') && BUYBOX.includes('offer-copy-done'));
+  no(/offer-copy[\s\S]{0,200}textContent\s*=/.test(OFFER_JS), 'the label is rewritten');
+});
+t('the copied state is a CSS swap', () => {
+  ok(/\.offer-copy\.is-copied \.offer-copy-idle\{\s*display:none/.test(BUYCSS));
+  ok(/\.offer-copy-done\{\s*display:none/.test(BUYCSS));
+});
+t('the copy control meets the 44px tap target', () =>
+  ok(/\.offer-copy\{[^}]*min-height:var\(--tap\)/.test(BUYCSS.replace(/\n/g, ' '))));
+t('the offer uses the MamaJoy palette, not a borrowed one', () => {
+  const block = BUYCSS.slice(BUYCSS.indexOf('.offer{'), BUYCSS.indexOf('.offer-copy:hover'));
+  ok(/var\(--indigo\)/.test(block));
+  no(/#[dDeE][0-9a-fA-F]{5}|crimson|red/.test(block), 'a red crept into the offer');
+});
+t('the dead prepaid styles are gone', () =>
+  no(/\.prepaid/.test(BUYCSS), 'dead CSS for the removed control'));
+
+/* The whole point, stated once more as a single assertion: the offer is
+   informational, so nothing about adding to the cart may reference it. */
+t('Add to Cart still cannot apply the offer', () => {
+  const from = JS.indexOf("document.addEventListener('submit'");
+  const add = JS.slice(from, JS.indexOf('document.addEventListener', from + 10))
+                .replace(/\/\*[\s\S]*?\*\//g, '');
+  no(/offer|discount|CARE5/i.test(add), 'the add path knows about the offer');
+});
+t('no code path in theme.js can reach /discount/', () => {
+  const code = JS.replace(/\/\*[\s\S]*?\*\//g, '');
+  no(/discount\//.test(code), 'a discount navigation survives in theme.js');
+});
 
 /* ---------------------------------------------------------------- report */
 

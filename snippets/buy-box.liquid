@@ -173,6 +173,54 @@
       the same bug with it.
     {%- endcomment -%}
 
+    {%- comment -%}
+      The offer, between the price and the quantity, which is where the old
+      prepaid button sat and for the same reason: it is information about this
+      purchase, and it belongs beside the decision rather than under the button
+      that ends it.
+
+      What is different is the only thing that mattered. This displays a code
+      and copies it. It does not navigate to /discount/, it does not touch the
+      cart, and it does not run before, during or after Add to Cart. The old
+      control wrote the code onto the shopper's cart the moment it was tapped
+      and nothing could take it back off, so a customer who changed their mind
+      still paid the online-payment price. A code on the clipboard commits the
+      shopper to nothing — they type it at checkout if they want it, and the
+      cart keeps the price on the product until they do.
+
+      type="button" is load-bearing: this markup renders inside the product
+      form, and a default-type button inside a form submits it. The copy
+      control would have become a second Add to Cart.
+
+      Code and percentage come from the existing settings rather than new ones.
+      The ids still say "prepaid" because renaming a setting id orphans the
+      value the merchant has already saved; the offer they configure is the
+      offer that shows.
+    {%- endcomment -%}
+    {%- if prepaid_code != blank -%}
+      <div class="offer">
+        <p class="offer-head">
+          <span class="offer-mark" aria-hidden="true">{% render 'icon', name: 'check', size: 14 %}</span>
+          Get {{ prepaid_pct }}% off this order
+        </p>
+        <div class="offer-row">
+          <span class="offer-use">Use code</span>
+          <code class="offer-code" data-offer-code>{{ prepaid_code }}</code>
+          <button type="button" class="offer-copy" data-offer-copy data-offer-value="{{ prepaid_code }}">
+            <span class="offer-copy-idle">Copy</span>
+            <span class="offer-copy-done" aria-hidden="true">Copied</span>
+            <span class="visually-hidden">Copy discount code {{ prepaid_code }} to the clipboard</span>
+          </button>
+        </div>
+        {%- comment -%}
+          The confirmation a sighted shopper gets from the label swap, said out
+          loud. role="status" so it is announced without stealing focus from
+          the button that was just pressed.
+        {%- endcomment -%}
+        <span class="visually-hidden" role="status" data-offer-status></span>
+      </div>
+    {%- endif -%}
+
     <div class="qty-row">
       <span class="qty-label" id="qtyLabel-{{ section.id }}">Quantity</span>
       <div class="stepper" data-qty-stepper>

@@ -63,38 +63,63 @@
 
   .buybox form{ margin-top:var(--s-5); }
 
-  /* ---- prepaid offer ---------------------------------------------------
-     A reward, not an advertisement. It sits on the jute wash the theme already
-     uses for quiet surfaces, with a hairline and no fill — deliberately below
-     the Add to Cart button in weight, because the moment a second control
-     competes with the primary one a shopper has two decisions instead of one.
+  /* ---- offer ------------------------------------------------------------
+     Information about the order, not a control that changes it. The dashed
+     edge is the whole signal: everything solid-bordered in this theme does
+     something when pressed, and this card's only action is putting a string on
+     the clipboard. It reads as a coupon rather than a second Add to Cart,
+     which is exactly the confusion the control it replaced created.
 
-     Full width and 44px-plus by construction, since it is a real control that
-     takes the shopper to checkout. */
-  .prepaid{
-    display:block; width:100%; text-align:left;
-    margin-bottom:var(--s-5); padding:var(--s-3) var(--s-4);
-    background:rgba(222,216,204,.42); border:1px solid var(--edge);
-    border-radius:var(--r-md); cursor:pointer;
-    transition:border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease),
-               transform var(--dur-fast) var(--ease);
+     Compact on purpose. It sits between the price and the quantity on the one
+     screen where the name, the price, the rating and the button are already
+     competing, so it gets two lines and no more. */
+  .offer{
+    margin-bottom:var(--s-4); padding:var(--s-2) var(--s-3);
+    border:1px dashed var(--edge-strong); border-radius:var(--r-md);
+    background:rgba(222,216,204,.34);
   }
-  @media(hover:hover) and (pointer:fine){
-    .prepaid:hover{ border-color:var(--edge-strong); background:rgba(222,216,204,.62); }
+  .offer-head{
+    display:flex; align-items:center; gap:6px; margin:0;
+    font-size:14px; font-weight:500; color:var(--ink);
   }
-  .prepaid:active{ transform:scale(.99); }
-  .prepaid:disabled{ cursor:progress; }
-  .prepaid-body{ display:flex; flex-direction:column; gap:2px; }
-  /* The rupee figure is the message, so it is the only part at reading weight. */
-  .prepaid-main{ font-size:15px; font-weight:500; color:var(--ink); line-height:1.3; }
-  .prepaid-sub{ font-size:12px; color:var(--ink-2); line-height:1.4; }
-  /* The code is evidence that the offer is real, set in the theme's numerals
-     so it reads as something typed into a field rather than as body copy. */
-  .prepaid-code{
-    font-weight:500; color:var(--indigo); letter-spacing:.06em;
-    font-variant-numeric:tabular-nums;
+  .offer-mark{ display:flex; color:var(--indigo); }
+  .offer-row{ display:flex; align-items:center; gap:var(--s-2); flex-wrap:wrap; }
+  .offer-use{ font-size:13px; color:var(--ink-2); }
+
+  /* user-select:all so the fallback path is one tap rather than a careful
+     drag across six characters. It also makes the code selectable for anyone
+     who ignores the button entirely, which is a perfectly reasonable way to
+     use a coupon. */
+  .offer-code{
+    font-family:inherit; font-size:14px; font-weight:500; letter-spacing:.08em;
+    color:var(--indigo); background:var(--chalk);
+    border:1px solid var(--edge); border-radius:var(--r-sm);
+    padding:2px var(--s-2); user-select:all;
   }
-  .prepaid .btn-pending{ font-size:15px; font-weight:500; color:var(--ink-2); }
+
+  /* Full tap height, pushed to the end of the row. Both labels ship in the
+     markup and CSS shows one, so the button's accessible name is never
+     rewritten — same swap the add-to-cart buttons use. */
+  .offer-copy{
+    margin-inline-start:auto; min-height:var(--tap); padding-inline:var(--s-2);
+    display:inline-flex; align-items:center; justify-content:center;
+    background:none; border:0; cursor:pointer; font:inherit;
+    font-size:13px; font-weight:500; color:var(--indigo);
+    text-decoration:underline; text-underline-offset:3px;
+  }
+  .offer-copy:hover{ color:var(--ink); }
+  .offer-copy-done{ display:none; }
+  .offer-copy.is-copied .offer-copy-idle{ display:none; }
+  .offer-copy.is-copied .offer-copy-done{
+    display:inline; color:var(--ink-2); text-decoration:none;
+  }
+
+  /* 375px with a long code: the row wraps rather than the code shrinking or
+     the button losing its tap height. */
+  @media(max-width:380px){
+    .offer-head{ font-size:13px; }
+    .offer-use{ font-size:12px; }
+  }
   .buybox-error{ margin-top:var(--s-3); font-size:14px; color:var(--danger); }
   /* ---- trust row -------------------------------------------------------
      Two columns on a phone, one line from the large-phone breakpoint. Four

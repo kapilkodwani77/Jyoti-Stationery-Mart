@@ -1603,63 +1603,76 @@
       });
   });
 
+  /* ---------------------------------------------------------------
+     Offer code: copy to clipboard, and nothing else
+
+     What used to live here navigated to /discount/CODE, which wrote the code
+     onto the shopper's cart for the rest of the session with no way back off.
+     It is gone rather than disabled: dead code that still knows how to reach
+     that endpoint is one careless re-render away from being reachable again,
+     and the requirement is that no path to it exists.
+
+     This handler reads a string off the button and puts it on the clipboard.
+     It sends no request, changes no URL, and touches nothing the cart owns —
+     the price stays the price on the product until the shopper chooses to type
+     the code at checkout.
+
+     preventDefault because this button renders inside the product form. It is
+     already type="button", so it should not submit; the call costs nothing and
+     removes the possibility that a markup edit turns Copy into Add to Cart. */
   document.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-buy-prepaid]');
+    var btn = e.target.closest('[data-offer-copy]');
     if (!btn) return;
-    var code = btn.dataset.discountCode;
+    e.preventDefault();
+
+    var code = btn.getAttribute('data-offer-value');
     if (!code) return;
 
-    /* Two callers now. In the buy box the button sits inside a product form and
-       has to add the item before it can send anyone to checkout. In the cart
-       drawer the goods are already in the cart, so adding again would silently
-       double the order — there, the button only applies the code. */
-    var form = btn.closest('[data-buybox-form]');
+    var wrap = btn.closest('.offer');
+    var status = wrap && wrap.querySelector('[data-offer-status]');
 
-    /* aria-busy, not textContent. The prepaid control is no longer a single
-       string — it carries the saving, the code and a caption in separate
-       elements — and assigning textContent would collapse all of that to one
-       text node and lose it permanently, since the recovery path could only
-       ever write back a flat string. Same swap the add-to-cart buttons use:
-       both words ship in the markup, CSS shows one, the DOM is never rewritten,
-       and assistive tech is told directly that the control is busy. */
-    btn.disabled = true;
-    btn.setAttribute('aria-busy', 'true');
-
-    var go = function () {
-      window.location.href = routes.root + 'discount/' + encodeURIComponent(code) + '?redirect=/checkout';
-    };
-    var recover = function () {
-      btn.disabled = false;
-      btn.removeAttribute('aria-busy');
+    /* The label swap is a class, not textContent. Both words ship in the
+       markup and CSS shows one, so the accessible name inside the button
+       survives — the same reason the add-to-cart buttons stopped rewriting
+       themselves. */
+    var confirm = function (msg) {
+      btn.classList.add('is-copied');
+      if (status) status.textContent = msg;
+      clearTimeout(btn._offerT);
+      btn._offerT = setTimeout(function () {
+        btn.classList.remove('is-copied');
+        if (status) status.textContent = '';
+      }, 2000);
     };
 
-    if (!form) { go(); return; }
+    /* Selecting the code is the fallback, not a consolation. Clipboard access
+       is refused on insecure origins and in some in-app browsers, and a button
+       that silently does nothing there is worse than no button: the shopper is
+       left holding a code they were told they could copy. Selecting it puts
+       the text under the platform's own copy affordance, which is the thing
+       they would have reached for anyway. */
+    var selectCode = function () {
+      var el = wrap && wrap.querySelector('[data-offer-code]');
+      if (!el || !window.getSelection || !document.createRange) return;
+      var range = document.createRange();
+      range.selectNodeContents(el);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    };
 
-    cartRequest(routes.cartAdd, {
-      id: form.querySelector('[name="id"]').value,
-      quantity: parseInt(form.querySelector('[name="quantity"]').value, 10) || 1
-    }).then(function (res) {
-      /* Only leave for checkout if the item is actually in the cart. The
-         previous version left on any settled response, including a 422, which
-         sent a shopper to checkout with the discount applied and nothing added.
-         Refusing to travel is only half the job though: a button that quietly
-         re-enables itself and does nothing is a dead end. Shopify's own sentence
-         goes to the same error line the Add to Cart button on this form uses. */
-      if (!res.ok) {
-        var err = form.querySelector('[data-buybox-error]');
-        var msg = (res.data && res.data.description) || 'Could not add to cart';
-        if (err) { err.hidden = false; err.textContent = msg; }
-        announce(msg);
-        recover();
-        return;
-      }
-      go();
-    }).catch(function (e) {
-      var err = form.querySelector('[data-buybox-error]');
-      if (err) { err.hidden = false; err.textContent = e.message; }
-      announce(e.message);
-      recover();
-    });
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(function () {
+        confirm(code + ' copied to the clipboard.');
+      }).catch(function () {
+        selectCode();
+        confirm(code + ' selected. Copy it with your browser.');
+      });
+      return;
+    }
+    selectCode();
+    confirm(code + ' selected. Copy it with your browser.');
   });
+
 
 })();
