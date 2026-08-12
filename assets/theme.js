@@ -764,22 +764,109 @@
     return clean + (clean.indexOf('?') === -1 ? '?' : '&') + 'width=' + w;
   }
 
-  /* The unit price for one cart line, struck original first where the shopper
-     is paying less than list. Mirrors the Liquid in sections/cart-drawer.liquid
-     exactly, including the class names, so a line looks identical whether it
-     was server-rendered on load or rebuilt here after a quantity change.
+  /* ---------------------------------------------------------------
+     MRP — the one number the cart needs that /cart.js does not carry
 
-     original_price, not the variant's compare_at_price: /cart.js carries no
-     compare-at field, so this path could not read one, and a struck figure that
-     showed on load and disappeared on the first AJAX update would be worse than
-     not showing it at all. */
+     Shopify's AJAX cart has no compare_at_price. Liquid does, so the drawer
+     seeds this cache with the compare-at for everything in the cart at render
+     time and the script fetches /products/{handle}.js once for anything added
+     afterwards. Between them every line has its real MRP without the struck
+     figure ever flickering out on an AJAX repaint, which is what made the
+     previous implementation settle for original_price and report a saving of
+     nothing on a product genuinely 601 off.
+
+     This is display metadata and is kept strictly to one side of the cart:
+     nothing here feeds a quantity, a total or a mutation. A failed or missing
+     lookup costs a strikethrough. It cannot cost cart state, and it cannot
+     make the cart claim a price Shopify did not send.
+
+     A value of 0 means "asked, and there is no compare-at" — a real answer,
+     cached so it is not asked again. undefined means not yet known. */
+  var mrpCache = {};
+  var mrpPending = {};
+  var lastCart = null;
+
+  (function seedMrp() {
+    var el = document.querySelector('[data-cart-mrp-seed]');
+    if (!el) return;
+    try {
+      var seed = JSON.parse(el.textContent || '{}');
+      Object.keys(seed).forEach(function (k) { mrpCache[k] = Number(seed[k]) || 0; });
+    } catch (e) {
+      /* A malformed seed costs the strikethrough on first paint and nothing
+         else — the fetch below still fills the cache in. */
+    }
+  })();
+
+  /* The MRP for one line, or 0 where there is honestly none to show.
+
+     Conservative on purpose, and in the same order as the Liquid: a compare-at
+     only counts when it is genuinely above what is being charged. Blank, zero,
+     equal and lower all fall through, and a line the shopper is getting free —
+     final_price 0 — is exactly the case a loose rule turns into an invented
+     discount. A struck price is a factual claim about what this cost before;
+     the theme would rather say nothing than manufacture one. */
+  function mrpFor(item) {
+    var known = mrpCache[item.variant_id];
+    if (typeof known === 'number' && known > item.final_price) return known;
+    if (item.original_price > item.final_price) return item.original_price;
+    return 0;
+  }
+
+  /* Sum of each line's MRP times its quantity. Lines with no MRP contribute
+     what the shopper actually pays, so this can never come out under the cart
+     total and hand the summary a negative saving to render. */
+  function mrpTotal(cart) {
+    var total = 0;
+    cart.items.forEach(function (item) {
+      var m = mrpFor(item);
+      total += (m > 0 ? m : item.final_price) * item.quantity;
+    });
+    return total < cart.total_price ? cart.total_price : total;
+  }
+
+  /* Fills gaps in the cache, then repaints through applyCart — the single
+     writer, called with the cart already on screen, so this adds a paint and
+     never a second source of cart truth.
+
+     It cannot recurse: every path through the response marks the variant known,
+     so the next pass returns early for it. */
+  function ensureMrp(cart) {
+    cart.items.forEach(function (item) {
+      if (typeof mrpCache[item.variant_id] === 'number') return;
+      var handle = item.handle;
+      if (!handle || mrpPending[handle]) return;
+      mrpPending[handle] = true;
+
+      cartRequest(routes.root + 'products/' + handle + '.js')
+        .then(function (res) {
+          var variants = (res.ok && res.data && res.data.variants) || [];
+          variants.forEach(function (v) {
+            mrpCache[v.id] = Number(v.compare_at_price) || 0;
+          });
+          /* Whatever came back, this variant is now answered. Without this a
+             response that somehow omits it would leave it forever unknown and
+             re-requested on every paint. */
+          if (typeof mrpCache[item.variant_id] !== 'number') mrpCache[item.variant_id] = 0;
+          if (lastCart) applyCart(lastCart);
+        })
+        .catch(function () { mrpCache[item.variant_id] = 0; })
+        .then(function () { delete mrpPending[handle]; });
+    });
+  }
+
+  /* The unit price for one cart line: what is being paid, then the MRP struck
+     beside it. Mirrors snippets/cart-line-mrp.liquid exactly, class for class
+     and in the same order, so a line looks identical whether it was
+     server-rendered on load or rebuilt here after a quantity change. */
   function unitPrice(item) {
-    if (!(item.original_price > item.final_price)) return money(item.final_price);
+    var mrp = mrpFor(item);
+    if (!(mrp > 0)) return money(item.final_price);
     return '<span class="price-group price-group--compact">' +
-             '<s class="price-was" aria-hidden="true">' + money(item.original_price) + '</s>' +
-             '<span class="visually-hidden">Was ' + money(item.original_price) +
-               ', now ' + money(item.final_price) + '</span>' +
              '<span class="price-now" aria-hidden="true">' + money(item.final_price) + '</span>' +
+             '<s class="price-was" aria-hidden="true">' + money(mrp) + '</s>' +
+             '<span class="visually-hidden">' + money(item.final_price) +
+               ', reduced from ' + money(mrp) + '</span>' +
            '</span>';
   }
 
@@ -1118,10 +1205,16 @@
      nothing here to remember, and it is called from one place, applyCart, so
      the single writer stays single.
 
-       MRP Total     original_total_price, the cart before any discount
+       MRP Total     sum of each line's MRP times quantity — see mrpTotal
        MRP Discount  the gap between the two totals
        Cart Total    total_price, after every discount Shopify applied
        To Pay        total_price
+
+     MRP Total is emphatically not cart.original_total_price. That field is the
+     cart before Shopify's *discounts*, which for a mat listed at 1,900 and sold
+     at 1,299 is 1,299 — it never sees the compare-at. Reading it put an MRP
+     equal to the price and a saving of zero in front of a shopper looking at a
+     601 reduction.
 
      The discount is the difference between the two authoritative totals rather
      than cart.total_discount read on its own. Two fields that are supposed to
@@ -1136,9 +1229,9 @@
   function writeSummary(cart) {
     if (!drawer) return;
 
-    var gross = cart.original_total_price;
     var net = cart.total_price;
-    if (typeof gross !== 'number' || typeof net !== 'number') return;
+    if (typeof net !== 'number' || !cart.items) return;
+    var gross = mrpTotal(cart);
 
     var saving = gross - net;
 
@@ -1179,6 +1272,12 @@
   function applyCart(cart) {
     updateBadges(cart.item_count);
     if (!drawer) return;
+
+    /* Held so a compare-at that arrives after this paint can be shown without
+       re-reading the cart: ensureMrp calls applyCart again with this exact
+       object. It is the cart Shopify last sent, never a cart built here. */
+    lastCart = cart;
+    ensureMrp(cart);
 
     var shown = domKeys();
     var wanted = cart.items.map(function (i) { return String(i.key); });

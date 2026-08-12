@@ -63,9 +63,19 @@ function extract(name) {
 }
 
 const money = new Function('return ' + extract('money'))();
-const unitPrice = new Function('money', 'return ' + extract('unitPrice'))(money);
-const writeSummaryFor = (drawer) =>
-  new Function('drawer', 'money', 'return ' + extract('writeSummary'))(drawer, money);
+
+/* The pricing functions form a small chain — writeSummary needs mrpTotal needs
+   mrpFor needs the cache — so they are rebuilt together around whatever
+   compare-at data a given test wants to hand them. */
+function priceKit(cache) {
+  const mrpCache = cache || {};
+  const mrpFor = new Function('mrpCache', 'return ' + extract('mrpFor'))(mrpCache);
+  const mrpTotal = new Function('mrpFor', 'return ' + extract('mrpTotal'))(mrpFor);
+  const unitPrice = new Function('money', 'mrpFor', 'return ' + extract('unitPrice'))(money, mrpFor);
+  const writeSummaryFor = (drawer) =>
+    new Function('drawer', 'money', 'mrpTotal', 'return ' + extract('writeSummary'))(drawer, money, mrpTotal);
+  return { mrpCache, mrpFor, mrpTotal, unitPrice, writeSummaryFor };
+}
 
 /* Minimal stand-in for the footer. writeSummary only ever calls
    drawer.querySelector(sel) and sets .textContent / .hidden, so this is the
@@ -80,164 +90,257 @@ function stubDrawer() {
   return { querySelector: (sel) => els[sel] || null, els };
 }
 
-const rupees = (r) => r * 100; // paise, the unit every Shopify cart field uses
+const rupees = (r) => r * 100; // paise, the unit every Shopify money field uses
 
-/* Fixtures. The discounted cart is the exact one from the reported bug:
-   3 x ₹1,299 with the prepaid code live on the session. */
-const cartDiscounted = {
-  item_count: 3,
-  original_total_price: rupees(3897),
-  total_price: rupees(3702),
-  items: [{
-    key: '111:a', quantity: 3, product_title: 'MamaJoy Baby Play Mat',
-    original_price: rupees(1299), final_price: rupees(1299),
-    original_line_price: rupees(3897), final_line_price: rupees(3897)
-  }]
-};
-const cartPlain = {
-  item_count: 1,
-  original_total_price: rupees(1299),
-  total_price: rupees(1299),
-  items: [{
-    key: '111:a', quantity: 1, product_title: 'MamaJoy Baby Play Mat',
-    original_price: rupees(1299), final_price: rupees(1299),
-    original_line_price: rupees(1299), final_line_price: rupees(1299)
-  }]
-};
+/* The real product, as the Shopify Admin API reports it: listed 1,900, sold
+   1,299. Both figures are load-bearing — the whole MRP bug was reading a field
+   that only ever knows the second one. */
+const VARIANT = 45558099574893;
+const MRP = rupees(1900);
+const PRICE = rupees(1299);
+const CACHE = {};
+CACHE[VARIANT] = MRP;
+
+const line = (qty) => ({
+  key: '111:a', quantity: qty, variant_id: VARIANT, handle: 'baby-play-mat',
+  product_title: 'MamaJoy Baby Play Mat',
+  original_price: PRICE, final_price: PRICE,
+  original_line_price: PRICE * qty, final_line_price: PRICE * qty
+});
+
+/* Carts. cartClean is what Add to Cart must produce: no cart-level discount,
+   so Cart Total and To Pay are the selling price exactly. cartCoded is the same
+   cart with the prepaid code live on the session, which is what the reported
+   screenshots were showing. */
+const cartClean = { item_count: 1, original_total_price: PRICE, total_price: PRICE, items: [line(1)] };
+const cartQty3  = { item_count: 3, original_total_price: PRICE * 3, total_price: PRICE * 3, items: [line(3)] };
+const cartCoded = { item_count: 1, original_total_price: PRICE, total_price: rupees(1234), items: [line(1)] };
 const cartEmpty = { item_count: 0, original_total_price: 0, total_price: 0, items: [] };
 
-function summaryOf(cart) {
+function summaryOf(cart, cache) {
+  const kit = priceKit(cache === undefined ? Object.assign({}, CACHE) : cache);
   const d = stubDrawer();
-  writeSummaryFor(d)(cart);
+  kit.writeSummaryFor(d)(cart);
   return d.els;
 }
+const kit = () => priceKit(Object.assign({}, CACHE));
 
-/* ------------------------------------------------- 1. money(), the only
-   place a number becomes a price anywhere in the theme */
+/* ------------------------------------------------- 1. money() */
 
 t('money renders paise as whole rupees', () => eq(money(rupees(1299)), money(129900)));
-t('money prefixes the rupee sign', () => ok(money(rupees(1)).startsWith('₹')));
+t('money prefixes the rupee sign', () => ok(money(rupees(1)).startsWith('\u20b9')));
 t('money drops paise rather than showing .00', () => no(/\./.test(money(rupees(3897)))));
-t('money handles zero', () => eq(money(0), '₹0'));
-t('money groups in the Indian system (1,00,000 not 100,000)', () => {
-  const s = money(rupees(100000)).replace('₹', '');
-  ok(s === '1,00,000' || s === '100000', 'got ' + s + ' — Node built without full ICU still passes');
+t('money handles zero', () => eq(money(0), '\u20b90'));
+t('money groups in the Indian system', () => {
+  const s = money(rupees(100000)).replace('\u20b9', '');
+  ok(s === '1,00,000' || s === '100000', 'got ' + s);
 });
 
-/* ------------------------------------------------- 2. the summary reconciles */
+/* ------------------------------------------------- 2. MRP comes from
+   compare-at, which is the entire point of this pass */
 
-t('MRP Total is original_total_price', () =>
-  eq(summaryOf(cartDiscounted)['[data-cart-mrp]'].textContent, money(rupees(3897))));
-t('Cart Total is total_price', () =>
-  eq(summaryOf(cartDiscounted)['[data-cart-carttotal]'].textContent, money(rupees(3702))));
-t('To Pay is total_price', () =>
-  eq(summaryOf(cartDiscounted)['[data-cart-topay]'].textContent, money(rupees(3702))));
-t('MRP Discount is the gap between the two totals', () =>
-  eq(summaryOf(cartDiscounted)['[data-cart-discount]'].textContent, '−' + money(rupees(195))));
-t('You Save equals the MRP Discount figure', () => {
-  const e = summaryOf(cartDiscounted);
-  eq(e['[data-cart-save]'].textContent, money(rupees(195)));
-  eq('−' + e['[data-cart-save]'].textContent, e['[data-cart-discount]'].textContent);
+t('MRP Total is the compare-at price, not the selling price', () =>
+  eq(summaryOf(cartClean)['[data-cart-mrp]'].textContent, money(MRP)));
+t('MRP Total is NOT cart.original_total_price', () => {
+  /* original_total_price is 1,299 here. If it leaks back in, this catches it. */
+  no(summaryOf(cartClean)['[data-cart-mrp]'].textContent === money(PRICE),
+     'MRP Total fell back to the selling price');
 });
-t('the column adds up: MRP Total − MRP Discount = Cart Total', () => {
-  const g = cartDiscounted.original_total_price, n = cartDiscounted.total_price;
-  eq(money(g - (g - n)), money(n));
+t('the worked example reconciles: 1,900 - 601 = 1,299', () => {
+  const e = summaryOf(cartClean);
+  eq(e['[data-cart-mrp]'].textContent, money(rupees(1900)));
+  eq(e['[data-cart-discount]'].textContent, '\u2212' + money(rupees(601)));
+  eq(e['[data-cart-carttotal]'].textContent, money(rupees(1299)));
+  eq(e['[data-cart-topay]'].textContent, money(rupees(1299)));
+  eq(e['[data-cart-save]'].textContent, money(rupees(601)));
 });
-t('To Pay equals Cart Total when shipping is free', () => {
-  const e = summaryOf(cartDiscounted);
-  eq(e['[data-cart-topay]'].textContent, e['[data-cart-carttotal]'].textContent);
+t('Add to Cart at qty 1 pays the selling price, not 5% under', () =>
+  eq(summaryOf(cartClean)['[data-cart-topay]'].textContent, money(rupees(1299))));
+t('MRP Total multiplies by quantity', () =>
+  eq(summaryOf(cartQty3)['[data-cart-mrp]'].textContent, money(rupees(5700))));
+t('qty 3 reconciles: 5,700 - 1,803 = 3,897', () => {
+  const e = summaryOf(cartQty3);
+  eq(e['[data-cart-discount]'].textContent, '\u2212' + money(rupees(1803)));
+  eq(e['[data-cart-carttotal]'].textContent, money(rupees(3897)));
+  eq(e['[data-cart-topay]'].textContent, money(rupees(3897)));
 });
-t('reported bug numbers reproduce exactly (₹3,897 → ₹3,702, save ₹195)', () => {
-  const e = summaryOf(cartDiscounted);
-  eq(e['[data-cart-mrp]'].textContent, money(389700));
-  eq(e['[data-cart-carttotal]'].textContent, money(370200));
-  eq(e['[data-cart-save]'].textContent, money(19500));
+t('To Pay always equals Cart Total while shipping is free', () => {
+  [cartClean, cartQty3, cartCoded].forEach((c) => {
+    const e = summaryOf(c);
+    eq(e['[data-cart-topay]'].textContent, e['[data-cart-carttotal]'].textContent);
+  });
+});
+t('the column always adds up', () => {
+  [cartClean, cartQty3, cartCoded, cartEmpty].forEach((c) => {
+    const kt = priceKit(Object.assign({}, CACHE));
+    eq(kt.mrpTotal(c) - (kt.mrpTotal(c) - c.total_price), c.total_price);
+  });
 });
 
-/* ------------------------------------------------- 3. no invented pricing */
+/* ------------------------------------------------- 3. multi-product */
 
-t('an undiscounted cart shows no saving', () =>
-  eq(summaryOf(cartPlain)['[data-cart-save]'].textContent, money(0)));
-t('the discount row hides when there is no discount', () =>
-  eq(summaryOf(cartPlain)['[data-cart-discount-row]'].hidden, true));
-t('the You Save chip hides when there is no discount', () =>
-  eq(summaryOf(cartPlain)['[data-cart-save-row]'].hidden, true));
-t('the discount row shows when there is a discount', () =>
-  eq(summaryOf(cartDiscounted)['[data-cart-discount-row]'].hidden, false));
-t('the You Save chip shows when there is a discount', () =>
-  eq(summaryOf(cartDiscounted)['[data-cart-save-row]'].hidden, false));
-t('an undiscounted cart pays exactly its MRP total', () => {
-  const e = summaryOf(cartPlain);
-  eq(e['[data-cart-mrp]'].textContent, e['[data-cart-topay]'].textContent);
+t('two products sum their own MRPs', () => {
+  const other = { key: '222:b', quantity: 2, variant_id: 999, handle: 'other',
+                  original_price: rupees(500), final_price: rupees(500),
+                  final_line_price: rupees(1000) };
+  const cache = Object.assign({}, CACHE); cache[999] = rupees(800);
+  const cart = { item_count: 3, original_total_price: rupees(2299),
+                 total_price: rupees(2299), items: [line(1), other] };
+  /* 1,900 + (800 x 2) = 3,500 */
+  eq(summaryOf(cart, cache)['[data-cart-mrp]'].textContent, money(rupees(3500)));
 });
-t('no 5% is applied to an undiscounted cart', () =>
-  eq(summaryOf(cartPlain)['[data-cart-topay]'].textContent, money(rupees(1299))));
-t('a Shopify-discounted total is displayed, never re-discounted', () => {
-  /* The whole failure mode in one assertion: 3702 must survive, not 3702*0.95. */
-  eq(summaryOf(cartDiscounted)['[data-cart-topay]'].textContent, money(rupees(3702)));
-  no(summaryOf(cartDiscounted)['[data-cart-topay]'].textContent === money(rupees(3516.9)));
+t('a product with no compare-at contributes what is actually paid', () => {
+  const plain = { key: '333:c', quantity: 1, variant_id: 777, handle: 'plain',
+                  original_price: rupees(400), final_price: rupees(400),
+                  final_line_price: rupees(400) };
+  const cache = Object.assign({}, CACHE); cache[777] = 0;
+  const cart = { item_count: 2, original_total_price: rupees(1699),
+                 total_price: rupees(1699), items: [line(1), plain] };
+  /* 1,900 + 400, not 1,900 + an invented markup */
+  eq(summaryOf(cart, cache)['[data-cart-mrp]'].textContent, money(rupees(2300)));
 });
-t('an empty cart renders zeroes and hides both discount rows', () => {
+t('a free line never invents an MRP', () => {
+  const free = { key: '444:d', quantity: 1, variant_id: 555, handle: 'gift',
+                 original_price: 0, final_price: 0, final_line_price: 0 };
+  const cache = Object.assign({}, CACHE); cache[555] = 0;
+  const cart = { item_count: 2, original_total_price: PRICE, total_price: PRICE,
+                 items: [line(1), free] };
+  eq(summaryOf(cart, cache)['[data-cart-mrp]'].textContent, money(MRP));
+});
+
+/* ------------------------------------------------- 4. Shopify stays the
+   source of truth for what is actually charged */
+
+t('a Shopify-discounted total is displayed, never re-discounted', () =>
+  eq(summaryOf(cartCoded)['[data-cart-topay]'].textContent, money(rupees(1234))));
+t('a cart-level discount widens the saving rather than being ignored', () =>
+  eq(summaryOf(cartCoded)['[data-cart-save]'].textContent, money(rupees(666))));
+t('the coded cart still reconciles: 1,900 - 666 = 1,234', () => {
+  const e = summaryOf(cartCoded);
+  eq(e['[data-cart-carttotal]'].textContent, money(rupees(1234)));
+});
+t('MRP Total can never fall below Cart Total', () => {
+  const kt = priceKit({});
+  const odd = { total_price: rupees(9999), items: [line(1)], item_count: 1 };
+  ok(kt.mrpTotal(odd) >= odd.total_price, 'a negative saving would render');
+});
+t('an undiscounted, no-compare-at cart shows no saving', () => {
+  const e = summaryOf(cartClean, {});
+  eq(e['[data-cart-save]'].textContent, money(0));
+  eq(e['[data-cart-discount-row]'].hidden, true);
+});
+t('the You Save chip hides when there is nothing saved', () =>
+  eq(summaryOf(cartClean, {})['[data-cart-save-row]'].hidden, true));
+t('both discount rows show when there is a saving', () => {
+  const e = summaryOf(cartClean);
+  eq(e['[data-cart-discount-row]'].hidden, false);
+  eq(e['[data-cart-save-row]'].hidden, false);
+});
+t('an empty cart renders zeroes and hides the discount rows', () => {
   const e = summaryOf(cartEmpty);
   eq(e['[data-cart-topay]'].textContent, money(0));
   eq(e['[data-cart-discount-row]'].hidden, true);
 });
-t('a 100%-off cart still reconciles', () => {
-  const e = summaryOf({ original_total_price: rupees(500), total_price: 0, items: [], item_count: 0 });
-  eq(e['[data-cart-topay]'].textContent, money(0));
-  eq(e['[data-cart-save]'].textContent, money(rupees(500)));
-});
 
-/* ------------------------------------------------- 4. malformed bodies */
+/* ------------------------------------------------- 5. malformed bodies */
 
-t('a cart missing original_total_price writes nothing rather than NaN', () => {
-  const d = stubDrawer();
+t('a cart with no total writes nothing rather than NaN', () => {
+  const kt = kit(), d = stubDrawer();
   d.els['[data-cart-topay]'].textContent = 'untouched';
-  writeSummaryFor(d)({ total_price: rupees(100), items: [] });
+  kt.writeSummaryFor(d)({ items: [] });
   eq(d.els['[data-cart-topay]'].textContent, 'untouched');
 });
-t('a cart with a string total writes nothing rather than concatenating', () => {
-  const d = stubDrawer();
+t('a string total writes nothing rather than concatenating', () => {
+  const kt = kit(), d = stubDrawer();
   d.els['[data-cart-mrp]'].textContent = 'untouched';
-  writeSummaryFor(d)({ original_total_price: '3897', total_price: '3702', items: [] });
+  kt.writeSummaryFor(d)({ total_price: '1234', items: [] });
   eq(d.els['[data-cart-mrp]'].textContent, 'untouched');
 });
-t('the zero guard is a type check, not a truthiness check', () => {
-  /* An empty cart totals 0, which is falsy — it must still render. */
-  const e = summaryOf(cartEmpty);
-  eq(e['[data-cart-mrp]'].textContent, money(0));
+t('a cart with no items array writes nothing rather than throwing', () => {
+  const kt = kit(), d = stubDrawer();
+  kt.writeSummaryFor(d)({ total_price: rupees(10) });
+  eq(d.els['[data-cart-mrp]'].textContent, '');
 });
-t('a null total does not throw', () => {
-  const d = stubDrawer();
-  writeSummaryFor(d)({ original_total_price: null, total_price: null, items: [] });
+t('the zero guard is a type check, not a truthiness check', () =>
+  eq(summaryOf(cartEmpty)['[data-cart-mrp]'].textContent, money(0)));
+t('missing summary nodes do not throw', () =>
+  kit().writeSummaryFor({ querySelector: () => null })(cartClean));
+
+/* ------------------------------------------------- 5b. strikethrough */
+
+t('the struck figure is the compare-at price', () => {
+  const html = kit().unitPrice(line(1));
+  ok(html.includes(money(MRP)), 'MRP missing from the line');
+  ok(html.includes(money(PRICE)), 'selling price missing from the line');
 });
-t('missing summary nodes do not throw', () => {
-  writeSummaryFor({ querySelector: () => null })(cartDiscounted);
+t('the selling price is the one NOT struck', () => {
+  const html = kit().unitPrice(line(1));
+  ok(new RegExp('<s class="price-was"[^>]*>' + '\u20b91,900' + '</s>').test(html),
+     'the wrong figure is struck');
+  ok(/price-now[^>]*>\u20b91,299</.test(html));
+});
+t('no MRP is fabricated when there is no compare-at', () =>
+  no(/price-was/.test(priceKit({}).unitPrice(line(1)))));
+t('no strikethrough when compare-at equals the price', () => {
+  const cache = {}; cache[VARIANT] = PRICE;
+  no(/price-was/.test(priceKit(cache).unitPrice(line(1))));
+});
+t('no strikethrough when compare-at is below the price', () => {
+  const cache = {}; cache[VARIANT] = rupees(900);
+  no(/price-was/.test(priceKit(cache).unitPrice(line(1))));
+});
+t('a free line is not given a struck price', () => {
+  const cache = {}; cache[555] = 0;
+  const free = { variant_id: 555, original_price: 0, final_price: 0 };
+  no(/price-was/.test(priceKit(cache).unitPrice(free)));
+});
+t('the pair is announced to screen readers', () => {
+  const html = kit().unitPrice(line(1));
+  ok(/visually-hidden/.test(html) && /reduced from/.test(html));
+});
+t('original_price is still honoured when no compare-at is known', () => {
+  const item = { variant_id: 111, original_price: rupees(600), final_price: rupees(500) };
+  ok(/price-was/.test(priceKit({}).unitPrice(item)));
+});
+t('the JS and Liquid strike the same figure in the same order', () => {
+  const snip = fs.readFileSync(path.join(ROOT, 'snippets/cart-line-mrp.liquid'), 'utf8');
+  ok(snip.indexOf('price-now') < snip.indexOf('price-was'), 'Liquid order differs');
+  const js = extract('unitPrice');
+  ok(js.indexOf('price-now') < js.indexOf('price-was'), 'JS order differs');
 });
 
-/* ------------------------------------------------- 5. MRP strikethrough */
+/* ------------------------------------------------- 5c. the MRP side channel
+   must never be able to touch cart state */
 
-t('no struck price when the shopper pays list', () =>
-  eq(unitPrice(cartPlain.items[0]), money(rupees(1299))));
-t('an MRP is never fabricated from the selling price', () => {
-  const html = unitPrice(cartPlain.items[0]);
-  no(/price-was/.test(html), 'invented a struck figure for an undiscounted line');
+t('mrpFor caches 0 as a real answer, not as unknown', () => {
+  const cache = {}; cache[VARIANT] = 0;
+  eq(priceKit(cache).mrpFor(line(1)), 0);
 });
-t('struck original shown when original_price exceeds final_price', () => {
-  const html = unitPrice({ original_price: rupees(1499), final_price: rupees(1299) });
-  ok(/price-was/.test(html) && html.includes(money(rupees(1499))));
+t('ensureMrp repaints through applyCart, the single writer', () => {
+  const src = extract('ensureMrp');
+  ok(src.includes('applyCart(lastCart)'), 'summary repaint bypasses the single writer');
 });
-t('the selling price is the one not struck', () => {
-  const html = unitPrice({ original_price: rupees(1499), final_price: rupees(1299) });
-  ok(/<s class="price-was"[^>]*>₹1,499<\/s>/.test(html) || /price-was[^>]*>[^<]*1,499/.test(html));
-  ok(/price-now/.test(html));
+t('ensureMrp cannot recurse forever', () => {
+  const src = extract('ensureMrp');
+  ok(/mrpCache\[item\.variant_id\] = 0/.test(src), 'an unanswered variant would re-request on every paint');
 });
-t('the struck/current pair is announced to screen readers', () => {
-  const html = unitPrice({ original_price: rupees(1499), final_price: rupees(1299) });
-  ok(/visually-hidden/.test(html) && /Was /.test(html) && /now /.test(html));
+t('ensureMrp uses the XHR transport, not fetch', () => {
+  const src = extract('ensureMrp');
+  ok(src.includes('cartRequest('));
+  no(/\bfetch\s*\(/.test(src));
 });
-t('equal original and final prices are not treated as a discount', () =>
-  no(/price-was/.test(unitPrice({ original_price: rupees(999), final_price: rupees(999) }))));
+t('the MRP lookup never writes a quantity or a total', () => {
+  const src = extract('ensureMrp');
+  no(/cartChange|cartAdd|quantity\s*[:=]/.test(src), 'the display side channel can mutate the cart');
+});
+t('the drawer seeds the cache from Liquid', () => {
+  ok(LIQUID.includes('data-cart-mrp-seed'), 'no seed in the markup');
+  ok(JS.includes('data-cart-mrp-seed'), 'the script never reads the seed');
+});
+t('a malformed seed cannot throw during load', () => {
+  const src = extract('seedMrp');
+  ok(/try\s*\{/.test(src) && /catch/.test(src));
+});
 
 /* ------------------------------------------------- 6. source invariants —
    the theme calculates no prices, and must keep not calculating them */
@@ -264,10 +367,11 @@ t('writeSummary holds no state of its own', () => {
   const src = extract('writeSummary');
   no(/\b(setTimeout|setInterval|addEventListener)\b/.test(src));
 });
-t('the summary reads only the two authoritative totals', () => {
+t('the summary takes its gross from mrpTotal, not a raw cart field', () => {
   const src = extract('writeSummary');
-  ok(src.includes('cart.original_total_price') && src.includes('cart.total_price'));
-  no(/cart\.items\s*\[/.test(src), 'summary should not reach into line items');
+  ok(src.includes('mrpTotal(cart)'), 'gross is not the compare-at total');
+  ok(src.includes('cart.total_price'), 'net is not the Shopify total');
+  no(src.includes('cart.original_total_price'), 'the pre-discount field leaked back in');
 });
 t('the discount is derived as a difference, not read from total_discount', () => {
   const src = extract('writeSummary');
@@ -345,15 +449,65 @@ t('all five summary rows are labelled', () => {
     .forEach((label) => ok(LIQUID.includes(label), 'missing row: ' + label));
 });
 t('the server-rendered summary uses Shopify cart fields', () => {
-  ok(LIQUID.includes('cart.original_total_price'));
-  ok(LIQUID.includes('cart.total_price'));
+  ok(LIQUID.includes('mrp_total'), 'no computed MRP total');
+  ok(LIQUID.includes('item.variant.compare_at_price'), 'MRP is not read from compare-at');
+  ok(LIQUID.includes('cart.total_price'), 'Cart Total is not the Shopify total');
+  no(LIQUID.includes('cart.original_total_price'), 'the pre-discount field leaked back in');
 });
 t('the server-rendered saving is a Liquid subtraction, not a percentage', () => {
-  ok(/cart\.original_total_price\s*\|\s*minus:\s*cart\.total_price/.test(LIQUID));
+  ok(/mrp_total\s*\|\s*minus:\s*cart\.total_price/.test(LIQUID));
   no(/times:\s*0?\.95/.test(LIQUID));
 });
+t('the Liquid MRP rule matches the JS MRP rule', () => {
+  /* Both must prefer compare-at, fall back to original_price, else nothing. */
+  const snip = fs.readFileSync(path.join(ROOT, 'snippets/cart-line-mrp.liquid'), 'utf8');
+  ok(snip.includes('compare_at_price') && snip.includes('original_price'));
+  const js = extract('mrpFor');
+  ok(js.includes('mrpCache') && js.includes('original_price'));
+});
+t('the server-rendered MRP total can never sit below the cart total', () =>
+  ok(/mrp_total\s*<\s*cart\.total_price/.test(LIQUID), 'no floor on the Liquid MRP total'));
 t('no prepaid button returned to the drawer', () =>
   no(/data-buy-prepaid/.test(LIQUID), 'the prepaid button is back in the cart'));
+
+/* ------------------------------------------------- 9b. nothing in the theme
+   may apply a discount. The default state of the cart is the price on the
+   product, and the only mechanism that ever changed that was a control
+   navigating to /discount/CODE, which sticks to the session permanently. */
+
+const TEMPLATES = ['sections', 'snippets', 'layout', 'templates'].flatMap((dir) => {
+  const d = path.join(ROOT, dir);
+  if (!fs.existsSync(d)) return [];
+  return fs.readdirSync(d).filter((f) => /\.(liquid|json)$/.test(f))
+    .map((f) => [path.join(dir, f), fs.readFileSync(path.join(d, f), 'utf8')]);
+});
+
+t('no template renders a prepaid trigger', () => {
+  TEMPLATES.forEach(([name, body]) => {
+    no(/data-buy-prepaid/.test(body), name + ' still renders a prepaid trigger');
+  });
+});
+t('no template navigates to /discount/ outside a comment', () => {
+  TEMPLATES.forEach(([name, body]) => {
+    const markup = body.replace(/\{%-?\s*comment\s*-?%\}[\s\S]*?\{%-?\s*endcomment\s*-?%\}/g, '');
+    no(/discount\//.test(markup), name + ' still links to /discount/');
+  });
+});
+t('the discount redirect in theme.js has no trigger left to fire it', () => {
+  ok(JS.includes("'discount/'"), 'handler gone — fine, but this test needs updating');
+  TEMPLATES.forEach(([, body]) => no(/data-buy-prepaid/.test(body)));
+});
+t('Add to Cart posts only an id and a quantity', () => {
+  /* Comments stripped: the handler is documented in prose that necessarily
+     mentions the discount it must not apply. */
+  const from = JS.indexOf("document.addEventListener('submit'");
+  const add = JS.slice(from, JS.indexOf('document.addEventListener', from + 10))
+                .replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(add.includes('data-buybox-form'), 'located the wrong handler');
+  ok(/cartRequest\(routes\.cartAdd/.test(add), 'add path does not post to cart/add');
+  no(/discount/i.test(add), 'the add path references a discount');
+  no(/0\.95/.test(add), 'the add path does arithmetic on a price');
+});
 
 /* ------------------------------------------------- 10. accessibility */
 

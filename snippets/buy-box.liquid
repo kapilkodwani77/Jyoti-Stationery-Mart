@@ -147,32 +147,31 @@
       cannot, which is why the caption is four words on screen and a full one
       in the accessible name.
     {%- endcomment -%}
-    {%- if prepaid_code != blank and v.available -%}
-      <button type="button" class="prepaid" data-buy-prepaid data-discount-code="{{ prepaid_code }}">
-        <span class="btn-label prepaid-body">
-          <span class="prepaid-main">Prepay &amp; get an additional {{ prepaid_pct }}% OFF</span>
-          {%- comment -%}
-            The visible caption is four words and an arrow, because the line
-            above it is the message and this one only has to say how to take
-            it. The arrow is the disclosure: this control leaves the page.
+    {%- comment -%}
+      The prepaid button is removed, and this is the note explaining why so it
+      is not reinstated by someone reading the settings and assuming it was
+      dropped by accident.
 
-            The sentence a screen reader hears is longer on purpose. Sighted
-            shoppers have the arrow, the code and the position of the button
-            on the page to tell them this is a shortcut to checkout rather than
-            a second Add to Cart; a caption read out on its own has none of
-            that, and "apply in 1 tap" alone would not say that the tap also
-            adds the item and leaves. The visible copy and the accessible name
-            describe the same action — one of them just has more room.
-          {%- endcomment -%}
-          <span class="prepaid-sub">
-            <b class="prepaid-code">{{ prepaid_code }}</b>
-            <span aria-hidden="true">&middot; Apply in 1 tap &rarr;</span>
-            <span class="visually-hidden">is applied for you. Adds this item and continues to checkout.</span>
-          </span>
-        </span>
-        <span class="btn-pending" aria-hidden="true">Redirecting&hellip;</span>
-      </button>
-    {%- endif -%}
+      It navigated to /discount/CODE?redirect=/checkout. That endpoint does not
+      preview a saving — it writes the code onto the shopper's cart, and
+      Shopify keeps it there for the rest of the session. One tap and every
+      later read of /cart.js comes back 5% lower: on this page, in the drawer,
+      on the cart page and at checkout, whether or not the shopper ever pays
+      online. Nothing in the flow ever took it back off, so a customer who
+      tapped it and then chose cash on delivery still got the online-payment
+      price, and the drawer showed a total 5% under the lines above it with
+      nothing on screen accounting for the gap.
+
+      An offer that cannot be declined once accepted is not an offer, and the
+      default state of the cart has to be the price on the product.
+
+      Nothing else was deleted. The CARE5 and PREPAY5 codes are still ACTIVE in
+      the admin, the settings (prepaid_discount_code, _label, _percent) are
+      untouched, the styles are still in component-buy-box.css and the handler
+      is still in theme.js. Restoring this is putting the markup back — but
+      whatever replaces it needs a way to remove the code again, or it brings
+      the same bug with it.
+    {%- endcomment -%}
 
     <div class="qty-row">
       <span class="qty-label" id="qtyLabel-{{ section.id }}">Quantity</span>

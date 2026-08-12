@@ -54,24 +54,20 @@
               <p class="cart-line-variant">{{ item.variant.title }}</p>
             {%- endunless -%}
             {%- comment -%}
-              original_price rather than the variant's compare_at_price, and
-              deliberately. /cart.js carries no compare-at field at all, so the
-              JS re-render below cannot know it — showing it here would mean the
-              struck figure appeared on load and vanished the first time a
-              quantity changed. original_price is in both payloads, so the two
-              render paths agree by construction and this can never go stale.
-              The compare-at story is told on the card and the PDP, where the
-              decision is actually made.
+              The struck figure is the variant's compare_at_price — the MRP —
+              and getting it here took solving the problem that used to rule it
+              out. /cart.js carries no compare-at field, so the JS re-render
+              could not know it, and a struck price that appeared on load and
+              vanished on the first quantity change would be worse than none.
+
+              It no longer vanishes: the seed below hands the script the
+              compare-at for everything already in the cart, and theme.js
+              fetches /products/{handle}.js once for anything added later. Both
+              render paths read the same number, so they agree by construction —
+              which is the property the old original_price compromise was
+              bought to get, now had without giving up the real MRP.
             {%- endcomment -%}
-            <p class="cart-line-price">
-              {%- if item.original_price > item.final_price -%}
-                <span class="price-group price-group--compact">
-                  <s class="price-was" aria-hidden="true">{{ item.original_price | money }}</s>
-                  <span class="visually-hidden">Was {{ item.original_price | money }}, now {{ item.final_price | money }}</span>
-                  <span class="price-now" aria-hidden="true">{{ item.final_price | money }}</span>
-                </span>
-              {%- else -%}{{ item.final_price | money }}{%- endif -%}
-            </p>
+            {%- render 'cart-line-mrp', item: item -%}
             <p class="micro">Qty {{ item.quantity }}</p>
           </div>
           <div class="cart-line-total">{{ item.final_line_price | money }}</div>
@@ -129,7 +125,32 @@
       stops being universal, this line has to change with it; it cannot find
       out on its own.
     {%- endcomment -%}
-    {%- assign cart_saving = cart.original_total_price | minus: cart.total_price -%}
+    {%- comment -%}
+      MRP Total is the sum of each line's MRP times its quantity, not
+      cart.original_total_price. They are different numbers and the difference
+      is the whole point: original_total_price is the cart before Shopify's
+      discounts, which for a product listed at 1,900 and sold at 1,299 is 1,299.
+      It never sees the compare-at, so the breakdown reported an MRP identical
+      to the price and a saving of nothing, on a product genuinely 601 off.
+
+      Same rule as the line snippet, and it has to be the same rule or the
+      column stops describing the rows above it: compare-at when it is really
+      above what is charged, otherwise original_price, otherwise no markup at
+      all and this line contributes exactly what the shopper pays.
+    {%- endcomment -%}
+    {%- assign mrp_total = 0 -%}
+    {%- for item in cart.items -%}
+      {%- assign line_mrp = item.final_price -%}
+      {%- if item.variant.compare_at_price > item.final_price -%}
+        {%- assign line_mrp = item.variant.compare_at_price -%}
+      {%- elsif item.original_price > item.final_price -%}
+        {%- assign line_mrp = item.original_price -%}
+      {%- endif -%}
+      {%- assign line_mrp_total = line_mrp | times: item.quantity -%}
+      {%- assign mrp_total = mrp_total | plus: line_mrp_total -%}
+    {%- endfor -%}
+    {%- if mrp_total < cart.total_price -%}{%- assign mrp_total = cart.total_price -%}{%- endif -%}
+    {%- assign cart_saving = mrp_total | minus: cart.total_price -%}
 
     <div class="cart-summary">
       {%- comment -%}
@@ -142,7 +163,7 @@
         <dl class="cart-summary-rows">
           <div class="cart-summary-row">
             <dt>MRP Total</dt>
-            <dd data-cart-mrp>{{ cart.original_total_price | money }}</dd>
+            <dd data-cart-mrp>{{ mrp_total | money }}</dd>
           </div>
           <div class="cart-summary-row" data-cart-discount-row {% if cart_saving <= 0 %}hidden{% endif %}>
             <dt>MRP Discount</dt>
@@ -217,6 +238,28 @@
     {%- endcomment -%}
     <p class="cart-drawer-note">Secure Payments &middot; Made in India &middot; Easy Returns</p>
   </div>
+
+  {%- comment -%}
+    Compare-at for everything already in the cart, handed to the script so it
+    starts with what Liquid can see and /cart.js cannot.
+
+    Without this the first AJAX repaint would drop every struck MRP until a
+    products fetch came back — the precise flicker that made the previous
+    implementation settle for original_price instead. theme.js still fetches
+    /products/{handle}.js for anything added after load, so the seed is a head
+    start rather than the only source, and a cart the seed does not cover
+    degrades to no strikethrough rather than to a wrong one.
+
+    Prices are in paise, the unit every Shopify money field uses, so nothing
+    here needs converting on the way in.
+  {%- endcomment -%}
+  <script type="application/json" data-cart-mrp-seed>
+    {
+      {%- for item in cart.items -%}
+        "{{ item.variant_id }}": {{ item.variant.compare_at_price | default: 0 }}{%- unless forloop.last -%},{%- endunless -%}
+      {%- endfor -%}
+    }
+  </script>
 </aside>
 
 {% schema %}

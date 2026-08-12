@@ -1,0 +1,33 @@
+{%- comment -%}
+  One cart line's price: what the shopper pays, and the MRP struck beside it.
+
+  Mirrors unitPrice() in assets/theme.js exactly, class for class, so a line
+  looks identical whether it was server-rendered on load or rebuilt by the
+  script after a quantity change.
+
+  mrp_for is the one rule about what may be struck, and it is deliberately
+  conservative. A compare_at_price only counts when it is genuinely above what
+  is being charged; blank, zero, and equal-or-lower all fall through to no
+  strikethrough at all. A struck figure is a factual claim about what this cost
+  before, so the theme would rather say nothing than manufacture one — and a
+  free line, where final_price is 0, is exactly the case a careless rule turns
+  into an invented discount.
+
+  Accepts: item (a cart line item)
+{%- endcomment -%}
+{%- assign mrp_for = 0 -%}
+{%- if item.variant.compare_at_price > item.final_price -%}
+  {%- assign mrp_for = item.variant.compare_at_price -%}
+{%- elsif item.original_price > item.final_price -%}
+  {%- assign mrp_for = item.original_price -%}
+{%- endif -%}
+
+<p class="cart-line-price">
+  {%- if mrp_for > 0 -%}
+    <span class="price-group price-group--compact">
+      <span class="price-now" aria-hidden="true">{{ item.final_price | money }}</span>
+      <s class="price-was" aria-hidden="true">{{ mrp_for | money }}</s>
+      <span class="visually-hidden">{{ item.final_price | money }}, reduced from {{ mrp_for | money }}</span>
+    </span>
+  {%- else -%}{{ item.final_price | money }}{%- endif -%}
+</p>
