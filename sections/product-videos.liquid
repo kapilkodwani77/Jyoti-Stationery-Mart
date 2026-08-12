@@ -1,25 +1,27 @@
 {%- comment -%}
-  Product videos — a reel strip between the questions and the reviews.
+  Product videos, between the questions and the reviews.
 
-  Sourced from Shopify's own product media, so videos are added and removed in
-  the admin like photographs and this file never needs editing again. Nothing
-  is hardcoded and no external host is involved.
+  Sourced from Shopify product media, so clips are added and removed under the
+  product's Media in the admin and this file never needs editing. Nothing is
+  hardcoded and no external host is involved.
 
-  There is no duplication with the gallery above: that loop reads
-  product.images, which contains images only, so a video lives here and only
-  here. That is also why this is a section rather than a gallery slide — a clip
-  is something a shopper chooses to watch, and putting it in a swipe strip they
-  are using to check the print means an accidental tap starts a video while
-  they are shopping.
+  No duplication with the gallery: that loop reads product.images, which holds
+  images only, so a video lives here and only here. That is also why this is a
+  section rather than a gallery slide. The gallery is what a shopper swipes to
+  check the print; a clip in it means an accidental tap starts a video mid
+  browse. A video is something you choose to watch.
 
-  The whole section is absent when there are no videos. Not empty, not a
-  placeholder frame — absent, so a product without video renders exactly the
-  page it rendered before this existed.
+  Absent, not empty, when the product has no video.
 
-  Deliberately no product name, price, saving or Add to Cart. All four are
-  already on this page, above and below; repeating them under a clip turns a
-  reel strip into a card grid competing with the buy box for the same decision.
-  The videos are the content.
+  No name, price, saving or Add to Cart. All four are already on this page
+  above and below; repeating them turns a reel strip into a card grid arguing
+  with the buy box about the same decision. The videos are the content.
+
+  preload="none" is the performance decision that matters: metadata opens a
+  connection per clip the moment this parses, whether or not anyone scrolls
+  this far. The poster carries the strip; video bytes wait for a press. width
+  and height come off the poster so nothing shifts. No autoplay, because this
+  is a section you scroll past, not a hero.
 {%- endcomment -%}
 {{ 'section-product-videos.css' | asset_url | stylesheet_tag }}
 
@@ -38,42 +40,15 @@
         <h2 class="h2">{{ section.settings.heading }}</h2>
       {%- endif -%}
 
-      {%- comment -%}
-        A list, because that is what it is: a set of related items a screen
-        reader should be able to count and step through. The scroller is the
-        list itself rather than a wrapper around it, so no extra element sits
-        between the semantics and the layout.
-      {%- endcomment -%}
       <ul class="pvid" data-pvid>
         {%- for m in product.media -%}
           {%- if m.media_type == 'video' -%}
             <li class="pvid-item">
-              {%- comment -%}
-                preload="none" is the performance decision that matters. metadata
-                would open a connection and pull a header for every clip the
-                moment this section parses, whether or not the shopper ever
-                scrolls this far — on a phone on mobile data, paying for bytes
-                nobody asked for. The poster is a still Shopify already serves
-                through its image CDN, so the strip is fully rendered and
-                scrollable at the cost of a few images, and video is fetched
-                only when someone presses play.
-
-                width and height come off the poster so the slot is the right
-                shape before anything loads. Nothing here shifts.
-
-                controls rather than autoplay: this is a section a shopper
-                scrolls past, not a hero. Autoplay would spend data to start
-                something they have not asked for, mobile browsers block it
-                unmuted anyway, and muted autoplay of a clip whose point is
-                often what someone is saying is worse than a still frame.
-              {%- endcomment -%}
               <video class="pvid-video"
                      controls
                      playsinline
                      preload="none"
-                     {% if m.preview_image %}poster="{{ m.preview_image | image_url: width: 720 }}"
-                     width="{{ m.preview_image.width }}"
-                     height="{{ m.preview_image.height }}"{% endif %}
+                     {% if m.preview_image %}poster="{{ m.preview_image | image_url: width: 720 }}" width="{{ m.preview_image.width }}" height="{{ m.preview_image.height }}"{% endif %}
                      {% if m.alt != blank %}aria-label="{{ m.alt | escape }}"{% else %}aria-label="Product video {{ forloop.index }}"{% endif %}>
                 {%- for source in m.sources -%}
                   {%- if source.format == 'mp4' -%}
@@ -93,12 +68,8 @@
 {
   "name": "Product videos",
   "settings": [
-    {
-      "type": "paragraph",
-      "content": "Shows every video attached to the product in Shopify. Add or remove videos under the product's Media in the admin — this section needs no editing. It is hidden automatically when the product has no video."
-    },
-    { "type": "text", "id": "heading", "label": "Heading", "info": "Leave empty for no heading. The videos usually speak for themselves.", "default": "" },
-    { "type": "text", "id": "jump_label", "label": "Jump-nav label", "info": "Leave empty to keep this section out of the in-page navigation.", "default": "" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "" },
+    { "type": "text", "id": "jump_label", "label": "Jump-nav label", "default": "" },
     {
       "type": "select",
       "id": "surface",
