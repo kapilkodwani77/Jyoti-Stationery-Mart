@@ -36,7 +36,21 @@
   font-family:var(--font-body);
   color:var(--ink);
 }
-.mj-reviews .jdgm-widget *{ font-family:inherit; }
+/* Everything inherits the theme's body face EXCEPT the star.
+
+   Judge.me draws its stars as glyphs from its own icon webfont. A blanket
+   `* { font-family: inherit }` reached those glyphs too, so the star codepoints
+   were asked of Switzer, which has no such glyphs, and the browser fell back to
+   whatever it could find — rendering each star as a row of bars. This defect
+   only became visible when the widget moved into .mj-reviews, because until
+   then none of this stylesheet applied to anything.
+
+   :not() rather than re-declaring the font on .jdgm-star: naming Judge.me's
+   font family here would hard-code a third party's internal asset name into
+   this theme and break silently the day they rename it. Leaving the star out of
+   the reset lets their own stylesheet keep supplying it. Colour and size are
+   still ours — those are set below and are safe to override. */
+.mj-reviews .jdgm-widget *:not(.jdgm-star):not([class*="jdgm-star"]){ font-family:inherit; }
 
 /* Judge.me prints its own "Customer Reviews" heading and its own average line.
    The section above it already carries the theme's h2 and the same average in
@@ -59,7 +73,7 @@
   font-size:15px;
   letter-spacing:.06em;
 }
-.mj-reviews .jdgm-star.jdgm--off{ color:var(--indigo-wash); }
+.mj-reviews .jdgm-star.jdgm--off{ color:var(--star-off); }
 
 /* ---- summary + histogram -------------------------------------------
    The average is a trust signal, not a headline: it sits at body size in the

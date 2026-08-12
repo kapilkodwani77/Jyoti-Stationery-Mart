@@ -880,8 +880,15 @@
     }
     drawer.setAttribute('aria-busy', 'true');
     showCartError('');
+    var openRev = cartRev;
     fetchCart()
-      .then(function (cart) { renderDrawer(cart); updateBadges(cart.item_count); })
+      .then(function (cart) {
+        /* A change went out while this read was in flight; its response is the
+           newer truth and has already painted. Dropping this one is what stops
+           the drawer flicking back to the pre-tap quantity. */
+        if (openRev !== cartRev) return;
+        renderDrawer(cart); updateBadges(cart.item_count);
+      })
       .catch(function () {
         if (body) body.innerHTML = '<div class="cart-empty"><p>Could not load your cart. Please refresh.</p></div>';
       })
@@ -944,10 +951,23 @@
      numbers where the line-up is unchanged, re-render where it is not. Both
      the success path and the recovery path below need exactly this, and having
      them share it is what keeps the two from drifting apart. */
-  function applyCart(cart) {
+  function applyCart(cart, force) {
     updateBadges(cart.item_count);
     var shown = drawer ? drawer.querySelectorAll('.cart-line').length : 0;
-    if (shown && shown === cart.items.length) patchTotals(cart);
+
+    /* A row mid-exit is collapsed to 0fr and transparent. If the removal that
+       started it did not go through, the line-up is unchanged, patchTotals is
+       chosen, and that row stays invisible for the rest of the session — the
+       drawer reads as empty while the cart still holds the item and the
+       subtotal still counts it. That is the regression the exit animation
+       introduced, and it is fixed here rather than by deleting the animation:
+       any row still leaving forces the full re-render that rebuilds it.
+
+       `force` is set by every failure path. After an error the drawer must be
+       rebuilt from the cart we just re-read, never patched, because the thing
+       that failed may have left DOM state that no longer matches anything. */
+    var leaving = drawer ? drawer.querySelectorAll('.cart-line.is-leaving').length : 0;
+    if (!force && !leaving && shown && shown === cart.items.length) patchTotals(cart);
     else renderDrawer(cart);
   }
 
@@ -976,7 +996,17 @@
      Same shape as the add-to-cart handler, which has always checked r.ok. */
   var CART_GENERIC = 'Could not update your cart.';
   var cartQueue = Promise.resolve();
+
+  /* Mutations are serialised by cartQueue, so two changes can never land out of
+     order. The unserialised read is the one in openDrawer: a shopper who opens
+     the drawer and immediately taps + has a GET and a POST in flight together,
+     and if the GET resolves second it repaints the drawer with the cart as it
+     was before the tap. Every mutation claims a revision; a read that finds the
+     revision moved on while it was in flight discards its own answer. */
+  var cartRev = 0;
+
   function changeLine(key, quantity, label) {
+    cartRev++;
     cartQueue = cartQueue.then(function () {
       return fetch(routes.cartChange, {
         method: 'POST',
@@ -1005,7 +1035,9 @@
              through the same path a successful change takes — a failed edit
              should leave the shopper looking at the truth, not at their own
              optimistic tap. */
-          return fetchCart().then(applyCart).catch(function () {});
+          return fetchCart()
+            .then(function (fresh) { applyCart(fresh, true); })
+            .catch(function () {});
         });
     });
     return cartQueue;
