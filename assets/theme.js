@@ -844,13 +844,12 @@
        and handing back a control that looks ready to be tapped again while its
        own request is still out.
 
-       A quantity the shopper has typed or tapped but that has not been sent, or
-       has been sent and not answered. patchTotals is careful about this and
-       renderDrawer was not, so a removal on one line — which always forces a
-       full rebuild — would silently revert an edit in progress on another. The
-       edit still went out and still won on the server, so the number returned a
-       moment later; the shopper watched their entry flip back and then flip
-       forward again for no reason they could see.
+       A quantity the shopper has tapped that is still held for sending.
+       patchTotals is careful about this and renderDrawer was not, so a removal
+       on one line — which always rebuilds — would silently revert an edit in
+       progress on another. The edit still went out and still won on the server,
+       so the number returned a moment later; the shopper watched their entry
+       flip back and then flip forward again for no reason they could see.
 
        Both survive because both live in state that outlives the DOM. */
     Object.keys(removing).forEach(function (key) {
@@ -858,19 +857,105 @@
       if (line) { line.classList.add('is-removing'); line.setAttribute('aria-busy', 'true'); }
     });
     cart.items.forEach(function (item) {
-      var held = qtyPending[item.key] || qtyInflight[item.key];
-      if (!held || held.quantity === undefined) return;
+      var held = qtyPending[item.key];
+      if (!held) return;
       var line = lineFor(item.key);
       var input = line && line.querySelector('[data-cart-qty-input]');
       if (input) input.value = held.quantity;
     });
-
-    var subtotal = drawer.querySelector('[data-cart-subtotal]');
-    if (subtotal) subtotal.textContent = money(cart.total_price);
   }
 
-  function fetchCart() {
-    return fetch(routes.cart).then(function (r) { return r.json(); });
+  /* ---------------------------------------------------------------
+     Cart transport — XMLHttpRequest, deliberately, not fetch.
+
+     This is the fix for the bug that made the cart fail on the real
+     storefront while every local test passed, and the reason is worth stating
+     plainly because it is not obvious.
+
+     A fetch Response body is a single-use stream. Whoever calls .json() or
+     .text() on it first consumes it; every later reader gets "body stream
+     already read", and even .clone() throws once the body has been disturbed.
+     The theme is not alone on the page: this store runs Judge.me's cart drawer
+     widget and two Microsoft Clarity embeds, and apps of that kind wrap
+     window.fetch so they can notice cart mutations. An app embed loads in the
+     document head, before this deferred script, so its wrapper is the fetch
+     the theme ends up calling — and if it reads the response without cloning,
+     it drains the body before the theme's own .json() ever runs. Every cart
+     call then throws, and the drawer opens empty over a cart that is perfectly
+     healthy on Shopify's side.
+
+     That failure is invisible to any harness where the theme owns fetch
+     outright, which is exactly what the previous suite did: its stub returned a
+     hand-rolled object whose json() resolved a fresh value every time it was
+     called. Infinitely re-readable, so the one thing that actually breaks in
+     production could not be reproduced. Reproduced now, with real Response
+     objects and a stand-in app embed: the drawer renders zero rows.
+
+     XMLHttpRequest has no such hazard. responseText is a plain string that can
+     be read any number of times, so an app that wraps XHR to watch cart traffic
+     reads a copy by construction and cannot take the body away from us. The
+     transport is the layer where this belongs — nothing above it has to know.
+
+     Parsing is contained here too. A body that is not JSON — an HTML error
+     page, a challenge page, a truncated response — yields data: null rather
+     than throwing into a caller that would have to guess what happened. */
+  var CART_GENERIC = 'Could not update your cart.';
+  var CART_OFFLINE = 'Could not reach the cart. Check your connection.';
+
+  function cartRequest(url, payload) {
+    return new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open(payload ? 'POST' : 'GET', url, true);
+      xhr.setRequestHeader('Accept', 'application/json');
+      if (payload) xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function () {
+        var data = null;
+        try { data = JSON.parse(xhr.responseText); } catch (e) { data = null; }
+        resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, data: data });
+      };
+      xhr.onerror = function () { reject(new Error(CART_OFFLINE)); };
+      xhr.ontimeout = function () { reject(new Error(CART_OFFLINE)); };
+      xhr.send(payload ? JSON.stringify(payload) : null);
+    });
+  }
+
+  /* Anything claiming to be a cart has to look like one before it is allowed
+     near the DOM. A 200 carrying an error object, or a login page, must not be
+     painted as an empty cart — that is how a shopper's basket appears to
+     vanish. */
+  function isCart(data) {
+    return !!(data && data.items && typeof data.items.length === 'number'
+              && typeof data.item_count === 'number');
+  }
+
+  /* Every paint is stamped with the revision it came from, and only the newest
+     revision may paint. A read claims its revision when it is sent, so a
+     mutation that lands while it is in flight supersedes it; a mutation claims
+     its revision when its answer arrives, because at that instant it is the
+     newest truth there is. One counter, checked in one place. */
+  var cartRev = 0;
+  function claim() { return ++cartRev; }
+
+  function paintIfCurrent(cart, rev) {
+    if (rev !== cartRev) return cart;
+    applyCart(cart);
+    return cart;
+  }
+
+  /* The authoritative read. Nothing else is allowed to be the source of truth
+     for what the drawer shows. */
+  function readCart() {
+    var rev = claim();
+    return cartRequest(routes.cart).then(function (res) {
+      if (!res.ok || !isCart(res.data)) throw new Error(CART_OFFLINE);
+      return { cart: res.data, rev: rev };
+    });
+  }
+
+  function reconcile() {
+    return readCart()
+      .then(function (r) { return paintIfCurrent(r.cart, r.rev); })
+      .catch(function () { /* Leave the last known-good paint standing. */ });
   }
 
   var cartLastFocus = null;
@@ -910,19 +995,23 @@
     }
     drawer.setAttribute('aria-busy', 'true');
     showCartError('');
-    var openRev = cartRev;
-    fetchCart()
-      .then(function (cart) {
-        /* A change went out while this read was in flight; its response is the
-           newer truth and has already painted. Dropping this one is what stops
-           the drawer flicking back to the pre-tap quantity. */
-        if (openRev !== cartRev) return;
-        renderDrawer(cart); updateBadges(cart.item_count);
-      })
+    /* Straight through the shared read. It claims a revision when it is sent, so
+       a shopper who opens the drawer and immediately taps + has a GET and a POST
+       in flight together and the GET — which describes the cart as it was before
+       the tap — is discarded when it comes back second. Nothing here renders
+       directly: paintIfCurrent inside reconcile is the only writer, which is what
+       keeps this path and the mutation path from ever disagreeing. */
+    readCart()
+      .then(function (r) { paintIfCurrent(r.cart, r.rev); })
       .catch(function () {
-        if (body) body.innerHTML = '<div class="cart-empty"><p>Could not load your cart. Please refresh.</p></div>';
+        /* Only complain if there is nothing real on screen. If a previous read
+           already painted the cart, leaving it up is better than replacing a
+           correct drawer with an error. */
+        if (body && !body.querySelector('.cart-line')) {
+          body.innerHTML = '<div class="cart-empty"><p>Could not load your cart. Please refresh.</p></div>';
+        }
       })
-      .finally(function () { drawer.removeAttribute('aria-busy'); });
+      .then(function () { drawer.removeAttribute('aria-busy'); });
 
     document.addEventListener('keydown', onCartKey);
     var close = drawer.querySelector('[data-cart-close]');
@@ -954,9 +1043,6 @@
      for changes that actually alter the line-up. */
   function patchTotals(cart) {
     if (!drawer) return;
-    var subtotal = drawer.querySelector('[data-cart-subtotal]');
-    if (subtotal) subtotal.textContent = money(cart.total_price);
-
     cart.items.forEach(function (item) {
       var line = lineFor(item.key);
       if (!line) return;
@@ -966,59 +1052,60 @@
       var total = line.querySelector('.cart-line-total');
       if (total) total.textContent = money(item.final_line_price);
 
-      /* Never overwrite a field the shopper is still working in, or one whose
-         own edit has not come back yet — their number is newer than the cart we
-         are holding.
+      /* One reason, and one only, to leave an input alone: it holds a number
+         Shopify has not answered about yet. Everything else is written from the
+         cart, because the cart is the authoritative state and the input has no
+         business disagreeing with it.
 
-         qtyPending covers the debounce window only. It is deleted the moment
-         the request goes out, which left the input unguarded for the whole
-         round trip: change line A, change line B, and A's response — which
-         predates B's tap and still carries B's old quantity — would land while
-         B was in flight and write that stale number back into B's input. The
-         shopper watched their own entry revert. qtyInflight closes that window:
-         a line is protected from the tap until its own answer arrives, and its
-         own answer decrements the count before it repaints, so a line can still
-         be corrected by the response that belongs to it. */
+         Focus deliberately does not appear in this test. Guarding on focus as
+         well meant a quantity Shopify had just rejected stayed on screen for the
+         one shopper most likely to be looking straight at it — type a number,
+         press Enter, get "You can only add 9 of that to your cart", and watch
+         the box go on saying 12 underneath the sentence explaining that it
+         cannot. The cost is that a half-typed number can be corrected under the
+         cursor by a paint belonging to another line; the benefit is that the
+         drawer cannot display a quantity the cart does not hold. For a cart,
+         that trade is not close. */
       var input = line.querySelector('[data-cart-qty-input]');
-      if (input && document.activeElement !== input
-          && !qtyPending[item.key] && !qtyInflight[item.key]) {
-        input.value = item.quantity;
-      }
+      if (input && !qtyPending[item.key]) input.value = item.quantity;
     });
   }
 
-  /* One place decides how a cart response reaches the drawer: patch the
-     numbers where the line-up is unchanged, re-render where it is not. Both
-     the success path and the recovery path below need exactly this, and having
-     them share it is what keeps the two from drifting apart. */
-  function applyCart(cart, force) {
+  function domKeys() {
+    if (!drawer) return [];
+    return [].map.call(drawer.querySelectorAll('.cart-line'), function (l) {
+      return l.getAttribute('data-line-key');
+    });
+  }
+
+  /* The single writer. Every cart that reaches the DOM goes through here, and
+     nothing else may touch the badge, the rows or the subtotal.
+
+     Patch or rebuild is decided by comparing the line keys the DOM is showing
+     against the line keys Shopify sent, in order. The previous version compared
+     counts, which is the same thing only as long as nothing is ever swapped —
+     one line removed and another added between two reads gives an identical
+     count over a completely different cart, and the patch path would then
+     update by key, find nothing, and silently leave the old rows on screen.
+     Comparing the keys themselves makes that unrepresentable. */
+  function applyCart(cart) {
     updateBadges(cart.item_count);
-    var shown = drawer ? drawer.querySelectorAll('.cart-line').length : 0;
+    if (!drawer) return;
 
-    /* A row carrying .is-leaving is collapsed to 0fr and transparent, so it
-       must never be left standing by a patch: patchTotals would keep the
-       line-up as it found it and that row would stay invisible over a subtotal
-       that still counts it. Any row still leaving forces the full re-render
-       that rebuilds it.
+    var shown = domKeys();
+    var wanted = cart.items.map(function (i) { return String(i.key); });
+    var same = shown.length === wanted.length && shown.every(function (k, i) { return k === wanted[i]; });
 
-       This is now a backstop rather than the fix. .is-leaving is only applied
-       after Shopify has confirmed the line is gone, and the rebuild that
-       follows is already forced, so the state this guards against is no longer
-       reachable through the removal path — but the guard costs one selector and
-       the invariant it protects (nothing invisible survives a patch) is worth
-       stating in the one function every cart response goes through.
-
-       .is-removing deliberately does not appear here. It is the pending state,
-       it changes only opacity and pointer-events, and a patched line-up that
-       still contains it is correct: renderDrawer re-applies it from `removing`
-       either way.
-
-       `force` is set by every failure path. After an error the drawer must be
-       rebuilt from the cart we just re-read, never patched, because the thing
-       that failed may have left DOM state that no longer matches anything. */
-    var leaving = drawer ? drawer.querySelectorAll('.cart-line.is-leaving').length : 0;
-    if (!force && !leaving && shown && shown === cart.items.length) patchTotals(cart);
+    if (same && shown.length) patchTotals(cart);
     else renderDrawer(cart);
+
+    /* The subtotal is written once, here, on every path — never inside a branch
+       that a future edit could fail to reach. */
+    var subtotal = drawer.querySelector('[data-cart-subtotal]');
+    if (subtotal) subtotal.textContent = money(cart.total_price);
+
+    var foot = drawer.querySelector('[data-cart-foot]');
+    if (foot) foot.hidden = !cart.items.length;
   }
 
   /* Errors are shown, not just announced. The failure this exists for is
@@ -1031,40 +1118,43 @@
     el.hidden = !msg;
   }
 
-  /* Quantity edits were fired one request per click with no sequencing, so
-     tapping + three times raced three /cart/change calls and whichever
-     response landed last won — which is not necessarily the last click.
-     Requests are queued so the final state always reflects the final tap.
+  /* ---------------------------------------------------------------
+     Cart mutations — one deterministic path
 
-     The response is checked before it is believed. /cart/change.js answers a
-     rejected quantity with 422 and a Cart Error object, not a cart — and this
-     used to pipe r.json() straight into the success path. updateBadges then
-     read item_count off an error, blanking the header count, and the next line
-     threw on cart.items, so the catch swallowed it and every price in the
-     drawer kept the value it had while the input kept the number the shopper
-     had tapped. Stock ran out and the drawer quietly lied until a refresh.
-     Same shape as the add-to-cart handler, which has always checked r.ok. */
-  var CART_GENERIC = 'Could not update your cart.';
+         USER INTENT -> queued request -> Shopify answer -> authoritative cart
+                     -> single paint -> DOM
+
+     Three rules hold the whole thing up, and every case below is an instance of
+     them rather than a special case of its own:
+
+     1. Mutations are serialised. One at a time, in the order the shopper made
+        them, so Shopify is never asked to reconcile two versions of the truth
+        and responses cannot land out of order.
+
+     2. Nothing is painted from an unverified body. A mutation response is
+        painted only if it actually parses as a cart; anything else — a 422, an
+        HTML error page, a body some other script mangled — falls through to an
+        authoritative re-read. isCart is what makes that decision, not a
+        try/catch that hopes for the best.
+
+     3. Every mutation ends in a paint of real Shopify state, on success and on
+        failure alike. A failed edit re-reads the cart and paints that, so the
+        shopper is always looking at what Shopify holds rather than at their own
+        tap. There is no optimistic quantity anywhere to survive a failure,
+        which is why there is nothing to roll back.
+
+     The 422 shape is the one Shopify actually sends: status, message, and a
+     description carrying the sentence a shopper needs ("You can only add 9 of
+     that to your cart."). description only — message is the internal error
+     class and is the literal string "Cart Error" on every cart failure there
+     is, so surfacing it just replaces one unhelpful message with a
+     worse-looking one. */
   var cartQueue = Promise.resolve();
 
-  /* Lines with a quantity change in flight, and lines with a removal in flight.
-     qtyInflight guards an input against a response that belongs to a different
-     line (see patchTotals). removing is both the double-tap guard and the way
-     the pending dim survives a re-render: a row rebuilt while its own removal
-     is still out must come back dimmed, not fresh and tappable. */
-  var qtyInflight = {};
+  /* Lines with a removal in flight. Doubles as the guard against a second
+     removal for the same line, whether it arrives from a tap, a repeated Enter,
+     or the stepper being walked down to zero. */
   var removing = {};
-
-  /* A count, because a line can have more than one change in flight, and the
-     quantity alongside it, because a rebuild has to be able to put the
-     shopper's number back into an input it just replaced. Same shape as an
-     entry in qtyPending, so the two read identically at the call site. */
-  function inflight(key, delta, quantity) {
-    var cur = qtyInflight[key];
-    var n = (cur ? cur.n : 0) + delta;
-    if (n > 0) qtyInflight[key] = { n: n, quantity: quantity === undefined ? cur && cur.quantity : quantity };
-    else delete qtyInflight[key];
-  }
 
   /* data-line-key values come from Shopify and contain colons; they are safe in
      an attribute selector but the quoting still has to be right. */
@@ -1074,25 +1164,17 @@
     return drawer.querySelector('.cart-line[data-line-key="' + k + '"]');
   }
 
-  /* Long enough for the collapse in theme.css to finish. The sequence is
-     advanced by this timer and never by transitionend: a transition that is
-     switched off by reduced motion, dropped by a busy main thread, or cancelled
-     because the element was replaced fires no event at all, and gating the
-     rebuild on one would strand the drawer showing a row the cart no longer
-     has. Animation cannot hold up state — at worst it is not seen. */
-  var REMOVE_MS = 200;
+  function shopifyMessage(res) {
+    if (res.data && res.data.description) return res.data.description;
+    return CART_GENERIC;
+  }
 
-  /* Shopify has confirmed the line is gone. Publish that fact first — the badge
-     is state and does not wait for anything — then let the row leave, then
-     rebuild the drawer from the cart Shopify actually returned. Nothing here
-     recomputes a total: `cart` is the response body. */
-  /* The rebuild throws away the button that was just activated, so a keyboard
-     shopper who removes a line lands on document.body — outside an aria-modal
-     dialog, with the next Tab going to the page behind it. Focus is put back on
-     something inside the drawer, preferring the control nearest to the one that
-     disappeared. Only when focus was actually in the drawer to begin with: a
-     removal triggered by a pointer must not steal focus. */
-  function restoreDrawerFocus(had) {
+  /* The rebuild after a removal throws away the button that was just activated,
+     so a keyboard shopper would land on document.body — outside an aria-modal
+     dialog, with the next Tab going to the page behind it. Only when focus was
+     in the drawer to begin with: a removal driven by a pointer must not steal
+     it. */
+  function keepFocusInDrawer(had) {
     if (!had || !drawer) return;
     var a = document.activeElement;
     if (a && a !== document.body && drawer.contains(a)) return;
@@ -1102,151 +1184,129 @@
     if (next) next.focus();
   }
 
-  function playRemoval(key, cart, done) {
-    updateBadges(cart.item_count);
+  /* Drops the removal claim and takes the pending dim off the live row.
+
+     Both halves matter, and the order they run in relative to the paint is the
+     whole subtlety. Clearing only the map leaves the class on screen, because
+     the paint that follows re-applies it from the map it was just removed from —
+     or, if the cart re-read fails too, never runs at all and cannot clean
+     anything. A row stuck at half opacity with pointer-events:none is worse
+     than the failure that caused it: the shopper cannot retry, cannot change
+     the quantity, and has no way to tell the row is not simply broken. */
+  function clearRemoval(key) {
+    delete removing[key];
     var line = lineFor(key);
-    var hadFocus = !!(drawer && document.activeElement && drawer.contains(document.activeElement));
-    /* One finish, whichever branch gets there. `done` releases the removal
-       claim, and it must not be released before the row is actually gone —
-       until then the Remove button is still on screen and still focused. */
-    function finish() {
-      if (done) done();
-      applyCart(cart, true);
-      restoreDrawerFocus(hadFocus);
-    }
-    if (!line || RM) { finish(); return cart; }
-    line.classList.remove('is-removing');
-    line.classList.add('is-leaving');
-    return new Promise(function (resolve) {
-      window.setTimeout(function () { finish(); resolve(cart); }, REMOVE_MS);
-    });
+    if (line) { line.classList.remove('is-removing'); line.removeAttribute('aria-busy'); }
   }
 
-  /* Mutations are serialised by cartQueue, so two changes can never land out of
-     order. The unserialised read is the one in openDrawer: a shopper who opens
-     the drawer and immediately taps + has a GET and a POST in flight together,
-     and if the GET resolves second it repaints the drawer with the cart as it
-     was before the tap. Every mutation claims a revision; a read that finds the
-     revision moved on while it was in flight discards its own answer. */
-  var cartRev = 0;
+  /* Shopify has answered about this line, so the shopper's unconfirmed number
+     for it stops being newer than the cart and the paint that follows must be
+     free to overwrite the input.
+
+     Releasing it here rather than when the promise finally settles is what makes
+     a rejection visible. A quantity Shopify refused is not a pending intent, it
+     is a wrong number on screen: with the claim still standing, the reconcile
+     painted every other field and skipped the one box the shopper was looking
+     at, so an inventory rejection left "3" in the input over a cart holding 2,
+     with the error message directly underneath explaining why it could not be
+     3. Only the entry this request actually carried is released — a tap that
+     arrived during the round trip is a newer intent and keeps its protection. */
+  function settleIntent(key, quantity) {
+    var p = qtyPending[key];
+    if (p && p.sent && p.quantity === quantity) delete qtyPending[key];
+  }
 
   function changeLine(key, quantity, label) {
-    cartRev++;
-    inflight(key, 1, quantity);
-
-    /* Exactly once, on whichever path gets there first. A network failure never
-       reaches the response handler, and a rejected response throws out of it, so
-       neither end can be trusted to do this bookkeeping on its own — and
-       double-decrementing would unguard an input that is still in flight. */
-    var settled = false;
-    function settle() {
-      if (settled) return;
-      settled = true;
-      inflight(key, -1);
-    }
-
-    /* A removal is claimed here rather than in the click handler, because the
-       stepper is a second way to reach quantity 0: min="0" on the drawer input
-       means the minus button can step the last unit away, and that path never
-       went through the Remove button at all. Claiming it in the one function
-       both routes share is what stops a stepper-driven removal and a tap on
-       Remove queueing the same line twice. */
     if (quantity === 0) removing[key] = true;
 
-    /* Released only once the row is gone or has been put back, never at the
-       moment the response lands. Between those two points the row is still on
-       screen with a focused Remove button on it, and a keyboard user holding
-       Enter would otherwise send a second removal for a line the cart no longer
-       has — which Shopify answers 404, so a removal that worked would end in an
-       error banner. */
-    function releaseRemoval() {
-      if (quantity === 0) delete removing[key];
-    }
-
     cartQueue = cartQueue.then(function () {
-      return fetch(routes.cartChange, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ id: key, quantity: quantity })
-      })
-        .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      var hadFocus = !!(drawer && document.activeElement && drawer.contains(document.activeElement));
+
+      return cartRequest(routes.cartChange, { id: key, quantity: quantity })
         .then(function (res) {
-          settle();
-          /* description only. `message` is Shopify's internal error class and
-             is the literal string "Cart Error" on every cart failure there is —
-             surfacing it just replaces one unhelpful message with a
-             worse-looking one. */
-          if (!res.ok) throw new Error(res.data.description || CART_GENERIC);
-          var cart = res.data;
+          settleIntent(key, quantity);
+          if (!res.ok) throw new Error(shopifyMessage(res));
           showCartError('');
-          if (quantity === 0) {
-            announce((label ? label + ' removed' : 'Item removed') + ' from cart.');
-            /* The row has not moved yet. It moves now, because the cart in hand
-               is Shopify's and it no longer contains this line. The returned
-               promise keeps the queue closed until the drawer has been rebuilt,
-               so a second removal cannot start painting over an exit already
-               under way. */
-            return Promise.resolve(playRemoval(key, cart, releaseRemoval));
-          }
-          applyCart(cart);
-          announce('Cart updated. Subtotal ' + money(cart.total_price) + '.');
-          return cart;
+          if (quantity === 0) announce((label ? label + ' removed' : 'Item removed') + ' from cart.');
+          else if (isCart(res.data)) announce('Cart updated. Subtotal ' + money(res.data.total_price) + '.');
+          else announce('Cart updated.');
+
+          /* Rule 2. A mutation that came back with a real cart is the newest
+             truth and is painted directly; anything else is not trusted and the
+             reconcile below fetches the truth instead. */
+          if (isCart(res.data)) { paintIfCurrent(res.data, claim()); return; }
+          return reconcile();
         })
         .catch(function (err) {
-          settle();
+          /* Also here: a request that never reached Shopify at all leaves the
+             same wrong number on screen as one Shopify refused. */
+          settleIntent(key, quantity);
           showCartError(err.message);
           announce(err.message);
+          /* Before the paint, not after. The row is staying, so the shopper must
+             get back a row they can use — and this has to happen even if the
+             re-read below fails as well and no paint ever comes. */
+          if (quantity === 0) clearRemoval(key);
+          /* Rule 3. Whatever went wrong, the drawer must end up on Shopify's
+             actual cart. */
+          return reconcile();
+        })
+        .then(function () {
+          /* On the success path the claim is still held here, which is
+             deliberate: it spans the whole round trip plus the paint, so a
+             second Enter on a Remove button that is still on screen cannot send
+             a second removal for a line Shopify has already dropped. By now the
+             row is gone, so this is a map delete and nothing more.
 
-          /* The claim is dropped before anything is repainted, so the row that
-             comes back is tappable again and the shopper can retry. */
-          releaseRemoval();
-
-          /* The pending dim is taken off the live node here rather than being
-             left to the re-render. If the cart re-read below also fails — one
-             offline shopper, two failed requests — nothing repaints at all, and
-             a row left at .5 opacity with pointer-events:none would be
-             permanently unusable: no remove, no stepper, and no error the
-             shopper could act on. Clearing it first means the worst case is a
-             stale quantity with a message explaining it, not a dead row. */
-          var line = lineFor(key);
-          if (line) {
-            line.classList.remove('is-removing', 'is-leaving');
-            line.removeAttribute('aria-busy');
-          }
-
-          /* Whatever went wrong, the drawer may be showing a quantity the cart
-             does not hold. Re-read the real cart and put the drawer back on it —
-             force, so it is rebuilt rather than patched, because the thing that
-             failed may have left DOM state that no longer matches anything. A
-             failed edit should leave the shopper looking at the truth, not at
-             their own optimistic tap. */
-          return fetchCart()
-            .then(function (fresh) { applyCart(fresh, true); })
-            .catch(function () {});
+             Only for a removal. Unconditionally, this released a claim it had
+             not made: a quantity change that settled while a removal for the
+             same line was still queued would drop that removal's guard, and the
+             next tap on Remove would queue the line a second time. */
+          if (quantity === 0) clearRemoval(key);
+          keepFocusInDrawer(hadFocus);
         });
     });
     return cartQueue;
   }
 
-  /* A run of stepper taps is one decision, not four. Queueing kept the calls
-     in order but the shopper still paid a round-trip per tap to say "5", and
-     each response re-rendered the drawer under their finger. The request is
-     now held until the taps stop and one goes out carrying the final number. */
+  /* A run of stepper taps is one decision, not four. Serialising alone kept the
+     calls in order but the shopper still paid a round trip per tap to say "5",
+     and each answer repainted the drawer under their finger. The request is held
+     until the taps stop and one goes out carrying the final number.
+
+     qtyPending holds the number the shopper wants for a line that Shopify has
+     not confirmed yet, and it holds it for the whole of that time — through the
+     wait, through the request, until the answer lands. That span is deliberate,
+     and it is the reason a paint can be as blunt as "write every input from the
+     cart": the one case where the cart is not the newest truth for a field is
+     precisely the case this map describes.
+
+     An earlier version deleted the entry the moment the request went out, which
+     left the input unguarded for the entire round trip. Change line A, change
+     line B, and the paint belonging to A — which predates B's tap and still
+     carries B's old quantity — would land while B was in flight and write that
+     stale number back into B's box. The shopper watched their own entry revert
+     and then, a moment later, correct itself. One map covering one idea, rather
+     than two maps covering two halves of it, is what makes that unreachable. */
   var QTY_DELAY = 350;
   var qtyPending = {};
 
   function sendQty(key) {
     var p = qtyPending[key];
-    if (!p) return;
+    if (!p || p.sent) return;
     window.clearTimeout(p.timer);
-    delete qtyPending[key];
+    p.sent = true;
+    /* The entry is released inside changeLine, the instant Shopify answers and
+       before anything repaints — see settleIntent. */
     changeLine(key, p.quantity);
   }
 
   function queueQtyChange(key, quantity) {
-    if (qtyPending[key]) window.clearTimeout(qtyPending[key].timer);
+    var p = qtyPending[key];
+    if (p && !p.sent) window.clearTimeout(p.timer);
     qtyPending[key] = {
       quantity: quantity,
+      sent: false,
       timer: window.setTimeout(function () { sendQty(key); }, QTY_DELAY)
     };
   }
@@ -1283,10 +1343,11 @@
 
       /* Asked, not done. The row dims and stops taking input so the tap is
          acknowledged, and that is all it does — it keeps its height and its
-         place, and everything below it stays put. If Shopify refuses the
-         removal this comes straight back off with nothing to undo. The row is
-         only allowed to collapse in playRemoval, after the response. */
-      removing[key] = true;
+         place, and everything below it stays put. Nothing here asserts an
+         outcome, so there is nothing to undo if Shopify refuses: the paint that
+         ends every mutation rebuilds or patches from the real cart, and this
+         class cannot survive either. The row leaves when, and only when,
+         Shopify's cart no longer contains it. */
       if (line) {
         line.classList.add('is-removing');
         line.setAttribute('aria-busy', 'true');
@@ -1322,32 +1383,32 @@
     if (errorEl) { errorEl.hidden = true; errorEl.textContent = ''; }
     if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
 
-    fetch(routes.cartAdd, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        id: form.querySelector('[name="id"]').value,
-        quantity: parseInt(form.querySelector('[name="quantity"]').value, 10) || 1
-      })
+    /* Same transport as every other cart call. This handler used to read the
+       response body with fetch's single-use .json(), which is the exact thing an
+       app embed on the page can consume first — an add that had actually
+       succeeded would then report an error to the shopper. */
+    cartRequest(routes.cartAdd, {
+      id: form.querySelector('[name="id"]').value,
+      quantity: parseInt(form.querySelector('[name="quantity"]').value, 10) || 1
     })
-      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
       .then(function (res) {
-        if (!res.ok) throw new Error(res.data.description || 'Could not add to cart');
-        return fetchCart();
+        if (!res.ok) throw new Error((res.data && res.data.description) || 'Could not add to cart');
+        /* The add response describes the line added, not the whole cart, so the
+           cart is read rather than inferred. */
+        return readCart();
       })
-      .then(function (cart) {
-        updateBadges(cart.item_count);
-        renderDrawer(cart);
+      .then(function (r) {
+        paintIfCurrent(r.cart, r.rev);
         openDrawer();
-        announce('Added to cart. ' + cart.item_count +
-                 (cart.item_count === 1 ? ' item' : ' items') +
-                 ', subtotal ' + money(cart.total_price) + '.');
+        announce('Added to cart. ' + r.cart.item_count +
+                 (r.cart.item_count === 1 ? ' item' : ' items') +
+                 ', subtotal ' + money(r.cart.total_price) + '.');
       })
       .catch(function (err) {
         if (errorEl) { errorEl.hidden = false; errorEl.textContent = err.message; }
         announce(err.message);
       })
-      .finally(function () {
+      .then(function () {
         if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); }
       });
   });
@@ -1384,14 +1445,31 @@
 
     if (!form) { go(); return; }
 
-    fetch(routes.cartAdd, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        id: form.querySelector('[name="id"]').value,
-        quantity: parseInt(form.querySelector('[name="quantity"]').value, 10) || 1
-      })
-    }).then(go).catch(recover);
+    cartRequest(routes.cartAdd, {
+      id: form.querySelector('[name="id"]').value,
+      quantity: parseInt(form.querySelector('[name="quantity"]').value, 10) || 1
+    }).then(function (res) {
+      /* Only leave for checkout if the item is actually in the cart. The
+         previous version left on any settled response, including a 422, which
+         sent a shopper to checkout with the discount applied and nothing added.
+         Refusing to travel is only half the job though: a button that quietly
+         re-enables itself and does nothing is a dead end. Shopify's own sentence
+         goes to the same error line the Add to Cart button on this form uses. */
+      if (!res.ok) {
+        var err = form.querySelector('[data-buybox-error]');
+        var msg = (res.data && res.data.description) || 'Could not add to cart';
+        if (err) { err.hidden = false; err.textContent = msg; }
+        announce(msg);
+        recover();
+        return;
+      }
+      go();
+    }).catch(function (e) {
+      var err = form.querySelector('[data-buybox-error]');
+      if (err) { err.hidden = false; err.textContent = e.message; }
+      announce(e.message);
+      recover();
+    });
   });
 
 })();
