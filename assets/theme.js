@@ -1675,4 +1675,28 @@
   });
 
 
+  /* ---------------------------------------------------------------
+     Product videos: stop anything that has been scrolled away from
+
+     The only JavaScript this section has, and it exists for one bug: the strip
+     scrolls sideways, so a clip the shopper started can be swiped off screen
+     and go on talking from a video nobody is looking at.
+
+     Nothing here starts a video. The shopper pressing play is the only reason
+     one should ever be running, and preload="none" in the markup means no
+     video bytes are fetched before that happens — the section costs a few
+     poster images until someone shows intent.
+
+     One observer for the whole strip, no scroll listener, no polling. */
+  (function productVideos() {
+    var vids = document.querySelectorAll('[data-pvid] video');
+    if (!vids.length || !window.IntersectionObserver) return;
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting && !entry.target.paused) entry.target.pause();
+      });
+    }, { threshold: 0.4 });
+    [].forEach.call(vids, function (v) { io.observe(v); });
+  })();
+
 })();

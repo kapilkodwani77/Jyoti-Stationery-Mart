@@ -1,0 +1,75 @@
+@layer sections {
+  /* ---- product videos ---------------------------------------------------
+     A reel strip. Horizontal on every size, because the alternative on a phone
+     is a stack of tall clips that turns four videos into four screens of
+     scrolling between the questions and the reviews. Sideways, four videos
+     cost one screen and the shopper can see there are more.
+
+     The scroller is the <ul> itself, so there is no wrapper element between
+     the list semantics and the layout. */
+  .pvid{
+    display:flex; gap:var(--s-3);
+    margin:0; padding:0 0 var(--s-2); list-style:none;
+    overflow-x:auto; scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .pvid::-webkit-scrollbar{ display:none; }
+
+  /* Bleed to the viewport edge on a phone so the strip reads as continuing
+     past the screen rather than stopping at a margin — the cue that tells a
+     shopper it can be swiped. The padding puts the first video back on the
+     page's own gutter. */
+  @media(max-width:899px){
+    .pvid{
+      margin-inline:calc(var(--s-5) * -1);
+      padding-inline:var(--s-5);
+      scroll-padding-inline-start:var(--s-5);
+    }
+  }
+
+  /* 9:16 is the shape these are shot in. flex-basis is a viewport fraction so
+     a phone shows one and a bit — the "and a bit" is the whole affordance,
+     because a strip where the second item is fully off screen looks like a
+     single video. */
+  .pvid-item{
+    flex:0 0 clamp(200px, 62vw, 260px);
+    scroll-snap-align:start;
+  }
+
+  /* object-fit:contain, not cover. cover looks tidier when every clip is 9:16
+     and silently crops the top and bottom off anything that is not — which is
+     a decision about someone's footage that a stylesheet should not be making
+     on its own. contain guarantees nothing is cut and nothing is stretched
+     whatever gets uploaded; the jute behind it is the letterbox on the odd
+     clip that is not vertical.
+
+     aspect-ratio holds the slot before any byte arrives, so the strip does not
+     resize when a poster loads. */
+  .pvid-video{
+    display:block; width:100%; height:auto;
+    aspect-ratio:9/16; object-fit:contain;
+    background:var(--jute);
+    border-radius:var(--r-lg);
+    border:1px solid var(--edge);
+  }
+
+  /* Tablet and up: the strip has room, so the items grow rather than the row
+     turning into a short line of small videos floating in white space. */
+  @media(min-width:900px){
+    .pvid{ gap:var(--s-4); }
+    .pvid-item{ flex:0 0 clamp(240px, 22vw, 320px); }
+  }
+
+  /* Wide desktop: four across with no scrolling at all. Beyond that the strip
+     centres instead of stretching, because a 9:16 video 500px wide is a
+     billboard, not a reel. */
+  @media(min-width:1280px){
+    .pvid{ justify-content:flex-start; }
+    .pvid-item{ flex:0 0 300px; }
+  }
+
+  /* The focus ring has to survive the overflow container: a keyboard user
+     tabbing into the third video must be able to see where they are. */
+  .pvid-video:focus-visible{ outline:2px solid var(--indigo); outline-offset:3px; }
+}

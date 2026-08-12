@@ -657,6 +657,118 @@ t('no code path in theme.js can reach /discount/', () => {
   no(/discount\//.test(code), 'a discount navigation survives in theme.js');
 });
 
+/* ------------------------------------------------- 13. product videos */
+
+const PV_RAW = fs.readFileSync(path.join(ROOT, 'sections/product-videos.liquid'), 'utf8');
+const PV = PV_RAW.replace(/\{%-?\s*comment\s*-?%\}[\s\S]*?\{%-?\s*endcomment\s*-?%\}/g, '');
+const PVCSS = fs.readFileSync(path.join(ROOT, 'assets/section-product-videos.css'), 'utf8');
+const PTPL_RAW = fs.readFileSync(path.join(ROOT, 'templates/product.json'), 'utf8');
+const PTPL = JSON.parse(PTPL_RAW.slice(PTPL_RAW.indexOf('{')));
+const GALLERY = fs.readFileSync(path.join(ROOT, 'sections/main-product.liquid'), 'utf8');
+
+t('the video section renders after the FAQ', () =>
+  ok(PTPL.order.indexOf('faq') < PTPL.order.indexOf('videos'), PTPL.order.join(' -> ')));
+t('the video section renders before the reviews', () =>
+  ok(PTPL.order.indexOf('videos') < PTPL.order.indexOf('reviews'), PTPL.order.join(' -> ')));
+t('reviews stay last on the page', () =>
+  eq(PTPL.order[PTPL.order.length - 1], 'reviews'));
+t('the FAQ was not moved off its own position before videos', () =>
+  eq(PTPL.order[PTPL.order.indexOf('videos') - 1], 'faq'));
+t('the template still holds every section it had', () => {
+  ['main', 'benefits', 'specs', 'faq', 'reviews'].forEach((k) =>
+    ok(PTPL.sections[k], 'lost section: ' + k));
+});
+t('the Judge.me review block survived the template rewrite', () =>
+  ok(JSON.stringify(PTPL.sections.reviews).includes('judge-me-reviews'),
+     'the review app block was dropped'));
+t('the FAQ keeps all six questions', () =>
+  eq(Object.keys(PTPL.sections.faq.blocks).length, 6));
+t('the videos section points at the new section type', () =>
+  eq(PTPL.sections.videos.type, 'product-videos'));
+
+t('videos come from Shopify product media', () => {
+  ok(PV.includes('product.media'), 'not sourced from product media');
+  ok(PV.includes("media_type == 'video'"), 'does not filter to video');
+  ok(PV.includes('m.sources'), 'does not read Shopify video sources');
+});
+t('no video URL is hardcoded', () =>
+  no(/https?:\/\/[^"'\s]*\.(mp4|m3u8|webm)/i.test(PV), 'a video URL is baked into the markup'));
+t('the section disappears entirely when there is no video', () => {
+  ok(/video_count > 0/.test(PV), 'no empty-state guard');
+  ok(PV.indexOf('video_count > 0') < PV.indexOf('<section'), 'the guard does not wrap the section');
+});
+
+t('videos show no product name', () => no(/product\.title/.test(PV)));
+t('videos show no price', () => no(/price|money/i.test(PV)));
+t('videos show no discount or saving', () => no(/discount|% off|saved|compare_at/i.test(PV)));
+t('videos have no Add to Cart', () =>
+  no(/add-to-cart|cartAdd|buybox-form|<form/i.test(PV)));
+t('videos carry no product card markup', () => no(/product-card|card/i.test(PV)));
+
+t('video is lazy by the strongest available setting', () => {
+  ok(/preload="none"/.test(PV), 'preload is not none — bytes fetch before intent');
+  no(/preload="(auto|metadata)"/.test(PV));
+});
+t('video does not autoplay', () => no(/autoplay/i.test(PV)));
+t('video is muted-safe by never starting itself', () => {
+  const js = JS.slice(JS.indexOf('function productVideos'));
+  no(/\.play\(\)/.test(js.slice(0, 900)), 'the script starts playback');
+});
+t('video plays inline on iOS rather than hijacking fullscreen', () =>
+  ok(/playsinline/.test(PV)));
+t('video has a poster so the strip renders before any video loads', () =>
+  ok(/poster="/.test(PV)));
+t('video carries intrinsic dimensions against layout shift', () => {
+  ok(/width="\{\{ m\.preview_image\.width/.test(PV));
+  ok(/height="\{\{ m\.preview_image\.height/.test(PV));
+});
+t('the slot holds its shape with aspect-ratio', () =>
+  ok(/aspect-ratio:9\/16/.test(PVCSS)));
+t('video is never stretched or cropped', () => {
+  ok(/object-fit:contain/.test(PVCSS), 'contain is what guarantees no crop');
+  no(/object-fit:cover/.test(PVCSS));
+});
+t('the strip scrolls horizontally with snap', () => {
+  ok(/overflow-x:auto/.test(PVCSS));
+  ok(/scroll-snap-type:x/.test(PVCSS));
+  ok(/scroll-snap-align/.test(PVCSS));
+});
+t('desktop gets its own sizing rather than the mobile layout', () =>
+  ok(/min-width:900px/.test(PVCSS) && /min-width:1280px/.test(PVCSS)));
+t('the strip uses the theme radius and palette', () => {
+  ok(/border-radius:var\(--r-lg\)/.test(PVCSS));
+  ok(/var\(--jute\)/.test(PVCSS));
+});
+t('keyboard focus stays visible inside the scroller', () =>
+  ok(/\.pvid-video:focus-visible/.test(PVCSS)));
+t('the section is named for assistive tech even with no heading', () =>
+  ok(/aria-label="Product videos"/.test(PV)));
+t('each video is individually labelled', () => ok(/aria-label="Product video/.test(PV)));
+t('the strip is a real list', () => ok(/<ul class="pvid"/.test(PV) && /<li class="pvid-item"/.test(PV)));
+
+t('off-screen videos are paused, not left playing audio', () => {
+  const js = JS.slice(JS.indexOf('function productVideos'), JS.indexOf('function productVideos') + 900);
+  ok(/IntersectionObserver/.test(js), 'no observer');
+  ok(/\.pause\(\)/.test(js), 'nothing pauses');
+  no(/addEventListener\('scroll'/.test(js), 'a scroll listener would be the expensive way');
+});
+
+t('the product gallery was not touched', () => {
+  ok(GALLERY.includes('product.images'), 'the gallery no longer reads product.images');
+  no(/pvid|product-videos/.test(GALLERY), 'video leaked into the gallery');
+});
+t('videos are not duplicated into the gallery', () =>
+  no(/media_type/.test(GALLERY), 'the gallery now renders media and would duplicate the videos'));
+
+/* Floating video was evaluated and deliberately not built — the sticky buy bar
+   owns the bottom of the mobile viewport. These assert the decision held. */
+t('no floating video widget was added', () => {
+  no(/floating-video|float-video|video-bubble/i.test(JS));
+  no(/floating-video|float-video/i.test(CSS));
+});
+t('nothing new competes with the sticky buy bar for the bottom corner', () =>
+  no(/position:fixed/.test(PVCSS), 'the video section pins something to the viewport'));
+
 /* ---------------------------------------------------------------- report */
 
 const total = pass + failures.length;
