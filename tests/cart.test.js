@@ -634,8 +634,33 @@ t('the copied state is a CSS swap', () => {
   ok(/\.offer-copy\.is-copied \.offer-copy-idle\{\s*display:none/.test(BUYCSS));
   ok(/\.offer-copy-done\{\s*display:none/.test(BUYCSS));
 });
-t('the copy control meets the 44px tap target', () =>
-  ok(/\.offer-copy\{[^}]*min-height:var\(--tap\)/.test(BUYCSS.replace(/\n/g, ' '))));
+t('the copy control meets the 44px tap target', () => {
+  /* The height comes from the row and align-self:stretch rather than a
+     min-height on the button, so the target costs no extra vertical space. */
+  const flat = BUYCSS.replace(/\n/g, ' ');
+  ok(/\.offer\{[^}]*min-height:var\(--tap\)/.test(flat), 'the row is not a full tap target');
+  ok(/\.offer-copy\{[^}]*align-self:stretch/.test(flat), 'the button does not fill the row');
+});
+t('the offer is one row, not a stacked card', () => {
+  const flat = BUYCSS.replace(/\n/g, ' ');
+  ok(/\.offer\{[^}]*display:flex[^}]*align-items:center/.test(flat), 'not a single centred row');
+  no(/\.offer\{[^}]*flex-direction:column/.test(flat), 'the offer stacks again');
+});
+t('the offer carries no fill, dashes or nested chip', () => {
+  const flat = BUYCSS.replace(/\n/g, ' ');
+  no(/\.offer\{[^}]*dashed/.test(flat), 'the coupon-clipart border is back');
+  no(/\.offer\{[^}]*background:rgba/.test(flat), 'the tinted card is back');
+  ok(/\.offer-code\{[^}]*border:0/.test(flat), 'the code chip border is back');
+});
+t('the offer markup is a single line of content', () => {
+  ok(BUYBOX.includes('offer-text'), 'no single-line text element');
+  no(/offer-head|offer-row|offer-use|offer-mark/.test(BUYBOX), 'the two-row markup survives');
+  no(/offer-head|offer-row|offer-use|offer-mark/.test(BUYCSS), 'dead two-row CSS survives');
+});
+t('the filler words and decorative tick are gone', () => {
+  no(/this order/i.test(BUYBOX), 'filler copy survives');
+  no(/name: 'check'[^}]{0,40}offer|offer[^}]{0,80}name: 'check'/.test(BUYBOX), 'the tick survives');
+});
 t('the offer uses the MamaJoy palette, not a borrowed one', () => {
   const block = BUYCSS.slice(BUYCSS.indexOf('.offer{'), BUYCSS.indexOf('.offer-copy:hover'));
   ok(/var\(--indigo\)/.test(block));

@@ -64,45 +64,53 @@
   .buybox form{ margin-top:var(--s-5); }
 
   /* ---- offer ------------------------------------------------------------
-     Information about the order, not a control that changes it. The dashed
-     edge is the whole signal: everything solid-bordered in this theme does
-     something when pressed, and this card's only action is putting a string on
-     the clipboard. It reads as a coupon rather than a second Add to Cart,
-     which is exactly the confusion the control it replaced created.
+     A row, not a card. The version this replaces was around 180px tall to
+     carry eleven words, built as a dashed box around a bordered chip — the
+     shape a coupon takes when it is drawn rather than designed, and heavy
+     enough to argue with the price sitting directly above it.
 
-     Compact on purpose. It sits between the price and the quantity on the one
-     screen where the name, the price, the rating and the button are already
-     competing, so it gets two lines and no more. */
+     This is the height of its own tap target and nothing more. One hairline,
+     no fill, no dashes, no icon. The offer should read as a quiet benefit the
+     brand is extending rather than a promotional widget bolted to the page,
+     and the fastest way to look expensive here is to take things away.
+
+     Solid hairline rather than dashed: the row contains a real control now, so
+     a coupon-clipart edge would be saying the opposite of what is true. The
+     affordance lives on the Copy text, where the press actually happens. */
   .offer{
-    margin-bottom:var(--s-4); padding:var(--s-2) var(--s-3);
-    border:1px dashed var(--edge-strong); border-radius:var(--r-md);
-    background:rgba(222,216,204,.34);
+    display:flex; align-items:center; gap:var(--s-3);
+    min-height:var(--tap); margin-bottom:var(--s-4);
+    padding-inline:var(--s-3);
+    border:1px solid var(--edge); border-radius:var(--r-md);
   }
-  .offer-head{
-    display:flex; align-items:center; gap:6px; margin:0;
-    font-size:14px; font-weight:500; color:var(--ink);
-  }
-  .offer-mark{ display:flex; color:var(--indigo); }
-  .offer-row{ display:flex; align-items:center; gap:var(--s-2); flex-wrap:wrap; }
-  .offer-use{ font-size:13px; color:var(--ink-2); }
 
-  /* user-select:all so the fallback path is one tap rather than a careful
-     drag across six characters. It also makes the code selectable for anyone
-     who ignores the button entirely, which is a perfectly reasonable way to
-     use a coupon. */
+  .offer-text{
+    margin:0; min-width:0; flex:1 1 auto;
+    font-size:13px; color:var(--ink-2); line-height:1.3;
+  }
+  .offer-text b{ font-weight:500; color:var(--ink); }
+
+  /* No border and no background. The code is distinguished by weight, tracking
+     and ink, which is enough — a box around it made a third nested rectangle
+     in a component that only ever needed one.
+
+     user-select:all so the fallback path is one tap rather than a careful drag
+     across six characters, and so anyone ignoring the button entirely can
+     still take the code the obvious way. */
   .offer-code{
-    font-family:inherit; font-size:14px; font-weight:500; letter-spacing:.08em;
-    color:var(--indigo); background:var(--chalk);
-    border:1px solid var(--edge); border-radius:var(--r-sm);
-    padding:2px var(--s-2); user-select:all;
+    font-family:inherit; font-weight:500; letter-spacing:.06em;
+    color:var(--indigo); background:none; border:0; padding:0;
+    user-select:all; white-space:nowrap;
   }
 
-  /* Full tap height, pushed to the end of the row. Both labels ship in the
-     markup and CSS shows one, so the button's accessible name is never
-     rewritten — same swap the add-to-cart buttons use. */
+  /* align-self:stretch is what buys the 44px target for free: the button is as
+     tall as the row, so the tap area costs no extra height. Both labels ship
+     in the markup and CSS shows one, so the accessible name inside the button
+     is never rewritten. */
   .offer-copy{
-    margin-inline-start:auto; min-height:var(--tap); padding-inline:var(--s-2);
-    display:inline-flex; align-items:center; justify-content:center;
+    flex:0 0 auto; align-self:stretch;
+    display:inline-flex; align-items:center;
+    padding:0 0 0 var(--s-2); margin:0;
     background:none; border:0; cursor:pointer; font:inherit;
     font-size:13px; font-weight:500; color:var(--indigo);
     text-decoration:underline; text-underline-offset:3px;
@@ -114,11 +122,12 @@
     display:inline; color:var(--ink-2); text-decoration:none;
   }
 
-  /* 375px with a long code: the row wraps rather than the code shrinking or
-     the button losing its tap height. */
+  /* 375px is the tightest this gets. The label column shrinks, the code and
+     the action do not, so the row stays one line rather than finding its width
+     by wrapping a coupon code in half. */
   @media(max-width:380px){
-    .offer-head{ font-size:13px; }
-    .offer-use{ font-size:12px; }
+    .offer{ gap:var(--s-2); padding-inline:var(--s-2); }
+    .offer-text{ font-size:12px; }
   }
   .buybox-error{ margin-top:var(--s-3); font-size:14px; color:var(--danger); }
   /* ---- trust row -------------------------------------------------------
