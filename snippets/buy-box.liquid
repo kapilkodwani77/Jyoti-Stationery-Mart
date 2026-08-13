@@ -198,22 +198,25 @@
       offer that shows.
     {%- endcomment -%}
     {%- if prepaid_code != blank -%}
-      <div class="offer">
-        {%- comment -%}
-          One line, three facts: the saving, the code, the way to take it. The
-          previous version spent two rows and a tick on the same content —
-          "Get 5% off this order" over "Use code CARE5", with the code inside
-          its own bordered chip inside a dashed card inside the page. Three
-          nested boxes and four filler words to say 5% off with CARE5.
+      {%- comment -%}
+        Warm paper surface, one row. The amount leads on size, weight and ink;
+        "Code" is a small uppercase label because a label supports the value it
+        names rather than competing with it; the code itself is set apart by
+        colour and tracking rather than by a box, which is what made the first
+        version three nested rectangles.
 
-          The tick is gone because a benefit does not need a checkmark to be
-          read as a benefit, and the chip border is gone because the code is
-          already distinguished by weight, tracking and ink. What is left is a
-          quiet row the height of its own tap target.
-        {%- endcomment -%}
-        <p class="offer-text"><b>{{ prepaid_pct }}% off</b> with code <code class="offer-code" data-offer-code>{{ prepaid_code }}</code></p>
+        No border and no shadow — the jute does the separating on its own, and
+        declaring elevation twice is what makes a component look assembled
+        rather than designed. No dashes, no tick, no accent bar.
+      {%- endcomment -%}
+      <div class="offer">
+        <p class="offer-text">
+          <b class="offer-amount">{{ prepaid_pct }}% off</b>
+          <span class="offer-label">Code</span>
+          <code class="offer-code" data-offer-code>{{ prepaid_code }}</code>
+        </p>
         <button type="button" class="offer-copy" data-offer-copy data-offer-value="{{ prepaid_code }}">
-          <span class="offer-copy-idle">Copy</span>
+          <span class="offer-copy-idle">Copy code</span>
           <span class="offer-copy-done" aria-hidden="true">Copied</span>
           <span class="visually-hidden">Copy discount code {{ prepaid_code }} to the clipboard</span>
         </button>

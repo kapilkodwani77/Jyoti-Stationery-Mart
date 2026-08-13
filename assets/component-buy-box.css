@@ -64,70 +64,79 @@
   .buybox form{ margin-top:var(--s-5); }
 
   /* ---- offer ------------------------------------------------------------
-     A row, not a card. The version this replaces was around 180px tall to
-     carry eleven words, built as a dashed box around a bordered chip — the
-     shape a coupon takes when it is drawn rather than designed, and heavy
-     enough to argue with the price sitting directly above it.
+     Warm paper, one row, 44px tall.
 
-     This is the height of its own tap target and nothing more. One hairline,
-     no fill, no dashes, no icon. The offer should read as a quiet benefit the
-     brand is extending rather than a promotional widget bolted to the page,
-     and the fastest way to look expensive here is to take things away.
+     The surface is the theme's own jute — the same warm neutral the page
+     alternates into elsewhere — so the offer reads as part of this storefront
+     rather than a promo widget dropped onto it. That tint is the only
+     separation: no border, no shadow. Declaring elevation twice is most of
+     what makes a small component look assembled instead of designed, and a
+     hairline under a fill would be the ghost-card tell.
 
-     Solid hairline rather than dashed: the row contains a real control now, so
-     a coupon-clipart edge would be saying the opposite of what is true. The
-     affordance lives on the Copy text, where the press actually happens. */
+     Hierarchy is carried by size, weight and ink together rather than by
+     boxes. The amount is the largest and darkest thing here and wins a
+     squint; "Code" is a small uppercase label, because a label supports the
+     value it names; the code is set apart by indigo and tracking alone. That
+     is the whole reason the earlier chip border could go — it was doing a job
+     typography was already doing.
+
+     Contrast on jute: ink-2 4.68:1, indigo 7.16:1, ink far above. */
   .offer{
     display:flex; align-items:center; gap:var(--s-3);
     min-height:var(--tap); margin-bottom:var(--s-4);
     padding-inline:var(--s-3);
-    border:1px solid var(--edge); border-radius:var(--r-md);
+    background:var(--jute); border-radius:var(--r-md);
   }
 
   .offer-text{
+    display:flex; align-items:baseline; gap:var(--s-2);
     margin:0; min-width:0; flex:1 1 auto;
-    font-size:13px; color:var(--ink-2); line-height:1.3;
   }
-  .offer-text b{ font-weight:500; color:var(--ink); }
+  .offer-amount{ font-size:15px; font-weight:500; color:var(--ink); white-space:nowrap; }
 
-  /* No border and no background. The code is distinguished by weight, tracking
-     and ink, which is enough — a box around it made a third nested rectangle
-     in a component that only ever needed one.
+  /* Uppercase and small is what a label looks like when it has stopped
+     competing with its own value. */
+  .offer-label{
+    font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--ink-2); white-space:nowrap;
+  }
 
-     user-select:all so the fallback path is one tap rather than a careful drag
-     across six characters, and so anyone ignoring the button entirely can
-     still take the code the obvious way. */
+  /* font-family stays inherited. Monospace here would be a costume for
+     "technical" — this is a word to retype at checkout, not code. */
   .offer-code{
-    font-family:inherit; font-weight:500; letter-spacing:.06em;
+    font-family:inherit; font-size:13px; font-weight:500; letter-spacing:.08em;
     color:var(--indigo); background:none; border:0; padding:0;
     user-select:all; white-space:nowrap;
   }
 
-  /* align-self:stretch is what buys the 44px target for free: the button is as
-     tall as the row, so the tap area costs no extra height. Both labels ship
-     in the markup and CSS shows one, so the accessible name inside the button
-     is never rewritten. */
+  /* align-self:stretch buys the 44px target for nothing: the button is as tall
+     as the row, so accessibility costs no vertical space. Both labels ship in
+     the markup and CSS shows one, so the accessible name is never rewritten. */
   .offer-copy{
     flex:0 0 auto; align-self:stretch;
     display:inline-flex; align-items:center;
     padding:0 0 0 var(--s-2); margin:0;
     background:none; border:0; cursor:pointer; font:inherit;
-    font-size:13px; font-weight:500; color:var(--indigo);
+    font-size:12px; font-weight:500; color:var(--indigo);
     text-decoration:underline; text-underline-offset:3px;
+    transition:color 120ms var(--ease);
   }
   .offer-copy:hover{ color:var(--ink); }
   .offer-copy-done{ display:none; }
+  .offer-copy.is-copied{ color:var(--ink-2); }
   .offer-copy.is-copied .offer-copy-idle{ display:none; }
-  .offer-copy.is-copied .offer-copy-done{
-    display:inline; color:var(--ink-2); text-decoration:none;
+  .offer-copy.is-copied .offer-copy-done{ display:inline; text-decoration:none; }
+
+  @media(prefers-reduced-motion:reduce){
+    .offer-copy{ transition:none; }
   }
 
-  /* 375px is the tightest this gets. The label column shrinks, the code and
-     the action do not, so the row stays one line rather than finding its width
-     by wrapping a coupon code in half. */
+  /* 375px is the tightest this gets: the row measures about 246px of content
+     inside 303px of space, so it holds one line with room. The label is the
+     first thing to go if a longer code ever needs the width. */
   @media(max-width:380px){
     .offer{ gap:var(--s-2); padding-inline:var(--s-2); }
-    .offer-text{ font-size:12px; }
+    .offer-amount{ font-size:14px; }
   }
   .buybox-error{ margin-top:var(--s-3); font-size:14px; color:var(--danger); }
   /* ---- trust row -------------------------------------------------------

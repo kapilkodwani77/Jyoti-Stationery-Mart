@@ -646,11 +646,57 @@ t('the offer is one row, not a stacked card', () => {
   ok(/\.offer\{[^}]*display:flex[^}]*align-items:center/.test(flat), 'not a single centred row');
   no(/\.offer\{[^}]*flex-direction:column/.test(flat), 'the offer stacks again');
 });
-t('the offer carries no fill, dashes or nested chip', () => {
+t('the offer carries no dashes and no nested chip', () => {
   const flat = BUYCSS.replace(/\n/g, ' ');
   no(/\.offer\{[^}]*dashed/.test(flat), 'the coupon-clipart border is back');
-  no(/\.offer\{[^}]*background:rgba/.test(flat), 'the tinted card is back');
   ok(/\.offer-code\{[^}]*border:0/.test(flat), 'the code chip border is back');
+});
+t('the offer surface is the warm theme token, not a raw colour', () => {
+  const flat = BUYCSS.replace(/\n/g, ' ');
+  ok(/\.offer\{[^}]*background:var\(--jute\)/.test(flat), 'lost the warm paper surface');
+  no(/\.offer\{[^}]*background:#/.test(flat), 'a raw hex bypassed the token system');
+});
+t('elevation is declared once: fill, not fill plus border or shadow', () => {
+  /* craft-floor: a 1px border under a fill is the ghost-card tell. */
+  const block = BUYCSS.slice(BUYCSS.indexOf('.offer{'), BUYCSS.indexOf('.offer-text{'));
+  no(/border:[^;]*solid/.test(block), 'border and fill both declared');
+  no(/box-shadow/.test(block), 'shadow and fill both declared');
+});
+t('no coloured accent bar', () => {
+  const flat = BUYCSS.replace(/\n/g, ' ');
+  no(/\.offer\{[^}]*border-(left|inline-start):\s*[2-9]/.test(flat), 'banned accent bar');
+});
+t('the amount outranks the label in the hierarchy', () => {
+  const flat = BUYCSS.replace(/\n/g, ' ');
+  const amount = /\.offer-amount\{[^}]*font-size:(\d+)px/.exec(flat);
+  const label = /\.offer-label\{[^}]*font-size:(\d+)px/.exec(flat);
+  ok(amount && label, 'missing amount or label sizing');
+  ok(Number(amount[1]) > Number(label[1]), 'the label competes with the value');
+  ok(/\.offer-amount\{[^}]*color:var\(--ink\)/.test(flat), 'the amount is not the darkest ink');
+});
+t('the label is de-emphasised, uppercase and small', () => {
+  const flat = BUYCSS.replace(/\n/g, ' ');
+  ok(/\.offer-label\{[^}]*text-transform:uppercase/.test(flat));
+  ok(/\.offer-label\{[^}]*color:var\(--ink-2\)/.test(flat));
+});
+t('the code is not dressed as monospace', () =>
+  ok(/\.offer-code\{[^}]*font-family:inherit/.test(BUYCSS.replace(/\n/g, ' ')),
+     'monospace as a costume for technical'));
+t('the action names what it does', () => {
+  ok(/>Copy code</.test(BUYBOX), 'the action still just says Copy');
+});
+t('no text in the offer drops below 12px', () => {
+  const flat = BUYCSS.replace(/\n/g, ' ');
+  const sizes = (flat.match(/\.offer[a-z-]*\{[^}]*font-size:(\d+)px/g) || [])
+    .map((m) => Number(/font-size:(\d+)px/.exec(m)[1]));
+  ok(sizes.length >= 3, 'expected several sized offer elements');
+  sizes.forEach((px) => ok(px >= 12, 'found ' + px + 'px body text'));
+});
+t('the copied state is not an instant 0ms change', () => {
+  const flat = BUYCSS.replace(/\n/g, ' ');
+  ok(/\.offer-copy\{[^}]*transition:color/.test(flat), 'state change is instant');
+  ok(/prefers-reduced-motion[\s\S]{0,120}\.offer-copy\{\s*transition:none/.test(BUYCSS),
+     'motion is not reduced-motion guarded');
 });
 t('the offer markup is a single line of content', () => {
   ok(BUYBOX.includes('offer-text'), 'no single-line text element');
