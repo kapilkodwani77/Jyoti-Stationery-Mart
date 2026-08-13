@@ -644,23 +644,21 @@ t('the offer carries no dashes and no nested chip', () => {
   no(/\.offer\{[^}]*dashed/.test(flat), 'the coupon-clipart border is back');
   ok(/\.offer-code\{[^}]*border:0/.test(flat), 'the code chip border is back');
 });
-t('the offer reuses the store chalk surface, not a new colour', () => {
-  const flat = BUYCSS.replace(/\n/g, ' ');
-  ok(/\.offer\{[^}]*background:var\(--chalk\)/.test(flat), 'not the store chalk token');
-  no(/\.offer\{[^}]*background:#|\.offer\{[^}]*background:rgb/.test(flat), 'a raw colour was invented');
-});
-t('the chalk surface pairing matches the product card verbatim', () => {
-  /* Same fill + hairline the card already uses. If either drifts, the offer
-     stops looking like it belongs to this storefront. */
-  const card = fs.readFileSync(path.join(ROOT, 'assets/component-product-card.css'), 'utf8');
-  ok(/background:var\(--chalk\);\s*border:1px solid var\(--edge\)/.test(card),
-     'the card pattern moved — re-derive the offer surface from it');
-  const flat = BUYCSS.replace(/\n/g, ' ');
-  ok(/\.offer\{[^}]*background:var\(--chalk\)[^}]*border:1px solid var\(--edge\)/.test(flat));
-});
-t('elevation is declared once: hairline, never hairline plus shadow', () => {
+t('the offer surface is the shared class, not a restated value', () => {
+  ok(/class="offer surf-jute"/.test(BUYBOX), 'the offer no longer carries .surf-jute');
   const block = BUYCSS.slice(BUYCSS.indexOf('.offer{'), BUYCSS.indexOf('.offer-text{'));
-  no(/box-shadow/.test(block), 'ghost card: border under a shadow');
+  no(/background/.test(block), 'a second copy of the surface value was declared');
+});
+t('.surf-jute is the band the reference points at, at 42%', () => {
+  /* If this value ever moves, the offer moves with it — which is the point of
+     using the class rather than the token. The raw token is ~2.4x this. */
+  ok(/\.surf-jute\{\s*background:rgba\(222,\s*216,\s*204,\s*\.42\)/.test(CSS.replace(/\n/g, ' ')),
+     'the shared warm surface changed or moved');
+});
+t('elevation is declared once: tint alone, no border and no shadow', () => {
+  const block = BUYCSS.slice(BUYCSS.indexOf('.offer{'), BUYCSS.indexOf('.offer-text{'));
+  no(/box-shadow/.test(block), 'shadow on top of the tint');
+  no(/border:[^-][^;]*solid/.test(block), 'border on top of the tint — elevation declared twice');
 });
 t('no coloured accent bar', () => {
   const flat = BUYCSS.replace(/\n/g, ' ');
@@ -708,6 +706,40 @@ t('urgency comes from real inventory, not a constant', () => {
 });
 t('the stock line hides itself when stock is healthy', () =>
   ok(/inventory_quantity <= \d+/.test(BUYBOX_RAW), 'no threshold — it would always show'));
+t('the threshold is tight enough for the line to mean something', () => {
+  const m = /inventory_quantity <= (\d+)/.exec(BUYBOX_RAW);
+  ok(m, 'no threshold');
+  ok(Number(m[1]) <= 5, 'at ' + m[1] + ' the line becomes furniture');
+});
+t('scarcity pairs with the dispatch promise when one is set', () => {
+  ok(/dispatch_promise/.test(BUYBOX_RAW), 'no reassurance half');
+  ok(/append: ' &middot; ' \| append: settings\.dispatch_promise/.test(BUYBOX_RAW),
+     'the two halves are not joined');
+});
+t('the dispatch promise is never written by the theme', () => {
+  /* A delivery commitment is the merchant's to make. Blank until they fill it. */
+  const schema = fs.readFileSync(path.join(ROOT, 'config/settings_schema.json'), 'utf8');
+  const block = schema.slice(schema.indexOf('"id": "dispatch_promise"'));
+  no(/"default":/.test(block.slice(0, 400)), 'the theme invented a delivery promise');
+});
+t('scarcity is not painted as an error', () => {
+  const flat = BUYCSS.replace(/\n/g, ' ');
+  ok(/\.buybox-urgency\{[^}]*color:var\(--ink\)/.test(flat), 'urgency is not ink');
+  no(/\.buybox-urgency\{[^}]*color:var\(--danger\)/.test(flat), 'error red used for a sales line');
+});
+t('the offer copy says where the code is spent', () =>
+  ok(/at checkout/.test(BUYBOX), 'the highest-value phrase is missing'));
+t('the offer copy claims no condition it cannot enforce', () => {
+  /* Rendered text only. The legacy setting ids still say "prepaid" — renaming
+     them would orphan the merchant's saved values — but a variable name is not
+     a promise. What a customer reads is. */
+  const visible = BUYBOX
+    .replace(/\{%[\s\S]*?%\}/g, ' ')
+    .replace(/\{\{[\s\S]*?\}\}/g, ' ')
+    .replace(/<[^>]+>/g, ' ');
+  no(/first order|new here|welcome back|prepaid|pay online|online payment|members only/i.test(visible),
+     'a condition Shopify Basic cannot enforce was promised: ' + visible.slice(0, 160));
+});
 t('no invented scarcity beyond the sourced stock figure', () => {
   no(/countdown|hurry|selling fast|almost gone|\bends (in|today)\b/i.test(BUYBOX),
      'a manufactured urgency claim appeared');

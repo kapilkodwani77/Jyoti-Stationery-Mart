@@ -54,7 +54,7 @@
   .buybox .buybox-urgency{
     margin:var(--s-3) 0 0;
     font-size:13px; font-weight:500; line-height:1.35;
-    letter-spacing:.005em; color:var(--danger);
+    letter-spacing:.005em; color:var(--ink);
     font-variant-numeric:tabular-nums;
   }
 
@@ -64,22 +64,32 @@
   .buybox form{ margin-top:var(--s-5); }
 
   /* ---- offer ------------------------------------------------------------
-     The store's chalk surface, not a new one. background:var(--chalk) with a
-     1px --edge hairline is the exact pairing the product card already uses;
-     reusing it verbatim is what makes this belong here. On a chalk page the
-     fill alone is invisible, so the hairline is drawing the surface rather
-     than substituting for hierarchy — the type still does that work.
+     No background here on purpose. The element carries .surf-jute, the class
+     the specs band already uses, so the offer and that band cannot drift to
+     two different warms — and there is no second copy of the value to keep in
+     step. Declaring it again here would be that second copy.
 
-     Elevation is declared once: border, no shadow. */
+     An earlier pass used var(--jute) directly and read wrong: .surf-jute is
+     that token at 42% over chalk, so the raw value was about two and a half
+     times too saturated.
+
+     The hairline is gone with the tint arriving. Fill plus border would be
+     elevation declared twice, and the band it is matching has no border
+     either.
+
+     align-items:center rather than a fixed height, because the copy now names
+     where the code is spent and that runs to two lines on a narrow phone. The
+     row grows to fit the text; the button holds its own 44px inside it. */
   .offer{
     display:flex; align-items:center; gap:var(--s-3);
-    margin-bottom:var(--s-4); padding:var(--s-1) var(--s-3);
-    background:var(--chalk); border:1px solid var(--edge); border-radius:var(--r-md);
+    margin-bottom:var(--s-4); padding:var(--s-2) var(--s-3);
+    border-radius:var(--r-md);
   }
 
   .offer-text{
     margin:0; flex:1 1 auto; min-width:0;
     font-size:13px; line-height:1.35; color:var(--ink);
+    text-wrap:pretty;
   }
 
   /* font-family stays inherited: monospace would be a costume for "technical"

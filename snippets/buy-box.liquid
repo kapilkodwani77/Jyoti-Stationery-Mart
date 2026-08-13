@@ -55,12 +55,29 @@
     disappears on its own once there is plenty. It is gated on the policy
     being deny, because a variant that oversells is not scarce.
 
+    The threshold is five rather than ten. At ten it sat on the page more or
+    less permanently, and a scarcity line that is always there is not a
+    scarcity line — it is furniture the eye stops reading. Five means the
+    sentence only appears when it is both true and worth saying.
+
+    Paired with the dispatch promise when the merchant has set one, because
+    scarcity on its own is pressure and pressure on its own is not what sells
+    a play mat to a parent. "Only 4 left" asks them to hurry; the second half
+    tells them what hurrying gets. The promise stays blank until someone fills
+    it in, and it is deliberately not written here — a delivery commitment is
+    the merchant's to make, not the theme's.
+
     No countdown, no shopper count, no deadline. Those still have no source.
   endcomment
 
   assign urgency = ''
-  if v.inventory_management != blank and v.inventory_policy == 'deny' and v.inventory_quantity > 0 and v.inventory_quantity <= 10
-    assign urgency = 'Only ' | append: v.inventory_quantity | append: ' left in stock'
+  if v.inventory_management != blank and v.inventory_policy == 'deny' and v.inventory_quantity > 0 and v.inventory_quantity <= 5
+    assign urgency = 'Only ' | append: v.inventory_quantity | append: ' left'
+    if settings.dispatch_promise != blank
+      assign urgency = urgency | append: ' &middot; ' | append: settings.dispatch_promise
+    else
+      assign urgency = urgency | append: ' in stock'
+    endif
   elsif settings.dispatch_promise != blank
     assign urgency = settings.dispatch_promise
   endif
@@ -204,22 +221,33 @@
     {%- endcomment -%}
     {%- if prepaid_code != blank -%}
       {%- comment -%}
-        Chalk on a chalk page, bounded by a hairline — the store's own
-        chalk-surface pattern, lifted verbatim from the product card
-        (component-product-card.css) rather than mixed fresh. That is what
-        makes this read as part of the storefront instead of a component
-        pasted onto it, and it is why the border is here: on a chalk page a
-        chalk fill is invisible without one. The border draws the surface; the
-        hierarchy is still carried by type.
+        The surface is .surf-jute, the class the specs band already uses —
+        applied here rather than restated, so the two can never drift.
 
-        The copy names a reason rather than announcing a percentage. It does
-        not say "first order" or "new here", because CARE5 is not restricted
-        to either — allCustomers, no per-customer limit — and copy that
-        promises a condition the discount does not enforce is a lie the
-        customer discovers at checkout.
+        That distinction cost a revision. An earlier pass reached for
+        var(--jute) directly and looked wrong, because the band on screen is
+        not the token: .surf-jute is that token at 42% over chalk. The raw
+        value was roughly two and a half times too saturated, which is exactly
+        what "the background colour is wrong" was describing.
+
+        With a real tint doing the separating, the hairline is gone. Fill and
+        border together would be elevation declared twice.
+
+        The copy states no condition at all, and that is the deliberate part.
+        CARE5 is allCustomers with no per-customer limit and no payment-method
+        restriction — Shopify Basic cannot condition a discount on how someone
+        pays, because the code is applied before the payment method is chosen.
+        So this cannot say "first order", "new here", or "on prepaid orders":
+        each would promise a condition nothing enforces, which the customer
+        discovers at checkout.
+
+        What it does add is where the code goes. "At checkout" is the single
+        highest-value phrase available here — the common failure with a
+        copy-code offer is a shopper who takes the code and then cannot find
+        where it is spent, or who abandons rather than risk losing it.
       {%- endcomment -%}
-      <div class="offer">
-        <p class="offer-text">Enjoy {{ prepaid_pct }}% off with <code class="offer-code" data-offer-code>{{ prepaid_code }}</code></p>
+      <div class="offer surf-jute">
+        <p class="offer-text">Extra {{ prepaid_pct }}% off at checkout &mdash; apply <code class="offer-code" data-offer-code>{{ prepaid_code }}</code></p>
         <button type="button" class="offer-copy" data-offer-copy data-offer-value="{{ prepaid_code }}">
           <span class="offer-copy-idle">Copy code</span>
           <span class="offer-copy-done" aria-hidden="true">Copied</span>
