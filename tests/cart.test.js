@@ -1323,6 +1323,131 @@ t('nothing in the strip competes with the sticky buy bar for the bottom corner',
   ok(/zoom-open/.test(JS), 'the viewer does not use the existing scroll lock');
 });
 
+/* ------------------------------------------------- 13b. Judge.me skin
+
+   The widget is a third party's markup, so these assert against the classes
+   Judge.me actually ships. Those class names are taken from the widget HTML
+   Judge.me itself stores in the product's judgeme.widget metafield, not from
+   memory: the root is .jdgm-rev-widg and a star is an empty
+   <span class="jdgm-star jdgm--on"></span>. */
+
+const JM = fs.readFileSync(path.join(ROOT, 'assets/component-judgeme.css'), 'utf8');
+const JMFLAT = JM.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\n/g, ' ');
+
+t('the skin targets the widget root Judge.me actually renders', () => {
+  ok(/\.mj-reviews \.jdgm-rev-widg \*\{ ?font-family:inherit/.test(JMFLAT),
+     'the font reset does not reach the widget');
+  no(/\.jdgm-widget \*/.test(JMFLAT),
+     'the reset still names .jdgm-widget, which does not exist in this widget markup');
+});
+t('the star does not depend on a third-party webfont', () => {
+  /* Judge.me's star span is empty: every pixel came from a private-use
+     codepoint in a font they host. If it fails to load there is nothing left
+     to draw, which is how a rating silently degrades to five broken marks. */
+  ok(/\.mj-reviews \.jdgm-star::before\{ ?content:'\\2605'/.test(JMFLAT),
+     'the star has no glyph of its own');
+  ok(/\.mj-reviews \.jdgm-star\{[^}]*font-family:inherit !important/.test(JMFLAT),
+     'the star is still asking a third-party font for its glyph');
+});
+t('the star is the same character the rest of the theme already draws', () => {
+  /* One shape from one font across all three star rows on a PDP. */
+  ok(/★/.test(fs.readFileSync(path.join(ROOT, 'snippets/product-rating.liquid'), 'utf8')),
+     'the theme component no longer uses U+2605 — re-derive this test');
+});
+t('a half star is one glyph clipped over another, not a second character', () => {
+  ok(/\.jdgm-star\.jdgm--half::after\{[^}]*content:'\\2605'/.test(JMFLAT), 'no half-star fill');
+  ok(/\.jdgm-star\.jdgm--half::after\{[^}]*width:50%/.test(JMFLAT), 'the fill is not clipped to half');
+  ok(/\.jdgm-star\.jdgm--half::after\{[^}]*overflow:hidden/.test(JMFLAT), 'the clip does nothing');
+});
+t('stars and buttons use theme tokens, never an invented colour', () => {
+  ok(/\.mj-reviews \.jdgm-star\{[^}]*color:var\(--indigo\)/.test(JMFLAT));
+  ok(/\.jdgm-star\.jdgm--off\{ ?color:var\(--star-off\)/.test(JMFLAT));
+  /* Judge.me's own gold and teal must not be restated here, and no raw hex
+     may enter this file at all — every colour is a token or an rgba over the
+     ink already established in theme.css. */
+  const hexes = JM.replace(/\/\*[\s\S]*?\*\//g, '').match(/#[0-9a-fA-F]{3,8}\b/g) || [];
+  eq(hexes.length, 0, 'raw hex colours in the skin: ' + hexes.join(', '));
+});
+t('the write-a-review button wears the theme action colour', () => {
+  const rule = /\.mj-reviews \.jdgm-write-rev-link,\s*\.mj-reviews \.jdgm-btn,\s*\.mj-reviews \.jdgm-paginate__load-more\{([^}]*)\}/.exec(JMFLAT);
+  ok(rule, 'the button rule is gone');
+  ok(/color:var\(--indigo\) !important/.test(rule[1]), 'the label colour can still be overridden');
+  ok(/background:transparent !important/.test(rule[1]), 'the teal fill can still win');
+  ok(/border:1px solid var\(--indigo\) !important/.test(rule[1]), 'the border can still be overridden');
+  ok(/min-height:var\(--tap\)/.test(rule[1]), 'the 44px target was lost');
+});
+t('the theme action colour clears AA on the section surface', () => {
+  const tok = (n) => new RegExp('--' + n + ':(#[0-9a-fA-F]{6})').exec(CSS);
+  const [ind, chalk] = [tok('indigo'), tok('chalk')];
+  ok(ind && chalk, 'could not read the tokens');
+  const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const L = (h) => 0.2126 * lin(parseInt(h.substr(1, 2), 16)) +
+                   0.7152 * lin(parseInt(h.substr(3, 2), 16)) +
+                   0.0722 * lin(parseInt(h.substr(5, 2), 16));
+  const [hi, lo] = [L(ind[1]), L(chalk[1])].sort((a, b) => b - a);
+  const ratio = (hi + 0.05) / (lo + 0.05);
+  ok(ratio >= 4.5, 'button label is only ' + ratio.toFixed(2) + ':1 on chalk');
+});
+t('!important is confined to the properties a runtime stylesheet contests', () => {
+  /* Judge.me writes a merchant-settings <style> into the head after this file
+     is parsed, so colour and the duplicate-heading hide need it. Nothing else
+     may: an !important on layout would be this file losing an argument it
+     should be winning on specificity. */
+  const bangs = (JM.replace(/\/\*[\s\S]*?\*\//g, '').match(/[\w-]+\s*:[^;{}]*!important/g) || [])
+    .map((d) => d.split(':')[0].trim());
+  const allowed = ['color', 'background', 'border', 'display', 'font-family'];
+  bangs.forEach((prop) => ok(allowed.includes(prop), 'unexpected !important on ' + prop));
+});
+t('the duplicate Customer Reviews heading and summary stay hidden', () => {
+  ok(/\.mj-reviews \.jdgm-rev-widg__title,\s*\.mj-reviews \.jdgm-rev-widg__summary\{ ?display:none !important/.test(JMFLAT),
+     'the widget restates the heading and the average the section already carries');
+});
+
+/* ---- spacing ---- */
+
+t('the heading and its rating line are bound tighter than the group below', () => {
+  /* Spacing between groups must exceed spacing within groups. The h2 and the
+     average are one group; the widget under them is the next. */
+  const within = /\.mj-reviews-head \.h2\{ ?margin-bottom:var\((--s-\d+)\)/.exec(JMFLAT);
+  const between = /\.mj-reviews-head\{ ?margin-bottom:var\((--s-\d+)\)/.exec(JMFLAT);
+  ok(within && between, 'the head spacing is no longer declared in tokens');
+  const w = TOKENS[within[1]], b = TOKENS[between[1]];
+  ok(b > w, 'group gap ' + b + 'px does not exceed the ' + w + 'px inside it');
+  ok(b <= 24, 'group gap of ' + b + 'px reads as a section break inside one group');
+});
+t('videos hand over to reviews on a section step, not a dead zone', () => {
+  const vids = /\.pvid-sec\{[^}]*padding-bottom:var\((--s-\d+)\)/.exec(PVCSS.replace(/\n/g, ' '));
+  const revs = /\.mj-reviews\{ ?padding-top:var\((--s-\d+)\)/.exec(JMFLAT);
+  ok(vids && revs, 'one side of the join no longer declares its padding');
+  const gap = TOKENS[vids[1]] + TOKENS[revs[1]];
+  ok(gap <= 56, 'videos to reviews is ' + gap + 'px, still a dead zone');
+  ok(gap >= 32, 'videos to reviews is ' + gap + 'px, too tight for a real section change');
+});
+t('the reviews gap stays larger than the FAQ-to-videos continuation', () => {
+  /* FAQ -> videos is one continuous answer and is deliberately tight.
+     Videos -> reviews is a real change of argument and must read as one. */
+  const pull = /\.pvid-sec\{[^}]*margin-top:calc\(\(var\(--rhythm\) - var\((--s-\d+)\)\) \* -1\)/
+    .exec(PVCSS.replace(/\n/g, ' '));
+  const vids = /\.pvid-sec\{[^}]*padding-bottom:var\((--s-\d+)\)/.exec(PVCSS.replace(/\n/g, ' '));
+  const revs = /\.mj-reviews\{ ?padding-top:var\((--s-\d+)\)/.exec(JMFLAT);
+  ok(pull && vids && revs, 'could not read both joins');
+  ok(TOKENS[vids[1]] + TOKENS[revs[1]] > TOKENS[pull[1]],
+     'the reviews join is no wider than the continuation above it');
+});
+t('desktop reopens the reviews gap rather than keeping the phone figure', () => {
+  const m = /@media\(min-width:900px\)\{\s*\.mj-reviews\{ ?padding-top:var\((--s-\d+)\)/.exec(JMFLAT);
+  ok(m, 'no desktop override');
+  ok(TOKENS[m[1]] > 16, 'desktop keeps the phone padding');
+});
+t('nothing in the skin pins itself to the viewport on a phone', () => {
+  /* The sticky summary column is a desktop affordance and must stay inside
+     its media query, or it would fight the sticky buy bar on a phone. */
+  const desktop = JMFLAT.slice(JMFLAT.indexOf('@media(min-width:900px)'));
+  const phone = JMFLAT.slice(0, JMFLAT.indexOf('@media(min-width:900px)'));
+  no(/position:sticky/.test(phone), 'a sticky element escaped the desktop block');
+  ok(/position:sticky/.test(desktop), 'the desktop summary column lost its sticky');
+});
+
 /* ------------------------------------------------- 14. Liquid tag traps
 
    Inside a {% liquid %} block every line is a tag, so a bare tag name that

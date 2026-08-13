@@ -36,21 +36,18 @@
   font-family:var(--font-body);
   color:var(--ink);
 }
-/* Everything inherits the theme's body face EXCEPT the star.
+/* Everything inside the widget takes the theme's body face.
 
-   Judge.me draws its stars as glyphs from its own icon webfont. A blanket
-   `* { font-family: inherit }` reached those glyphs too, so the star codepoints
-   were asked of Switzer, which has no such glyphs, and the browser fell back to
-   whatever it could find — rendering each star as a row of bars. This defect
-   only became visible when the widget moved into .mj-reviews, because until
-   then none of this stylesheet applied to anything.
-
-   :not() rather than re-declaring the font on .jdgm-star: naming Judge.me's
-   font family here would hard-code a third party's internal asset name into
-   this theme and break silently the day they rename it. Leaving the star out of
-   the reset lets their own stylesheet keep supplying it. Colour and size are
-   still ours — those are set below and are safe to override. */
-.mj-reviews .jdgm-widget *:not(.jdgm-star):not([class*="jdgm-star"]){ font-family:inherit; }
+   An earlier version of this rule was written as
+   `.mj-reviews .jdgm-widget *:not(.jdgm-star)`, carefully excluding the star so
+   that Judge.me's own icon webfont could keep supplying the glyph. Two things
+   were wrong with it. The selector named `.jdgm-widget`, and the widget this
+   theme actually hosts has a root of `.jdgm-rev-widg` — there is no element
+   called `jdgm-widget` anywhere in Judge.me's markup for this block, so the
+   whole rule matched nothing and the exclusion protected nothing. And the
+   premise is no longer true: the star below is drawn from a character in the
+   theme's own font, so it wants this face rather than needing to escape it. */
+.mj-reviews .jdgm-rev-widg *{ font-family:inherit; }
 
 /* Judge.me prints its own "Customer Reviews" heading and its own average line.
    The section above it already carries the theme's h2 and the same average in
@@ -58,22 +55,62 @@
    an embedded app read as embedded. Both are hidden from sight and from
    assistive tech, because they are duplicates rather than supplements — the
    histogram below them is kept, since the distribution is the part the summary
-   line cannot say. */
+   line cannot say.
+
+   !important: Judge.me's script writes a merchant-settings <style> into the
+   head at runtime, which lands after this file's <link> and wins every tie on
+   document order. Specificity alone is not reliable against a stylesheet that
+   does not exist until after ours has been parsed. */
 .mj-reviews .jdgm-rev-widg__title,
-.mj-reviews .jdgm-rev-widg__summary{ display:none; }
+.mj-reviews .jdgm-rev-widg__summary{ display:none !important; }
 
 /* ---- stars ---------------------------------------------------------
-   One colour, the brand's, at reading size. Judge.me defaults to a saturated
-   gold that exists nowhere else in this palette and reads as a marketplace
-   badge rather than as this brand. The empty half uses the same wash the
-   product card's rating track uses, so a partial score is legible as a
-   measure rather than as two different colours. */
+   Drawn here, not by Judge.me.
+
+   Their star is an empty <span class="jdgm-star jdgm--on"></span> — no text,
+   no SVG, no image. Every pixel of it comes from a private-use codepoint in an
+   icon webfont they host. That is a single point of failure this theme does
+   not control: if the font is slow, blocked by a content blocker, refused in a
+   preview context, or renamed in a future release, the span has nothing left
+   to render and the rating silently degrades to five blank or broken marks
+   where a shopper expects the most scannable trust signal on the page.
+
+   So the dependency goes. U+2605 BLACK STAR is in every system font this
+   theme's stack falls back to, and it is the same character the product card
+   and the buy box already use — which means the three star rows on a PDP are
+   now one shape from one font rather than two designs that happen to agree.
+
+   Half stars keep working: a full star in the empty colour with a 50%-wide
+   filled copy clipped over it, which is exactly the track-and-fill the
+   .pc-rating component uses for fractional scores.
+
+   !important on colour for the same reason as above — Judge.me's runtime
+   settings <style> carries the merchant's chosen star colour and would
+   otherwise repaint these gold. */
 .mj-reviews .jdgm-star{
-  color:var(--indigo);
+  font-family:inherit !important;
+  font-style:normal;
+  font-weight:400;
   font-size:15px;
+  line-height:1;
   letter-spacing:.06em;
+  color:var(--indigo) !important;
 }
-.mj-reviews .jdgm-star.jdgm--off{ color:var(--star-off); }
+.mj-reviews .jdgm-star::before{ content:'\2605'; }
+.mj-reviews .jdgm-star.jdgm--off{ color:var(--star-off) !important; }
+
+/* The half star is one glyph with a second clipped over it, so it cannot
+   disagree with itself the way two different characters could. */
+.mj-reviews .jdgm-star.jdgm--half{
+  position:relative;
+  color:var(--star-off) !important;
+}
+.mj-reviews .jdgm-star.jdgm--half::after{
+  content:'\2605';
+  position:absolute; inset:0;
+  width:50%; overflow:hidden;
+  color:var(--indigo);
+}
 
 /* ---- summary + histogram -------------------------------------------
    The average is a trust signal, not a headline: it sits at body size in the
@@ -267,14 +304,26 @@
    "Write a review", "Load more" and pagination all become the theme's outline
    button. The solid indigo CTA stays reserved for the one primary action on a
    page, which on the PDP is Add to Cart — a solid review button would compete
-   with the thing the page is for. */
+   with the thing the page is for.
+
+   The teal Judge.me ships is their default brand colour, set in their app
+   admin and written into the runtime <style> with the merchant's other
+   settings. It is not a colour this theme has anywhere, and it arrives after
+   this file is parsed — so the three colour properties below are the ones
+   that need !important. Dimensions, radius and type are not contested and are
+   left as ordinary declarations.
+
+   --indigo is the theme's one action colour: the Add to Cart fill, the focus
+   ring, the buy-bar mark. #2F4260 on --chalk is 8.9:1, well past AA. */
 .mj-reviews .jdgm-write-rev-link,
 .mj-reviews .jdgm-btn,
 .mj-reviews .jdgm-paginate__load-more{
   display:inline-flex; align-items:center; justify-content:center;
   min-height:var(--tap); padding:0 var(--s-6);
-  background:transparent; color:var(--indigo);
-  border:1px solid var(--indigo); border-radius:var(--r-md);
+  background:transparent !important;
+  color:var(--indigo) !important;
+  border:1px solid var(--indigo) !important;
+  border-radius:var(--r-md);
   font-size:15px; font-weight:500; text-decoration:none;
   transition:background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
@@ -315,8 +364,27 @@
 }
 .mj-reviews .jdgm-rev__thumb-btn:hover{ color:var(--ink); background:rgba(47,66,96,.06); }
 
-/* ---- section frame -------------------------------------------------- */
-.mj-reviews-head{ margin-bottom:var(--s-7); }
+/* ---- section frame --------------------------------------------------
+   The section opened with a full --rhythm of top padding under a video strip
+   that already closes with --s-6 of its own, so 96px of nothing separated the
+   last frame from "What parents say." Videos and reviews are a real section
+   change — demonstration handing over to third-party proof — so this does not
+   go as tight as the FAQ-to-videos join, but 96px is a dead zone rather than
+   a transition. --s-4 here lands the total on --s-7, which is the step this
+   theme already uses between sections that belong to one another. */
+.mj-reviews{ padding-top:var(--s-4); }
+@media(min-width:900px){
+  .mj-reviews{ padding-top:var(--s-7); }
+}
+
+/* The heading and the rating line are one group, and the widget under them is
+   the next. This was --s-7 — the same distance the theme puts between whole
+   sections — applied inside a group, which is the between-groups rule
+   inverted: 48px of air read as "these are unrelated" when the average
+   directly under the heading is the evidence the heading is promising. --s-5
+   still separates the two groups while staying clearly larger than the --s-4
+   that binds the heading to its own rating line. */
+.mj-reviews-head{ margin-bottom:var(--s-5); }
 .mj-reviews-head .h2{ margin-bottom:var(--s-4); }
 /* The summary line is the theme's own rating component, one step up from the
    size it takes on a card because here it is the section's evidence rather
