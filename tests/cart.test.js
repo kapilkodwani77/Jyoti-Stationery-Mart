@@ -734,10 +734,31 @@ t('the urgency line renders no number at all', () => {
   no(/Limited-time price/.test(BUYBOX_RAW), 'the invented deadline returned');
   no(/countdown|ends (in|today)|hurry/i.test(BUYBOX), 'a deadline claim appeared');
 });
-t('urgency does not outrank the offer beside it', () => {
+t('urgency clears the disclaimer it sits beneath', () => {
+  /* The failure this exists for: 12px/400/--ink-2 tax note against a
+     13px/500/--ink-2 urgency read as one grey block. Two steps, not one. */
   const flat = BUYCSS.replace(/\n/g, ' ');
-  ok(/\.buybox-urgency\{[^}]*color:var\(--ink-2\)/.test(flat), 'urgency is not stepped back');
-  no(/\.buybox-urgency\{[^}]*color:var\(--danger\)/.test(flat), 'error red used for a sales line');
+  const u = /\.buybox \.buybox-urgency\{[^}]*\}/.exec(flat);
+  const n = /\.buybox-tax-note\{[^}]*\}/.exec(flat);
+  ok(u && n, 'missing urgency or tax-note rule');
+  const size = (r) => Number(/font-size:(\d+)px/.exec(r)[1]);
+  ok(size(u[0]) > size(n[0]), 'urgency is not larger than the disclaimer');
+  ok(/color:var\(--ink\)/.test(u[0]), 'urgency shares the disclaimer ink');
+  ok(/var\(--ink-2\)/.test(n[0]), 'the tax note is no longer secondary');
+});
+t('urgency does not borrow the error colour', () => {
+  const flat = BUYCSS.replace(/\n/g, ' ');
+  no(/\.buybox-urgency\{[^}]*color:var\(--danger\)/.test(flat),
+     'the error token means "something went wrong" in seven other places');
+});
+t('urgency still ranks below the price and the button', () => {
+  const flat = BUYCSS.replace(/\n/g, ' ');
+  const u = Number(/\.buybox \.buybox-urgency\{[^}]*font-size:(\d+)px/.exec(flat)[1]);
+  ok(u <= 16, 'urgency at ' + u + 'px competes with the price');
+});
+t('no stale red rationale survives in the comments', () => {
+  no(/one red line on the page/i.test(BUYCSS), 'comment still describes a red line');
+  no(/Red, and the only red/i.test(BUYBOX_RAW), 'comment still describes a red line');
 });
 t('urgency uses only existing tokens and no decoration', () => {
   const flat = BUYCSS.replace(/\n/g, ' ');
