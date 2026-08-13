@@ -887,6 +887,32 @@ t('no floating video widget was added', () => {
 t('nothing new competes with the sticky buy bar for the bottom corner', () =>
   no(/position:fixed/.test(PVCSS), 'the video section pins something to the viewport'));
 
+/* ------------------------------------------------- 14. Liquid tag traps
+
+   Inside a {% liquid %} block every line is a tag, so a bare tag name that
+   happens to start a line of prose inside a comment opens a real nested tag
+   that never closes and swallows the rest of the file. Shopify rejects the
+   upload for it and, over a URL body, reports nothing at all. This is a
+   spelling trap in prose, not in code, so only a test catches it. */
+
+['snippets/buy-box.liquid', 'sections/cart-drawer.liquid', 'sections/product-videos.liquid']
+  .forEach((rel) => {
+    const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    t('no unclosed bare comment tag in ' + rel, () => {
+      const open = (src.match(/\n\s*comment\b/g) || []).length;
+      const close = (src.match(/\n\s*endcomment\b/g) || []).length;
+      eq(open, close, 'a line-initial "comment" opened a tag inside prose');
+    });
+    t('no line-initial Liquid keyword inside a liquid block in ' + rel, () => {
+      const blocks = src.match(/\{%-?\s*liquid[\s\S]*?-?%\}/g) || [];
+      blocks.forEach((b) => {
+        const bad = (b.match(/\n\s*(if|unless|for|case|capture|comment)\b/g) || []).length;
+        const ends = (b.match(/\n\s*end(if|unless|for|case|capture|comment)\b/g) || []).length;
+        ok(bad === ends, 'unbalanced bare tags: ' + bad + ' open vs ' + ends + ' close');
+      });
+    });
+  });
+
 /* ---------------------------------------------------------------- report */
 
 const total = pass + failures.length;
