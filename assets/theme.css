@@ -20,6 +20,16 @@
        (it already passes AA at 6.1:1) - only centralised. */
     --danger:#9A3B2E;
 
+    /* Urgency is not an error, and the two must not share a colour. --danger
+       means "something went wrong" in seven places — cart failures,
+       add-to-cart errors, the drawer, the footer form — so a sales line
+       wearing it would cost the error states their meaning. This is a
+       brighter, less brown red that reads as pace rather than fault, and it
+       is used on exactly one element. 5.73:1 on chalk against --danger's
+       6.06:1: both clear the 4.5:1 floor, and they are far enough apart in
+       hue and brightness to be told apart at a glance. */
+    --urgent:#B3261E;
+
     /* Divider/hairline that is actually visible. --indigo-wash is 1.8:1 on
        chalk, below the 3:1 WCAG 1.4.11 floor for meaningful UI boundaries. */
     --edge:rgba(20,22,26,.13);

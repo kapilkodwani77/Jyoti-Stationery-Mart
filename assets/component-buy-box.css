@@ -46,9 +46,27 @@
      here depends on colour being perceived — which is the accessibility half
      of the same decision. */
   .buybox .buybox-urgency{
+    display:flex; align-items:center; gap:var(--s-2);
     margin:var(--s-3) 0 0;
     font-size:14px; font-weight:500; line-height:1.35;
-    letter-spacing:.005em; color:var(--ink);
+    letter-spacing:.005em; color:var(--urgent);
+  }
+
+  /* The dot is why this can be red at all. Colour on its own is not allowed
+     to carry meaning — the shopper who cannot separate this red from the ink
+     around it still gets a mark that says "this line is different", and the
+     sentence itself says what the difference is. Six pixels, --urgent, and
+     5.73:1 clears the 3:1 floor non-text contrast asks for.
+
+     It does not blink, and that is the theme's own rule rather than a
+     preference. The motion language here is documented one layer up: the cart
+     badge earns "one beat, 140ms, no loop, no bounce", and the cart row's
+     exit animation was deleted outright after causing two production bugs. A
+     dot pulsing forever is the live-data idiom — it promises something is
+     updating — attached to a sentence that never changes. */
+  .buybox-urgency-dot{
+    flex:0 0 auto; width:6px; height:6px;
+    border-radius:50%; background:var(--urgent);
   }
 
   .qty-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--s-4); margin-top:var(--s-5); }

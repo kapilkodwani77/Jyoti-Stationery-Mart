@@ -122,7 +122,7 @@
   {%- endcomment -%}
   {%- if urgency != blank -%}
     {%- unless compact -%}
-      <p class="buybox-urgency">{{ urgency }}</p>
+      <p class="buybox-urgency"><span class="buybox-urgency-dot" aria-hidden="true"></span>{{ urgency }}</p>
     {%- endunless -%}
   {%- endif -%}
 

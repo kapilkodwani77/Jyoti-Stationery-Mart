@@ -736,22 +736,46 @@ t('the urgency line renders no number at all', () => {
 });
 t('urgency clears the disclaimer it sits beneath', () => {
   /* The failure this exists for: 12px/400/--ink-2 tax note against a
-     13px/500/--ink-2 urgency read as one grey block. Two steps, not one. */
+     13px/500/--ink-2 urgency read as one grey block. Size and ink must
+     both differ, not just one of them. */
   const flat = BUYCSS.replace(/\n/g, ' ');
   const u = /\.buybox \.buybox-urgency\{[^}]*\}/.exec(flat);
   const n = /\.buybox-tax-note\{[^}]*\}/.exec(flat);
   ok(u && n, 'missing urgency or tax-note rule');
   const size = (r) => Number(/font-size:(\d+)px/.exec(r)[1]);
   ok(size(u[0]) > size(n[0]), 'urgency is not larger than the disclaimer');
-  ok(/color:var\(--ink\)/.test(u[0]), 'urgency shares the disclaimer ink');
-  ok(/var\(--ink-2\)/.test(n[0]), 'the tax note is no longer secondary');
-});
-t('urgency does not borrow the error colour', () => {
+  const uInk = /color:var\((--[a-z0-9-]+)\)/.exec(u[0])[1];
+  const nInk = /color:var\((--[a-z0-9-]+)\)/.exec(n[0])[1];
+  no(uInk === nInk, 'urgency shares the disclaimer ink (' + uInk + ')');
+});t('urgency does not borrow the error colour', () => {
   const flat = BUYCSS.replace(/\n/g, ' ');
   no(/\.buybox-urgency\{[^}]*color:var\(--danger\)/.test(flat),
      'the error token means "something went wrong" in seven other places');
+  ok(/\.buybox-urgency\{[^}]*color:var\(--urgent\)/.test(flat), 'no dedicated urgency token');
 });
-t('urgency still ranks below the price and the button', () => {
+t('the urgency red is a real token, declared once, distinct from danger', () => {
+  const m = /--urgent:\s*(#[0-9A-Fa-f]{6})/.exec(CSS);
+  const d = /--danger:\s*(#[0-9A-Fa-f]{6})/.exec(CSS);
+  ok(m && d, 'a red is missing from the token block');
+  no(m[1].toLowerCase() === d[1].toLowerCase(), 'urgent and danger are the same colour');
+  no(/#B3261E/i.test(BUYCSS), 'the value was inlined instead of tokenised');
+});
+t('meaning never rests on colour alone', () => {
+  /* A shopper who cannot separate the reds still gets a mark plus the words. */
+  ok(/buybox-urgency-dot/.test(BUYBOX_RAW), 'no non-colour marker');
+  ok(/aria-hidden="true"/.test(/<span class="buybox-urgency-dot"[^>]*>/.exec(BUYBOX_RAW)[0]),
+     'the decorative dot is announced');
+});
+t('the urgency dot does not loop', () => {
+  /* The theme's documented motion rule: the badge earns "one beat, no loop",
+     and the cart row's exit animation was deleted after two production bugs.
+     A dot pulsing forever is the live-data idiom on a sentence that never
+     changes. */
+  const flat = BUYCSS.replace(/\n/g, ' ');
+  const dot = /\.buybox-urgency-dot\{[^}]*\}/.exec(flat);
+  ok(dot, 'no dot rule');
+  no(/animation|infinite|blink|pulse/i.test(dot[0]), 'the dot animates');
+});t('urgency still ranks below the price and the button', () => {
   const flat = BUYCSS.replace(/\n/g, ' ');
   const u = Number(/\.buybox \.buybox-urgency\{[^}]*font-size:(\d+)px/.exec(flat)[1]);
   ok(u <= 16, 'urgency at ' + u + 'px competes with the price');
