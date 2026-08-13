@@ -867,6 +867,16 @@ const PTPL_RAW = fs.readFileSync(path.join(ROOT, 'templates/product.json'), 'utf
 const PTPL = JSON.parse(PTPL_RAW.slice(PTPL_RAW.indexOf('{')));
 const GALLERY = fs.readFileSync(path.join(ROOT, 'sections/main-product.liquid'), 'utf8');
 
+/* The whole productVideos IIFE. Sliced by name and closing punctuation so a
+   test reads the shipped module rather than a fixed character count that goes
+   quietly out of date the moment the function grows. */
+function pvidJs() {
+  const src = JS.slice(JS.indexOf('function productVideos'));
+  const end = src.indexOf('\n  })();');
+  ok(end > -1, 'could not find the end of productVideos');
+  return src.slice(0, end);
+}
+
 t('the video section renders after the FAQ', () =>
   ok(PTPL.order.indexOf('faq') < PTPL.order.indexOf('videos'), PTPL.order.join(' -> ')));
 t('the video section renders before the reviews', () =>
@@ -949,8 +959,57 @@ t('reduced motion never auto-starts, but still stops off-screen audio', () => {
   ok(/pause\(\)/.test(rm), 'reduced motion leaves off-screen audio running');
   no(/play\(\)/.test(rm), 'reduced motion still auto-starts');
 });
-t('controls remain, so a blocked clip is still playable by hand', () =>
-  ok(/\bcontrols\b/.test(PV), 'no manual fallback'));
+t('the native control bar is gone — it is the one thing CSS cannot make consistent', () => {
+  no(/\bcontrols\b/.test(PV), 'the browser draws its own widget again');
+  no(/::-webkit-media-controls/.test(PVCSS),
+     'styling the native bar is WebKit/Blink-only and cannot produce one presentation');
+});
+t('a blocked clip is still playable by hand, from our own button', () => {
+  ok(/data-pvid-toggle/.test(PV), 'no manual fallback once controls are gone');
+  ok(/<button type="button" class="pvid-toggle"/.test(PV), 'the fallback is not a real button');
+  ok(/data-pvid-toggle/.test(JS), 'the button is not wired to anything');
+});
+t('sound is reachable in one tap, since muted is what buys the autoplay', () => {
+  ok(/data-pvid-sound/.test(PV), 'no way to hear a clip that autoplays muted');
+  ok(/<button type="button" class="pvid-sound"/.test(PV), 'the sound control is not a real button');
+});
+t('both controls are keyboard-reachable buttons, not tap handlers on a div', () => {
+  const btns = PV.match(/<button[^>]*class="pvid-(toggle|sound)"[^>]*>/g) || [];
+  eq(btns.length, 2);
+  btns.forEach((b) => ok(/type="button"/.test(b), 'submits a form: ' + b));
+  btns.forEach((b) => ok(/aria-label="/.test(b), 'unlabelled control: ' + b));
+});
+t('the control labels name their action and follow their state', () => {
+  const fn = pvidJs();
+  ok(/'Pause ' : 'Play '/.test(fn), 'the play button never renames itself');
+  ok(/'Turn sound off' : 'Turn sound on'/.test(fn), 'the sound button never renames itself');
+});
+t('state is read off the media element, not assumed at the call site', () => {
+  const fn = pvidJs();
+  ok(/'play', 'pause', 'volumechange'/.test(fn),
+     'a browser pausing a clip on its own would leave the button lying');
+});
+t('a shopper who presses pause is not overridden by the next scroll pixel', () => {
+  const fn = pvidJs();
+  ok(/held/.test(fn), 'no hold flag — the observer would restart what they just stopped');
+  ok(/held\[i\] = true/.test(fn), 'pressing pause does not set the hold');
+  ok(/held\[i\] = false/.test(fn), 'the hold is never released');
+});
+t('the retry after a refused play is bounded to one, and only for sound', () => {
+  const fn = pvidJs();
+  const body = fn.slice(fn.indexOf('function play(v)'), fn.indexOf('function syncPlay'));
+  ok(/if \(v\.muted\) return/.test(body), 'a muted rejection would retry forever');
+  eq((body.match(/\.play\(\)/g) || []).length, 2, 'expected exactly one retry');
+});
+t('turning sound on mutes every other clip', () => {
+  const fn = pvidJs();
+  ok(/if \(j !== i\) o\.muted = true/.test(fn), 'two clips could be audible at once');
+});
+t('picture-in-picture and AirPlay targets are not offered on a reel', () => {
+  ok(/disablepictureinpicture/.test(PV));
+  ok(/disableremoteplayback/.test(PV));
+  ok(/x-webkit-airplay="deny"/.test(PV));
+});
 t('video plays inline on iOS rather than hijacking fullscreen', () =>
   ok(/playsinline/.test(PV)));
 t('video has a poster so the strip renders before any video loads', () =>
@@ -1002,17 +1061,56 @@ t('the strip uses the theme radius and palette', () => {
   ok(/border-radius:var\(--r-lg\)/.test(PVCSS));
   ok(/var\(--jute\)/.test(PVCSS));
 });
-t('keyboard focus stays visible inside the scroller', () =>
-  ok(/\.pvid-video:focus-visible/.test(PVCSS)));
+t('keyboard focus stays visible inside the scroller', () => {
+  ok(/\.pvid-toggle:focus-visible/.test(PVCSS), 'the play control has no focus ring');
+  ok(/\.pvid-sound:focus-visible/.test(PVCSS), 'the sound control has no focus ring');
+});
+t('the focus ring is drawn on the disc, not on unknown footage', () => {
+  /* indigo on an arbitrary video frame is not a focus ring anyone can see;
+     white on the control's own 55% ink ground is legible over any clip. */
+  const css = PVCSS.replace(/\n/g, ' ');
+  const rule = /\.pvid-toggle:focus-visible \.pvid-disc,\s*\.pvid-sound:focus-visible \.pvid-disc\{([^}]*)\}/.exec(css);
+  ok(rule, 'the ring is no longer scoped to the disc — re-derive this test');
+  ok(/outline:2px solid #FFF/i.test(rule[1]), 'ring is not white');
+  ok(/opacity:1/.test(rule[1]), 'a focused control on a playing clip stays invisible');
+});
+t('the chrome sits on a ground dark enough to carry a white glyph', () => {
+  /* #FFF on rgba(20,22,26,.55) over any frame: the worst case is a pure white
+     clip behind it, which composites to ~#8F9195 and still clears 4.5:1. */
+  const m = /\.pvid-disc\{[^}]*background:rgba\(20,22,26,\.(\d+)\)/.exec(PVCSS.replace(/\n/g, ' '));
+  ok(m, 'the disc no longer declares its own ground');
+  const a = Number('0.' + m[1]);
+  const lin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const chan = (ink) => a * (ink / 255) + (1 - a) * 1;   /* over white: worst case */
+  const L = 0.2126 * lin(chan(20)) + 0.7152 * lin(chan(22)) + 0.0722 * lin(chan(26));
+  const ratio = 1.05 / (L + 0.05);
+  ok(ratio >= 4.5, 'white glyph on the disc is only ' + ratio.toFixed(2) + ':1 over a white frame');
+});
+t('the touch target clears 44px even though the disc is 32', () => {
+  const css = PVCSS.replace(/\n/g, ' ');
+  const m = /\.pvid-sound\{[^}]*width:(\d+)px;\s*height:(\d+)px/.exec(css);
+  ok(m, 'the sound button no longer sizes itself');
+  ok(Number(m[1]) >= 44 && Number(m[2]) >= 44, 'sound target is ' + m[1] + 'x' + m[2]);
+  ok(/\.pvid-toggle\{[^}]*inset:0/.test(css), 'the play target is not the whole frame');
+});
+t('a playing clip carries no visible chrome, but the control is still there', () => {
+  const css = PVCSS.replace(/\n/g, ' ');
+  ok(/\[data-playing\] \.pvid-toggle \.pvid-disc\{ ?opacity:0/.test(css),
+     'the disc sits on top of every playing clip');
+  no(/\[data-playing\] \.pvid-toggle \.pvid-disc\{[^}]*display:none/.test(css),
+     'display:none would take the control out of the tab order');
+  ok(/\[data-playing\] \.pvid-toggle:hover \.pvid-disc/.test(css), 'no way back to pause on hover');
+});
 t('the section is named for assistive tech even with no heading', () =>
   ok(/aria-label="Product videos"/.test(PV)));
 t('each video is individually labelled', () => ok(/aria-label="Product video/.test(PV)));
 t('the strip is a real list', () => ok(/<ul class="pvid"/.test(PV) && /<li class="pvid-item"/.test(PV)));
 
 t('off-screen videos are paused, not left playing audio', () => {
-  const js = JS.slice(JS.indexOf('function productVideos'), JS.indexOf('function productVideos') + 900);
+  const js = pvidJs();
   ok(/IntersectionObserver/.test(js), 'no observer');
   ok(/\.pause\(\)/.test(js), 'nothing pauses');
+  ok(/v\.pause\(\);\s*v\.muted = true/.test(js), 'a clip swiped away keeps its audio armed');
   no(/addEventListener\('scroll'/.test(js), 'a scroll listener would be the expensive way');
 });
 

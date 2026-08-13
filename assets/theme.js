@@ -1682,19 +1682,6 @@
 
 
   /* ---------------------------------------------------------------
-     Product videos: stop anything that has been scrolled away from
-
-     The only JavaScript this section has, and it exists for one bug: the strip
-     scrolls sideways, so a clip the shopper started can be swiped off screen
-     and go on talking from a video nobody is looking at.
-
-     Nothing here starts a video. The shopper pressing play is the only reason
-     one should ever be running, and preload="none" in the markup means no
-     video bytes are fetched before that happens — the section costs a few
-     poster images until someone shows intent.
-
-     One observer for the whole strip, no scroll listener, no polling. */
-  /* ---------------------------------------------------------------
      Product videos: exactly one plays, and it is the one being looked at
 
      Muted autoplay, driven from here rather than from an autoplay attribute.
@@ -1710,24 +1697,121 @@
      rest are paused, including the one that was playing a moment ago, so
      nothing is ever running off screen.
 
-     Reduced motion takes the autoplay away and leaves the controls: nothing
+     Reduced motion takes the autoplay away and leaves the buttons: nothing
      starts by itself, but a clip the shopper started is still stopped when it
      leaves, because unexpected audio from off screen is not motion.
 
      play() returns a promise that rejects when the browser declines — a data
      saver, a battery mode, a policy this page cannot see. That is a normal
-     outcome, not an error: the controls are still there and the clip is still
-     playable by hand, so the rejection is swallowed rather than logged. */
-  (function productVideos() {
-    var list = [].slice.call(document.querySelectorAll('[data-pvid] video'));
-    if (!list.length || !window.IntersectionObserver) return;
+     outcome, not an error. There is exactly one retry, and only for the one
+     cause this code can actually fix: sound. An unmuted play() is the request
+     a browser is most likely to refuse, so a rejection with sound on drops
+     back to muted and tries once more. A rejection while already muted is
+     final — the poster and the play button are the fallback, and hammering
+     play() at a browser that has said no is how a page burns a battery.
 
-    var ratio = list.map(function () { return 0; });
+     Every visible state is read back off the media element's own play, pause
+     and volumechange events rather than set alongside the call that caused
+     it. A browser that pauses a clip on its own — a phone call, a background
+     tab, an OS media key — moves the button with it. */
+  (function productVideos() {
+    var frames = [].slice.call(document.querySelectorAll('[data-pvid-frame]'));
+    if (!frames.length) return;
+
+    var list    = frames.map(function (f) { return f.querySelector('video'); });
+    var toggles = frames.map(function (f) { return f.querySelector('[data-pvid-toggle]'); });
+    var sounds  = frames.map(function (f) { return f.querySelector('[data-pvid-sound]'); });
+    var ratio   = frames.map(function () { return 0; });
+
+    /* A clip the shopper pressed pause on. The observer fires again on the
+       next scroll pixel, so without this the strip would restart the one
+       thing they just stopped. Cleared when the clip leaves the viewport, so
+       the hold lasts as long as they are looking at it and no longer. */
+    var held = frames.map(function () { return false; });
+
+    /* Sound belongs to the strip, not to a clip: one clip plays at a time, so
+       a per-clip setting would mean turning it on again at every swipe. */
+    var soundOn = false;
+
+    function play(v) {
+      var p = v.play();
+      if (!p || !p.catch) return;
+      p.catch(function () {
+        if (v.muted) return;
+        v.muted = true;
+        soundOn = false;
+        syncSound();
+        var q = v.play();
+        if (q && q.catch) q.catch(function () {});
+      });
+    }
+
+    function syncPlay(i) {
+      var playing = !list[i].paused;
+      var label = frames[i].getAttribute('data-pvid-label') || 'video';
+      if (playing) frames[i].setAttribute('data-playing', '');
+      else frames[i].removeAttribute('data-playing');
+      toggles[i].setAttribute('aria-label', (playing ? 'Pause ' : 'Play ') + label);
+    }
+
+    function syncSound() {
+      frames.forEach(function (f, i) {
+        if (soundOn) f.setAttribute('data-sound', '');
+        else f.removeAttribute('data-sound');
+        sounds[i].setAttribute('aria-label', soundOn ? 'Turn sound off' : 'Turn sound on');
+      });
+    }
+
+    toggles.forEach(function (btn, i) {
+      btn.addEventListener('click', function () {
+        var v = list[i];
+        if (v.paused) {
+          held[i] = false;
+          v.muted = !soundOn;
+          play(v);
+        } else {
+          held[i] = true;
+          v.pause();
+        }
+      });
+    });
+
+    sounds.forEach(function (btn, i) {
+      btn.addEventListener('click', function () {
+        soundOn = !soundOn;
+        list.forEach(function (o, j) { if (j !== i) o.muted = true; });
+        list[i].muted = !soundOn;
+        syncSound();
+        /* Turning sound on is a gesture, and a gesture is what a browser
+           wants before it will allow audible playback — so it is also the
+           right moment to start a clip that autoplay never got to start. */
+        if (soundOn && list[i].paused) {
+          held[i] = false;
+          play(list[i]);
+        }
+      });
+    });
+
+    list.forEach(function (v, i) {
+      ['play', 'pause', 'volumechange'].forEach(function (e) {
+        v.addEventListener(e, function () { syncPlay(i); });
+      });
+      syncPlay(i);
+    });
+    syncSound();
+
+    /* The buttons above work without an observer. Only the autoplay does not,
+       so a browser without IntersectionObserver gets a strip of posters with
+       play buttons, which is the same fallback a blocked autoplay gets. */
+    if (!window.IntersectionObserver) return;
 
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
         var i = list.indexOf(e.target);
-        if (i > -1) ratio[i] = e.intersectionRatio;
+        if (i > -1) {
+          ratio[i] = e.intersectionRatio;
+          if (e.intersectionRatio < 0.05) held[i] = false;
+        }
       });
 
       if (RM) {
@@ -1740,16 +1824,17 @@
       ratio.forEach(function (r, i) { if (r > bestRatio) { bestRatio = r; best = i; } });
 
       list.forEach(function (v, i) {
-        if (i === best) {
+        if (i === best && !held[i]) {
           if (v.paused) {
-            var p = v.play();
-            if (p && p.catch) p.catch(function () {});
+            v.muted = !soundOn;
+            play(v);
           }
         } else if (!v.paused) {
           v.pause();
+          v.muted = true;
         }
       });
-    }, { threshold: [0, 0.25, 0.5, 0.6, 0.75, 1] });
+    }, { threshold: [0, 0.05, 0.25, 0.5, 0.6, 0.75, 1] });
 
     list.forEach(function (v) { io.observe(v); });
   })();

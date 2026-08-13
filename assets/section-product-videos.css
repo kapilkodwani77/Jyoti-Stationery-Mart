@@ -65,6 +65,17 @@
     scroll-snap-align:start;
   }
 
+  /* The frame owns the shape — radius, edge and letterbox — so the controls
+     stacked on top of the clip are clipped by the same corners the video is.
+     Elevation is declared once, as the 1px edge; there is no shadow under it. */
+  .pvid-frame{
+    position:relative;
+    border-radius:var(--r-lg);
+    overflow:hidden;
+    background:var(--jute);
+    border:1px solid var(--edge);
+  }
+
   /* object-fit:contain, not cover. cover looks tidier when every clip is 9:16
      and silently crops the top and bottom off anything that is not — which is
      a decision about someone's footage that a stylesheet should not be making
@@ -77,9 +88,70 @@
   .pvid-video{
     display:block; width:100%; height:auto;
     aspect-ratio:9/16; object-fit:contain;
-    background:var(--jute);
-    border-radius:var(--r-lg);
-    border:1px solid var(--edge);
+  }
+
+  /* ---- controls ----------------------------------------------------------
+     Two buttons drawn by this file rather than by four browsers. Both are
+     transparent hit areas carrying one visible disc, so the target and the
+     mark are sized independently: the sound button is 44px of touch around a
+     32px disc, which is the accessible minimum without a 44px circle sitting
+     on the footage. */
+  .pvid-toggle,
+  .pvid-sound{
+    position:absolute;
+    display:grid; place-items:center;
+    margin:0; padding:0; border:0;
+    background:none; color:inherit;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .pvid-toggle{ inset:0; z-index:1; }
+  .pvid-sound{ right:0; bottom:0; width:44px; height:44px; z-index:2; }
+
+  /* rgba over the ink rather than a token: this is chrome floating on someone
+     else's footage, which can be any colour, so it needs its own contrast
+     ground rather than a surface from the page's palette.
+
+     62%, and the figure is derived rather than picked. The worst case is a
+     blown-out white frame behind the disc, which is exactly what a clip shot
+     on a pale play mat gives you. At 55% the white glyph composited over that
+     came to 4.02:1 — under the floor. 62% lands at 5.06:1 and leaves headroom
+     for a lighter clip than this store has yet uploaded. */
+  .pvid-disc{
+    display:grid; place-items:center;
+    width:32px; height:32px;
+    border-radius:50%;
+    background:rgba(20,22,26,.62);
+    color:#FFF;
+    transition:opacity var(--dur-fast) var(--ease);
+  }
+  .pvid-disc--lg{ width:52px; height:52px; }
+
+  .pvid-i{ display:none; line-height:0; }
+  .pvid-frame:not([data-playing]) .pvid-i--play{ display:block; }
+  .pvid-frame[data-playing]      .pvid-i--pause{ display:block; }
+  .pvid-frame:not([data-sound])  .pvid-i--soundoff{ display:block; }
+  .pvid-frame[data-sound]        .pvid-i--soundon{ display:block; }
+
+  /* A running clip carries nothing on top of it. The disc is still there and
+     still pressable — it is at zero opacity, not display:none — and it comes
+     back on pause, on hover and on keyboard focus. */
+  .pvid-frame[data-playing] .pvid-toggle .pvid-disc{ opacity:0; }
+  .pvid-frame[data-playing] .pvid-toggle:hover .pvid-disc,
+  .pvid-frame[data-playing] .pvid-toggle:focus-visible .pvid-disc{ opacity:1; }
+
+  /* The ring is white on the disc's own dark ground rather than the theme's
+     indigo on the clip, because the clip behind it is an unknown colour and
+     indigo on a dark frame is not a focus ring anyone can see. */
+  .pvid-toggle:focus-visible .pvid-disc,
+  .pvid-sound:focus-visible .pvid-disc{
+    opacity:1;
+    outline:2px solid #FFF;
+    outline-offset:2px;
+  }
+
+  @media(prefers-reduced-motion:reduce){
+    .pvid-disc{ transition:none; }
   }
 
   /* Tablet and up: the strip has room, so the items grow rather than the row
@@ -97,7 +169,12 @@
     .pvid-item{ flex:0 0 300px; }
   }
 
-  /* The focus ring has to survive the overflow container: a keyboard user
-     tabbing into the third video must be able to see where they are. */
-  .pvid-video:focus-visible{ outline:2px solid var(--indigo); outline-offset:3px; }
+  /* The strip is a scroll container, so a keyboard user tabbing to the third
+     clip's buttons must actually be scrolled to it rather than focused off
+     screen. The gutter matches the scroll-padding the phone strip already
+     sets, so a focused clip lands on the page's own margin. */
+  .pvid{ scroll-behavior:smooth; }
+  @media(prefers-reduced-motion:reduce){
+    .pvid{ scroll-behavior:auto; }
+  }
 }

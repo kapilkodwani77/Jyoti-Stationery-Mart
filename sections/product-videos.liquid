@@ -27,6 +27,28 @@
   preload="metadata" rather than "none": the first frame has to exist before a
   clip can be started for someone, and metadata is a header rather than a
   file. width and height still come off the poster, so nothing shifts.
+
+  No `controls` attribute, and that is the whole of the visual argument here.
+  The native control bar is the one part of this page that no stylesheet owns:
+  Chrome draws a dark rounded pill with a timeline, a volume slider, a
+  fullscreen arrow and a three-dot download menu; Safari draws a translucent
+  glass bar with an AirPlay target; iOS adds its own full-width play badge.
+  Three browsers, three widgets, none of them ours, all of them roughly a
+  third of the height of a 187px-wide reel. The parts of that bar that CSS can
+  reach (`::-webkit-media-controls-*`) are non-standard, WebKit and Blink only,
+  and silently do nothing in Firefox — so styling it cannot produce one
+  presentation, only four slightly different ones.
+
+  What replaces it is two buttons, which is what a looping muted reel actually
+  needs: press anywhere to pause, and one tap for sound. No timeline, because
+  a 10-second loop has nowhere to seek to. No fullscreen, because the strip is
+  the format. Both are real <button>s with labels that name their action and
+  update with their state, so the keyboard and screen-reader path is better
+  than the native bar's, not worse.
+
+  What this deliberately gives up: scrubbing, playback rate, the browser's own
+  fullscreen and AirPlay/Cast targets, and picture-in-picture. Long-press on
+  iOS can still raise a system media menu — that one is not ours to remove.
 {%- endcomment -%}
 {{ 'section-product-videos.css' | asset_url | stylesheet_tag }}
 
@@ -46,23 +68,63 @@
       {%- endif -%}
 
       <ul class="pvid" data-pvid>
+        {%- assign vidx = 0 -%}
         {%- for m in product.media -%}
           {%- if m.media_type == 'video' -%}
+            {%- assign vidx = vidx | plus: 1 -%}
+            {%- if m.alt != blank -%}
+              {%- assign vlabel = m.alt -%}
+            {%- else -%}
+              {%- assign vlabel = 'Product video ' | append: vidx -%}
+            {%- endif -%}
             <li class="pvid-item">
-              <video class="pvid-video"
-                     controls
-                     muted
-                     loop
-                     playsinline
-                     preload="metadata"
-                     {% if m.preview_image %}poster="{{ m.preview_image | image_url: width: 720 }}" width="{{ m.preview_image.width }}" height="{{ m.preview_image.height }}"{% endif %}
-                     {% if m.alt != blank %}aria-label="{{ m.alt | escape }}"{% else %}aria-label="Product video {{ forloop.index }}"{% endif %}>
-                {%- for source in m.sources -%}
-                  {%- if source.format == 'mp4' -%}
-                    <source src="{{ source.url }}" type="{{ source.mime_type }}">
-                  {%- endif -%}
-                {%- endfor -%}
-              </video>
+              <div class="pvid-frame" data-pvid-frame data-pvid-label="{{ vlabel | escape }}">
+                <video class="pvid-video"
+                       muted
+                       loop
+                       playsinline
+                       preload="metadata"
+                       disablepictureinpicture
+                       disableremoteplayback
+                       x-webkit-airplay="deny"
+                       {% if m.preview_image %}poster="{{ m.preview_image | image_url: width: 720 }}" width="{{ m.preview_image.width }}" height="{{ m.preview_image.height }}"{% endif %}
+                       aria-label="{{ vlabel | escape }}">
+                  {%- for source in m.sources -%}
+                    {%- if source.format == 'mp4' -%}
+                      <source src="{{ source.url }}" type="{{ source.mime_type }}">
+                    {%- endif -%}
+                  {%- endfor -%}
+                </video>
+
+                {%- comment -%}
+                  The play/pause target is the whole frame, not a corner badge:
+                  on a phone the clip is 187px wide and a shopper reaching for
+                  it is reaching for the picture. It carries no visible chrome
+                  while a clip is running and brings the disc back the moment
+                  it is paused, hovered or focused, so a playing reel is just
+                  the reel.
+                {%- endcomment -%}
+                <button type="button" class="pvid-toggle" data-pvid-toggle aria-label="Play {{ vlabel | escape }}">
+                  <span class="pvid-disc pvid-disc--lg">
+                    <span class="pvid-i pvid-i--play">{% render 'icon', name: 'play', size: 24 %}</span>
+                    <span class="pvid-i pvid-i--pause">{% render 'icon', name: 'pause', size: 24 %}</span>
+                  </span>
+                </button>
+
+                {%- comment -%}
+                  Sound is the one control this format genuinely needs. Muted
+                  is what buys the autoplay, so every clip opens silent and the
+                  shopper is one tap from hearing it. The button stays visible
+                  over a playing clip for that reason — it is the affordance,
+                  not decoration. 44px of touch target around a 32px disc.
+                {%- endcomment -%}
+                <button type="button" class="pvid-sound" data-pvid-sound aria-label="Turn sound on">
+                  <span class="pvid-disc">
+                    <span class="pvid-i pvid-i--soundoff">{% render 'icon', name: 'sound-off', size: 16 %}</span>
+                    <span class="pvid-i pvid-i--soundon">{% render 'icon', name: 'sound-on', size: 16 %}</span>
+                  </span>
+                </button>
+              </div>
             </li>
           {%- endif -%}
         {%- endfor -%}
