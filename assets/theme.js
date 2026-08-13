@@ -1637,6 +1637,12 @@
        themselves. */
     var confirm = function (msg) {
       btn.classList.add('is-copied');
+      /* A tap's worth of haptic on success only — never on the fallback, where
+         nothing has actually reached the clipboard yet. Feature-detected and
+         wrapped, because some browsers expose vibrate and then throw on it,
+         and a copy that worked must not report failure because a motor did
+         not spin. Nothing here is required for the copy to succeed. */
+      if (navigator.vibrate) { try { navigator.vibrate(10); } catch (e) {} }
       if (status) status.textContent = msg;
       clearTimeout(btn._offerT);
       btn._offerT = setTimeout(function () {

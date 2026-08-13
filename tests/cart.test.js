@@ -561,7 +561,12 @@ t('reduced motion is respected by the chevron', () =>
    off, so every assertion here is about what this one does NOT do. */
 
 const BUYBOX_RAW = fs.readFileSync(path.join(ROOT, 'snippets/buy-box.liquid'), 'utf8');
-const BUYBOX = BUYBOX_RAW.replace(/\{%-?\s*comment\s*-?%\}[\s\S]*?\{%-?\s*endcomment\s*-?%\}/g, '');
+const BUYBOX = BUYBOX_RAW
+  .replace(/\{%-?\s*comment\s*-?%\}[\s\S]*?\{%-?\s*endcomment\s*-?%\}/g, '')
+  /* Liquid also allows bare comment/endcomment inside a {%- ... -%} block, and
+     the rationale in this file uses that form. Prose about not inventing
+     urgency is not an invented urgency claim. */
+  .replace(/(^|\n)\s*comment\b[\s\S]*?\n\s*endcomment\b/g, '');
 const BUYCSS = fs.readFileSync(path.join(ROOT, 'assets/component-buy-box.css'), 'utf8');
 
 /* The copy handler, comments stripped — it is documented in prose that has to
@@ -634,74 +639,116 @@ t('the copied state is a CSS swap', () => {
   ok(/\.offer-copy\.is-copied \.offer-copy-idle\{\s*display:none/.test(BUYCSS));
   ok(/\.offer-copy-done\{\s*display:none/.test(BUYCSS));
 });
-t('the copy control meets the 44px tap target', () => {
-  /* The height comes from the row and align-self:stretch rather than a
-     min-height on the button, so the target costs no extra vertical space. */
-  const flat = BUYCSS.replace(/\n/g, ' ');
-  ok(/\.offer\{[^}]*min-height:var\(--tap\)/.test(flat), 'the row is not a full tap target');
-  ok(/\.offer-copy\{[^}]*align-self:stretch/.test(flat), 'the button does not fill the row');
-});
-t('the offer is one row, not a stacked card', () => {
-  const flat = BUYCSS.replace(/\n/g, ' ');
-  ok(/\.offer\{[^}]*display:flex[^}]*align-items:center/.test(flat), 'not a single centred row');
-  no(/\.offer\{[^}]*flex-direction:column/.test(flat), 'the offer stacks again');
-});
 t('the offer carries no dashes and no nested chip', () => {
   const flat = BUYCSS.replace(/\n/g, ' ');
   no(/\.offer\{[^}]*dashed/.test(flat), 'the coupon-clipart border is back');
   ok(/\.offer-code\{[^}]*border:0/.test(flat), 'the code chip border is back');
 });
-t('the offer surface is the warm theme token, not a raw colour', () => {
+t('the offer reuses the store chalk surface, not a new colour', () => {
   const flat = BUYCSS.replace(/\n/g, ' ');
-  ok(/\.offer\{[^}]*background:var\(--jute\)/.test(flat), 'lost the warm paper surface');
-  no(/\.offer\{[^}]*background:#/.test(flat), 'a raw hex bypassed the token system');
+  ok(/\.offer\{[^}]*background:var\(--chalk\)/.test(flat), 'not the store chalk token');
+  no(/\.offer\{[^}]*background:#|\.offer\{[^}]*background:rgb/.test(flat), 'a raw colour was invented');
 });
-t('elevation is declared once: fill, not fill plus border or shadow', () => {
-  /* craft-floor: a 1px border under a fill is the ghost-card tell. */
+t('the chalk surface pairing matches the product card verbatim', () => {
+  /* Same fill + hairline the card already uses. If either drifts, the offer
+     stops looking like it belongs to this storefront. */
+  const card = fs.readFileSync(path.join(ROOT, 'assets/component-product-card.css'), 'utf8');
+  ok(/background:var\(--chalk\);\s*border:1px solid var\(--edge\)/.test(card),
+     'the card pattern moved — re-derive the offer surface from it');
+  const flat = BUYCSS.replace(/\n/g, ' ');
+  ok(/\.offer\{[^}]*background:var\(--chalk\)[^}]*border:1px solid var\(--edge\)/.test(flat));
+});
+t('elevation is declared once: hairline, never hairline plus shadow', () => {
   const block = BUYCSS.slice(BUYCSS.indexOf('.offer{'), BUYCSS.indexOf('.offer-text{'));
-  no(/border:[^;]*solid/.test(block), 'border and fill both declared');
-  no(/box-shadow/.test(block), 'shadow and fill both declared');
+  no(/box-shadow/.test(block), 'ghost card: border under a shadow');
 });
 t('no coloured accent bar', () => {
   const flat = BUYCSS.replace(/\n/g, ' ');
   no(/\.offer\{[^}]*border-(left|inline-start):\s*[2-9]/.test(flat), 'banned accent bar');
 });
-t('the amount outranks the label in the hierarchy', () => {
+t('the action is a secondary outlined control, not a second primary', () => {
   const flat = BUYCSS.replace(/\n/g, ' ');
-  const amount = /\.offer-amount\{[^}]*font-size:(\d+)px/.exec(flat);
-  const label = /\.offer-label\{[^}]*font-size:(\d+)px/.exec(flat);
-  ok(amount && label, 'missing amount or label sizing');
-  ok(Number(amount[1]) > Number(label[1]), 'the label competes with the value');
-  ok(/\.offer-amount\{[^}]*color:var\(--ink\)/.test(flat), 'the amount is not the darkest ink');
+  ok(/\.offer-copy\{[^}]*border:1px solid var\(--indigo\)/.test(flat), 'not outlined');
+  ok(/\.offer-copy\{[^}]*background:none/.test(flat), 'filled by default competes with Add to Cart');
+  ok(/\.offer-copy\{[^}]*text-transform:uppercase/.test(flat), 'action lacks the label treatment');
 });
-t('the label is de-emphasised, uppercase and small', () => {
+t('the action carries its own 44px target', () =>
+  ok(/\.offer-copy\{[^}]*min-height:var\(--tap\)/.test(BUYCSS.replace(/\n/g, ' ')),
+     'target depends on the row'));
+t('the copied state fills in so confirmation is unmistakable', () => {
   const flat = BUYCSS.replace(/\n/g, ' ');
-  ok(/\.offer-label\{[^}]*text-transform:uppercase/.test(flat));
-  ok(/\.offer-label\{[^}]*color:var\(--ink-2\)/.test(flat));
+  ok(/\.offer-copy\.is-copied\{[^}]*background:var\(--indigo\)/.test(flat));
+  ok(/\.offer-copy\.is-copied \.offer-copy-idle\{\s*display:none/.test(flat));
 });
 t('the code is not dressed as monospace', () =>
-  ok(/\.offer-code\{[^}]*font-family:inherit/.test(BUYCSS.replace(/\n/g, ' ')),
-     'monospace as a costume for technical'));
-t('the action names what it does', () => {
-  ok(/>Copy code</.test(BUYBOX), 'the action still just says Copy');
-});
+  ok(/\.offer-code\{[^}]*font-family:inherit/.test(BUYCSS.replace(/\n/g, ' '))));
+t('the action names what it does', () => ok(/>Copy code</.test(BUYBOX)));
 t('no text in the offer drops below 12px', () => {
   const flat = BUYCSS.replace(/\n/g, ' ');
   const sizes = (flat.match(/\.offer[a-z-]*\{[^}]*font-size:(\d+)px/g) || [])
     .map((m) => Number(/font-size:(\d+)px/.exec(m)[1]));
-  ok(sizes.length >= 3, 'expected several sized offer elements');
+  ok(sizes.length >= 2, 'expected sized offer elements, got ' + sizes.length);
   sizes.forEach((px) => ok(px >= 12, 'found ' + px + 'px body text'));
 });
 t('the copied state is not an instant 0ms change', () => {
   const flat = BUYCSS.replace(/\n/g, ' ');
-  ok(/\.offer-copy\{[^}]*transition:color/.test(flat), 'state change is instant');
-  ok(/prefers-reduced-motion[\s\S]{0,120}\.offer-copy\{\s*transition:none/.test(BUYCSS),
+  ok(/\.offer-copy\{[^}]*transition:[^;]*(background-color|color)/.test(flat), 'state change is instant');
+  ok(/prefers-reduced-motion[\s\S]{0,200}\.offer-copy\{\s*transition:none/.test(BUYCSS),
      'motion is not reduced-motion guarded');
 });
-t('the offer markup is a single line of content', () => {
-  ok(BUYBOX.includes('offer-text'), 'no single-line text element');
-  no(/offer-head|offer-row|offer-use|offer-mark/.test(BUYBOX), 'the two-row markup survives');
-  no(/offer-head|offer-row|offer-use|offer-mark/.test(BUYCSS), 'dead two-row CSS survives');
+
+/* ---- urgency line: sourced, never manufactured ---- */
+t('the manufactured urgency line is gone', () => {
+  no(/Limited-time price/.test(BUYBOX_RAW), 'the invented deadline survives');
+  no(/% OFF &middot;/.test(BUYBOX_RAW));
+});
+t('urgency comes from real inventory, not a constant', () => {
+  ok(/inventory_quantity/.test(BUYBOX_RAW), 'no inventory source');
+  ok(/inventory_policy == 'deny'/.test(BUYBOX_RAW), 'an overselling variant is not scarce');
+});
+t('the stock line hides itself when stock is healthy', () =>
+  ok(/inventory_quantity <= \d+/.test(BUYBOX_RAW), 'no threshold — it would always show'));
+t('no invented scarcity beyond the sourced stock figure', () => {
+  no(/countdown|hurry|selling fast|almost gone|\bends (in|today)\b/i.test(BUYBOX),
+     'a manufactured urgency claim appeared');
+});
+
+/* ---- haptics ---- */
+t('haptic fires only after a successful copy', () => {
+  const src = OFFER_JS;
+  ok(/navigator\.vibrate/.test(src), 'no haptic');
+  const confirmFn = src.slice(src.indexOf('var confirm'), src.indexOf('var selectCode'));
+  ok(/navigator\.vibrate/.test(confirmFn), 'haptic is not on the confirmation path');
+});
+t('haptic is feature-detected and cannot throw', () => {
+  ok(/if \(navigator\.vibrate\)/.test(OFFER_JS), 'not feature-detected');
+  ok(/try \{ navigator\.vibrate\(10\); \} catch/.test(OFFER_JS), 'unguarded vibrate');
+});
+t('a failed haptic cannot fail the copy', () => {
+  /* Source order is not execution order — confirm() is defined before the
+     clipboard call and invoked after it. What matters is that the vibrate is
+     wrapped, and that the visible confirmation is set before it. */
+  const c = OFFER_JS.slice(OFFER_JS.indexOf('var confirm'), OFFER_JS.indexOf('var selectCode'));
+  ok(c.indexOf("classList.add('is-copied')") < c.indexOf('navigator.vibrate'),
+     'the visible confirmation depends on the motor');
+  ok(/try \{[^}]*vibrate[^}]*\} catch/.test(c), 'unguarded vibrate');
+});
+t('the fallback path does not fake a successful copy with haptics', () => {
+  const sel = OFFER_JS.slice(OFFER_JS.indexOf('var selectCode'), OFFER_JS.indexOf('if (navigator.clipboard'));
+  no(/vibrate/.test(sel), 'haptic on a path where nothing was copied');
+});
+/* ---- sticky bar elevation (pre-existing, must not regress) ---- */
+t('the sticky buy bar keeps its two-part elevation', () => {
+  const flat = CSS.replace(/\n/g, ' ');
+  const bar = /\.buybar\{[^}]*\}/.exec(flat);
+  ok(bar, 'no .buybar rule');
+  ok(/box-shadow:0 -1px 0 var\(--edge\), 0 -12px 32px/.test(bar[0]),
+     'the crisp+soft shadow pair was lost');
+});
+t('the sticky bar elevation was not doubled', () => {
+  const flat = CSS.replace(/\n/g, ' ');
+  const bar = /\.buybar\{[^}]*\}/.exec(flat)[0];
+  eq((bar.match(/box-shadow/g) || []).length, 1, 'two shadows declared');
 });
 t('the filler words and decorative tick are gone', () => {
   no(/this order/i.test(BUYBOX), 'filler copy survives');

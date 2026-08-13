@@ -38,24 +38,29 @@
   endif
 
   comment
-    The urgency line, and the only two things it is ever allowed to say.
+    The urgency line, and the only things it is ever allowed to say.
 
-    A discount that is actually configured on the variant, or a dispatch
-    promise the merchant has actually entered. Nothing else: no countdown, no
-    stock figure, no shopper count, no deadline. Each of those would have to be
-    invented here, because the theme has no source for any of them — and an
-    invented one is a claim a customer can catch, on a store selling to
-    parents, for a few percent of lift at most.
+    "31% OFF, limited-time price" is gone. The percentage was already on the
+    price pill and in the struck figure two lines above, so it was the third
+    statement of one fact, and "limited-time" was attached to no time — a
+    deadline nobody had set and nothing could enforce. On a store selling to
+    parents, an urgency claim a customer can catch costs more than the few
+    percent it buys.
 
-    The percentage now comes from snippets/saved-percent.liquid, which the price
-    pill and the product card also read. It has to match the pill exactly, or the
-    page would state two different discounts one line apart; sharing the snippet
-    is what makes that structural rather than a promise in a comment.
+    What replaced it is the one urgent thing that is actually true and that
+    the theme can actually read: the stock figure. An earlier version of this
+    comment said no such source existed. That was wrong — Liquid carries
+    inventory_quantity whenever the merchant tracks inventory, so this is
+    sourced rather than invented, it updates itself as stock moves, and it
+    disappears on its own once there is plenty. It is gated on the policy
+    being deny, because a variant that oversells is not scarce.
+
+    No countdown, no shopper count, no deadline. Those still have no source.
   endcomment
 
   assign urgency = ''
-  if saved_pct > 0
-    assign urgency = saved_pct | append: '% OFF &middot; Limited-time price'
+  if v.inventory_management != blank and v.inventory_policy == 'deny' and v.inventory_quantity > 0 and v.inventory_quantity <= 10
+    assign urgency = 'Only ' | append: v.inventory_quantity | append: ' left in stock'
   elsif settings.dispatch_promise != blank
     assign urgency = settings.dispatch_promise
   endif
@@ -199,22 +204,22 @@
     {%- endcomment -%}
     {%- if prepaid_code != blank -%}
       {%- comment -%}
-        Warm paper surface, one row. The amount leads on size, weight and ink;
-        "Code" is a small uppercase label because a label supports the value it
-        names rather than competing with it; the code itself is set apart by
-        colour and tracking rather than by a box, which is what made the first
-        version three nested rectangles.
+        Chalk on a chalk page, bounded by a hairline — the store's own
+        chalk-surface pattern, lifted verbatim from the product card
+        (component-product-card.css) rather than mixed fresh. That is what
+        makes this read as part of the storefront instead of a component
+        pasted onto it, and it is why the border is here: on a chalk page a
+        chalk fill is invisible without one. The border draws the surface; the
+        hierarchy is still carried by type.
 
-        No border and no shadow — the jute does the separating on its own, and
-        declaring elevation twice is what makes a component look assembled
-        rather than designed. No dashes, no tick, no accent bar.
+        The copy names a reason rather than announcing a percentage. It does
+        not say "first order" or "new here", because CARE5 is not restricted
+        to either — allCustomers, no per-customer limit — and copy that
+        promises a condition the discount does not enforce is a lie the
+        customer discovers at checkout.
       {%- endcomment -%}
       <div class="offer">
-        <p class="offer-text">
-          <b class="offer-amount">{{ prepaid_pct }}% off</b>
-          <span class="offer-label">Code</span>
-          <code class="offer-code" data-offer-code>{{ prepaid_code }}</code>
-        </p>
+        <p class="offer-text">Enjoy {{ prepaid_pct }}% off with <code class="offer-code" data-offer-code>{{ prepaid_code }}</code></p>
         <button type="button" class="offer-copy" data-offer-copy data-offer-value="{{ prepaid_code }}">
           <span class="offer-copy-idle">Copy code</span>
           <span class="offer-copy-done" aria-hidden="true">Copied</span>

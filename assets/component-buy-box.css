@@ -64,79 +64,67 @@
   .buybox form{ margin-top:var(--s-5); }
 
   /* ---- offer ------------------------------------------------------------
-     Warm paper, one row, 44px tall.
+     The store's chalk surface, not a new one. background:var(--chalk) with a
+     1px --edge hairline is the exact pairing the product card already uses;
+     reusing it verbatim is what makes this belong here. On a chalk page the
+     fill alone is invisible, so the hairline is drawing the surface rather
+     than substituting for hierarchy — the type still does that work.
 
-     The surface is the theme's own jute — the same warm neutral the page
-     alternates into elsewhere — so the offer reads as part of this storefront
-     rather than a promo widget dropped onto it. That tint is the only
-     separation: no border, no shadow. Declaring elevation twice is most of
-     what makes a small component look assembled instead of designed, and a
-     hairline under a fill would be the ghost-card tell.
-
-     Hierarchy is carried by size, weight and ink together rather than by
-     boxes. The amount is the largest and darkest thing here and wins a
-     squint; "Code" is a small uppercase label, because a label supports the
-     value it names; the code is set apart by indigo and tracking alone. That
-     is the whole reason the earlier chip border could go — it was doing a job
-     typography was already doing.
-
-     Contrast on jute: ink-2 4.68:1, indigo 7.16:1, ink far above. */
+     Elevation is declared once: border, no shadow. */
   .offer{
     display:flex; align-items:center; gap:var(--s-3);
-    min-height:var(--tap); margin-bottom:var(--s-4);
-    padding-inline:var(--s-3);
-    background:var(--jute); border-radius:var(--r-md);
+    margin-bottom:var(--s-4); padding:var(--s-1) var(--s-3);
+    background:var(--chalk); border:1px solid var(--edge); border-radius:var(--r-md);
   }
 
   .offer-text{
-    display:flex; align-items:baseline; gap:var(--s-2);
-    margin:0; min-width:0; flex:1 1 auto;
-  }
-  .offer-amount{ font-size:15px; font-weight:500; color:var(--ink); white-space:nowrap; }
-
-  /* Uppercase and small is what a label looks like when it has stopped
-     competing with its own value. */
-  .offer-label{
-    font-size:12px; letter-spacing:.08em; text-transform:uppercase;
-    color:var(--ink-2); white-space:nowrap;
+    margin:0; flex:1 1 auto; min-width:0;
+    font-size:13px; line-height:1.35; color:var(--ink);
   }
 
-  /* font-family stays inherited. Monospace here would be a costume for
-     "technical" — this is a word to retype at checkout, not code. */
+  /* font-family stays inherited: monospace would be a costume for "technical"
+     on a word whose only job is to be retyped at checkout. */
   .offer-code{
-    font-family:inherit; font-size:13px; font-weight:500; letter-spacing:.08em;
+    font-family:inherit; font-weight:500; letter-spacing:.08em;
     color:var(--indigo); background:none; border:0; padding:0;
     user-select:all; white-space:nowrap;
   }
 
-  /* align-self:stretch buys the 44px target for nothing: the button is as tall
-     as the row, so accessibility costs no vertical space. Both labels ship in
-     the markup and CSS shows one, so the accessible name is never rewritten. */
+  /* Secondary tier: outlined, not filled. Filled would put a second primary
+     next to Add to Cart and make the shopper choose between two things that
+     look equally like the way forward — the exact mistake Checkout and View
+     cart made in the drawer. Outlined reads unmistakably as a button while
+     staying subordinate to the one that ends the purchase.
+
+     44px tall in its own right, so the target does not depend on the row. */
   .offer-copy{
-    flex:0 0 auto; align-self:stretch;
-    display:inline-flex; align-items:center;
-    padding:0 0 0 var(--s-2); margin:0;
-    background:none; border:0; cursor:pointer; font:inherit;
-    font-size:12px; font-weight:500; color:var(--indigo);
-    text-decoration:underline; text-underline-offset:3px;
-    transition:color 120ms var(--ease);
+    flex:0 0 auto; min-height:var(--tap); padding-inline:var(--s-3);
+    display:inline-flex; align-items:center; justify-content:center;
+    background:none; cursor:pointer; font:inherit;
+    font-size:12px; font-weight:500; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--indigo); border:1px solid var(--indigo); border-radius:var(--r-sm);
+    transition:background-color 120ms var(--ease), color 120ms var(--ease);
   }
-  .offer-copy:hover{ color:var(--ink); }
+  .offer-copy:hover{ background:var(--indigo); color:var(--chalk); }
+  .offer-copy:active{ transform:scale(.98); }
+
+  /* Copied fills in. The state that matters most is the one confirming the
+     code is on the clipboard, so it is the only moment this control is
+     allowed to carry solid colour. */
   .offer-copy-done{ display:none; }
-  .offer-copy.is-copied{ color:var(--ink-2); }
+  .offer-copy.is-copied{ background:var(--indigo); color:var(--chalk); }
   .offer-copy.is-copied .offer-copy-idle{ display:none; }
-  .offer-copy.is-copied .offer-copy-done{ display:inline; text-decoration:none; }
+  .offer-copy.is-copied .offer-copy-done{ display:inline; }
 
   @media(prefers-reduced-motion:reduce){
     .offer-copy{ transition:none; }
+    .offer-copy:active{ transform:none; }
   }
 
-  /* 375px is the tightest this gets: the row measures about 246px of content
-     inside 303px of space, so it holds one line with room. The label is the
-     first thing to go if a longer code ever needs the width. */
+  /* 375px: about 286px of content inside 327px. One line, with room. */
   @media(max-width:380px){
     .offer{ gap:var(--s-2); padding-inline:var(--s-2); }
-    .offer-amount{ font-size:14px; }
+    .offer-copy{ padding-inline:var(--s-2); }
   }
   .buybox-error{ margin-top:var(--s-3); font-size:14px; color:var(--danger); }
   /* ---- trust row -------------------------------------------------------
