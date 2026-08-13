@@ -1024,19 +1024,103 @@ t('video is never stretched or cropped', () => {
   ok(/object-fit:contain/.test(PVCSS), 'contain is what guarantees no crop');
   no(/object-fit:cover/.test(PVCSS));
 });
+/* The spacing scale, read out of theme.css rather than copied into this file,
+   so a token that moves moves the layout assertions with it. */
+const TOKENS = (() => {
+  const map = {};
+  const re = /(--s-\d+):\s*(\d+)px/g;
+  let m;
+  while ((m = re.exec(CSS))) map[m[1]] = Number(m[2]);
+  return map;
+})();
+
+/* Every figure the strip's geometry depends on, parsed off the shipped CSS.
+   Nothing here is a remembered number: change the stylesheet and this reads
+   the new value, which is the point — the 70% rule is then verified against
+   what actually ships rather than against what someone meant to ship. */
+function stripGeometry() {
+  const css = PVCSS.replace(/\n/g, ' ');
+  const tok = (v) => {
+    const t = /var\((--s-\d+)\)/.exec(v);
+    ok(t, 'expected a spacing token, got: ' + v);
+    ok(TOKENS[t[1]] !== undefined, 'unknown token ' + t[1]);
+    return TOKENS[t[1]];
+  };
+
+  const phone = /@media\(max-width:899px\)\{\s*\.pvid\{([^}]*)\}/.exec(css);
+  ok(phone, 'the phone block that sets the strip inset is gone');
+  const pad = /padding-inline:\s*([^;]+);/.exec(phone[1]);
+  ok(pad, 'the strip no longer declares its inset');
+
+  const gapM = /\.pvid\{[^}]*gap:\s*([^;]+);/.exec(css);
+  ok(gapM, 'the strip no longer declares a gap');
+
+  const clamp = /\.pvid-item\{[^}]*flex:0 0 clamp\((\d+)px,\s*(\d+)vw,\s*(\d+)px\)/.exec(css);
+  ok(clamp, 'card width is no longer a clamp — re-derive this test');
+
+  /* The bleed must cancel .wrap's own gutter exactly, or the page scrolls
+     sideways. That is a different token from the inset and must stay pinned
+     to whatever .wrap uses. */
+  const bleed = /margin-inline:\s*calc\(var\((--s-\d+)\)\s*\*\s*-1\)/.exec(phone[1]);
+  ok(bleed, 'the strip no longer bleeds to the viewport edge');
+  const wrapPad = /\.wrap\{[^}]*padding-inline:var\((--s-\d+)\)/.exec(CSS.replace(/\n/g, ' '));
+  ok(wrapPad, 'could not read .wrap padding');
+
+  return {
+    inset: tok(pad[1]),
+    gap: tok(gapM[1]),
+    min: Number(clamp[1]), vwPct: Number(clamp[2]), max: Number(clamp[3]),
+    bleedToken: bleed[1], wrapToken: wrapPad[1],
+  };
+}
+
+const PHONES = [375, 390, 393, 414];
+
+t('the strip bleed cancels the page gutter exactly, so nothing overflows', () => {
+  const g = stripGeometry();
+  eq(g.bleedToken, g.wrapToken);
+});
 t('the second clip clears 70% at every phone width', () => {
-  /* strip = gutter + card + gap + card. Solved from the shipped clamp so the
-     assertion moves if the CSS does. */
-  const m = /\.pvid-item\{[^}]*flex:0 0 clamp\((\d+)px,\s*(\d+)vw,\s*(\d+)px\)/
-    .exec(PVCSS.replace(/\n/g, ' '));
-  ok(m, 'card width is no longer a clamp — re-derive this test');
-  const [min, vwPct, max] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  const gutter = 24, gap = 12;
-  [375, 390, 393, 414].forEach((vw) => {
-    const W = Math.min(Math.max(min, vw * vwPct / 100), max);
-    const visible = (vw - gutter - W - gap) / W;
+  const g = stripGeometry();
+  PHONES.forEach((vw) => {
+    const W = Math.min(Math.max(g.min, vw * g.vwPct / 100), g.max);
+    const visible = (vw - g.inset - W - g.gap) / W;
     ok(visible >= 0.70, vw + 'px: second clip only ' + (visible * 100).toFixed(1) + '%');
   });
+});
+t('the second clip does not overshoot into a two-column grid', () => {
+  /* Above ~80% the strip stops reading as "one video and a hint of the next"
+     and starts reading as two half-width videos, which loses the swipe cue. */
+  const g = stripGeometry();
+  PHONES.forEach((vw) => {
+    const W = Math.min(Math.max(g.min, vw * g.vwPct / 100), g.max);
+    const visible = (vw - g.inset - W - g.gap) / W;
+    ok(visible <= 0.80, vw + 'px: second clip at ' + (visible * 100).toFixed(1) + '%');
+  });
+});
+t('the strip sits close to the viewport edge rather than on the text gutter', () => {
+  const g = stripGeometry();
+  ok(g.inset <= 16, 'inset of ' + g.inset + 'px still reads as a floating card');
+  ok(g.inset >= 8, 'inset of ' + g.inset + 'px leaves the rounded corner nothing to sit on');
+});
+t('the first card is the dominant element on a phone', () => {
+  const g = stripGeometry();
+  PHONES.forEach((vw) => {
+    const W = Math.min(Math.max(g.min, vw * g.vwPct / 100), g.max);
+    ok(W / vw >= 0.50, vw + 'px: first card is only ' + (W / vw * 100).toFixed(1) + '% of the viewport');
+  });
+});
+t('the card grew rather than the whitespace shrinking alone', () => {
+  /* The pass before this shipped 50vw at a 24px inset. Both had to move: the
+     inset alone leaves the card the same size, and the card alone leaves it
+     floating. Guards the regression back to either half. */
+  const g = stripGeometry();
+  ok(g.vwPct > 50, 'card is back to ' + g.vwPct + 'vw');
+  ok(g.inset < 24, 'inset is back to the text gutter');
+});
+t('9:16 survived the resize', () => {
+  ok(/aspect-ratio:9\/16/.test(PVCSS), 'the shape changed');
+  ok(/object-fit:contain/.test(PVCSS), 'a bigger card started cropping footage');
 });
 t('the cards are not shrunk to nothing to pass that rule', () => {
   const m = /flex:0 0 clamp\((\d+)px/.exec(PVCSS);
@@ -1046,6 +1130,30 @@ t('the section no longer opens on its own block of empty space', () => {
   ok(/\.pvid-sec\{[^}]*padding-top:0/.test(PVCSS.replace(/\n/g, ' ')),
      'the section still adds its own top padding under the FAQ');
   ok(/class="[^"]*pvid-sec/.test(PV), 'the section does not carry the class');
+});
+t('the FAQ above it closes on a paragraph gap, not a chapter break', () => {
+  /* The preceding .sec closes with --rhythm of padding. The pull is written
+     as -(rhythm - token), so the surviving gap is exactly the token whatever
+     --rhythm happens to be at that breakpoint — which is why this can assert
+     one number instead of one per media query. */
+  const css = PVCSS.replace(/\n/g, ' ');
+  const m = /\.pvid-sec\{[^}]*margin-top:\s*calc\(\(var\(--rhythm\)\s*-\s*var\((--s-\d+)\)\)\s*\*\s*-1\)/.exec(css);
+  ok(m, 'the section no longer pulls up into the preceding rhythm');
+  const gap = TOKENS[m[1]];
+  ok(gap >= 16 && gap <= 24, 'FAQ to videos would be ' + gap + 'px, outside the 16-24px target');
+});
+t('the pull is derived from the rhythm token, never a flat pixel figure', () => {
+  const css = PVCSS.replace(/\n/g, ' ');
+  const rule = /\.pvid-sec\{([^}]*)\}/.exec(css);
+  ok(rule, 'the section rule is gone');
+  no(/margin-top:\s*-\d+px/.test(rule[1]),
+     'a hardcoded pull goes wrong at every breakpoint where --rhythm changes');
+});
+t('desktop reopens the gap rather than staying at the phone figure', () => {
+  const css = PVCSS.replace(/\n/g, ' ');
+  const m = /@media\(min-width:900px\)\{\s*\.pvid-sec\{\s*margin-top:\s*calc\(\(var\(--rhythm\)\s*-\s*var\((--s-\d+)\)\)\s*\*\s*-1\)/.exec(css);
+  ok(m, 'no desktop override — 24px between sections is a phone decision');
+  ok(TOKENS[m[1]] > 24, 'desktop gap of ' + TOKENS[m[1]] + 'px is still the phone figure');
 });
 t('the last clip is not left under the sticky bar', () =>
   ok(/\.pvid-sec\{[^}]*padding-bottom:var\(--s-\d\)/.test(PVCSS.replace(/\n/g, ' ')),

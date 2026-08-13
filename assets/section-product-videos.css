@@ -2,13 +2,38 @@
   /* The strip sat in an empty field on a phone: the FAQ above closes with
      --rhythm of padding and this section opened with --s-7 of its own, so
      roughly 112px of nothing separated a question from the first frame of a
-     video. Its own top padding goes to zero.
+     video. Its own top padding goes to zero, which removed half of it.
 
-     64px still remains, and it is not this file's to remove — that is the
-     FAQ's own closing rhythm, and reaching the 16-24px ideal would mean
-     reducing it. The bottom keeps a step so the last clip is not sitting
-     under the sticky Add to Cart bar. */
-  .pvid-sec{ padding-top:0; padding-bottom:var(--s-6); }
+     The other 64px is the preceding section's closing rhythm, and the earlier
+     pass left it alone on the grounds that it was not this file's to spend.
+     That was the wrong call. --rhythm is the distance between two sections
+     that are arguing different points; these two are one continuous answer —
+     the FAQ says what the mat is and the strip shows it — so the reader is
+     being asked to cross a chapter break that is not there. Spacing between
+     groups has to exceed spacing within a group, and by opening a --rhythm
+     gap inside a group this page had the rule backwards.
+
+     So the section pulls itself up rather than reaching into the FAQ's
+     stylesheet to shorten it. The pull is expressed against --rhythm rather
+     than as a flat -40px, so it stays correct at every breakpoint where
+     --rhythm changes, and it costs nothing when this section is absent
+     because this file only loads when it renders. Both sections are chalk, so
+     there is no seam to give the move away.
+
+     What lands: exactly --s-5 of air between the last FAQ row and the first
+     frame, at every width below the desktop breakpoint. */
+  .pvid-sec{
+    margin-top:calc((var(--rhythm) - var(--s-5)) * -1);
+    padding-top:0;
+    padding-bottom:var(--s-6);
+  }
+
+  /* Desktop has room to breathe and the two sections stop reading as one
+     continuous column once they are side by side with margin either side, so
+     the gap reopens to a section step rather than a paragraph one. */
+  @media(min-width:900px){
+    .pvid-sec{ margin-top:calc((var(--rhythm) - var(--s-7)) * -1); }
+  }
 
   /* ---- product videos ---------------------------------------------------
      A reel strip. Horizontal on every size, because the alternative on a phone
@@ -29,13 +54,24 @@
 
   /* Bleed to the viewport edge on a phone so the strip reads as continuing
      past the screen rather than stopping at a margin — the cue that tells a
-     shopper it can be swiped. The padding puts the first video back on the
-     page's own gutter. */
+     shopper it can be swiped.
+
+     The negative margin has to stay --s-5 because that is what it cancels:
+     .wrap's own padding-inline. The re-pad underneath it is the strip's
+     actual inset, and it is no longer tied to that figure. It was, and the
+     result was a 9:16 card floating with 24px of chalk down its left side
+     while the clip itself was 187px wide — the frame reading as a small tile
+     on a large empty surface rather than as content.
+
+     --s-3. Text needs the page gutter because a measure that runs to the edge
+     is hard to read; a video does not, and edge proximity is what makes a
+     media strip feel like media rather than a widget. It stops short of a
+     true bleed so the rounded corner still has something to sit on. */
   @media(max-width:899px){
     .pvid{
       margin-inline:calc(var(--s-5) * -1);
-      padding-inline:var(--s-5);
-      scroll-padding-inline-start:var(--s-5);
+      padding-inline:var(--s-3);
+      scroll-padding-inline-start:var(--s-3);
     }
   }
 
@@ -43,25 +79,40 @@
      the second clip has to be visible rather than by how large the first one
      could be.
 
-     The strip is padding + card + gap + card. At 62vw the second clip showed
-     45.8% at 375px — a sliver, which reads as one video with an edge artefact
-     rather than as a strip that scrolls. Solving for at least 70%:
+     The strip is inset + card + gap + card. Solving for at least 70% of the
+     second clip, with the inset now --s-3 and the gap --s-3:
 
-       (vw - 24 - W - 12) / W >= 0.70   ->   W <= (vw - 36) / 1.7
+       (vw - 12 - W - 12) / W >= 0.70   ->   W <= (vw - 24) / 1.7
 
-     which is 199px at 375. 50vw sits under that at every phone width and
-     lands near 81%, comfortably inside the 75-80% target with room for a
-     wider gutter later:
+     which is 206px at 375. 54vw sits under that at every phone width:
 
-       375 -> card 187.5, second clip 80.8%
-       390 -> card 195.0, second clip 81.5%
-       393 -> card 196.5, second clip 81.7%
-       414 -> card 207.0, second clip 82.6%
+       375 -> card 202.5, second clip 73.3%
+       390 -> card 210.6, second clip 73.8%
+       393 -> card 212.2, second clip 73.9%
+       414 -> card 223.6, second clip 74.5%
 
-     The floor of 170px stops the card collapsing on a very narrow phone,
-     where showing both clips badly is worse than showing one well. */
+     Two things are worth stating plainly about this figure.
+
+     The first is that it cannot be much larger. The brief asked for a first
+     card at 75-80% of the content width AND a second clip at 70%+, and those
+     two cannot both hold: 0.75 x 379 = 284px of card would leave the second
+     clip at 30%. The 70% rule is the one that was set as hard, so it binds,
+     and 54vw is the largest width that clears it with margin at 375px. The
+     only way past it is a narrower gap, and 8px buys 4px of card in exchange
+     for two clips that start to read as one strip of footage.
+
+     The second is that 54vw is not a compromise figure — measured off the
+     reference layout, its first card is 54.4% of the viewport. The proportion
+     the brief was pointing at and the proportion the visibility rule permits
+     turn out to be the same number.
+
+     What actually changed the feel is height. 9:16 means the card grew
+     196.5 -> 212.2 wide but 349 -> 377 tall at 393px, and the 12px inset put
+     it 12px closer to the edge on both sides. The floor of 170px stops the
+     card collapsing on a very narrow phone, where showing both clips badly is
+     worse than showing one well. */
   .pvid-item{
-    flex:0 0 clamp(170px, 50vw, 230px);
+    flex:0 0 clamp(170px, 54vw, 230px);
     scroll-snap-align:start;
   }
 
