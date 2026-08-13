@@ -940,8 +940,7 @@ t('every visible clip plays — no single-clip selection survives', () => {
 });
 t('clips below the visibility threshold are paused, including at load', () => {
   const fn = pvidJs();
-  ok(/list\[i\]\.pause\(\);\s*list\[i\]\.muted = true/.test(fn),
-     'an off-screen clip keeps running, or keeps its audio armed');
+  ok(/list\[i\]\.pause\(\)/.test(fn), 'an off-screen clip keeps running');
   ok(/\{ threshold: \[0,/.test(fn),
      'the observer must report a 0 ratio so off-screen clips pause on the first callback');
 });
@@ -951,13 +950,11 @@ t('playback is viewport-driven by observer, not scroll listeners', () => {
   ok(/IntersectionObserver/.test(fn), 'no observer');
   no(/addEventListener\('scroll'/.test(fn), 'a scroll listener would be the expensive way');
 });
-t('a refused autoplay is handled, not thrown, and not left as a dead frame', () => {
+t('a refused autoplay is handled, not thrown, and leaves the poster showing', () => {
   const fn = pvidJs();
   ok(/\.catch\(/.test(fn), 'the play() rejection is unhandled');
-  ok(/list\[i\]\.play\(\)/.test(fn), 'nothing calls play');
-  const body = fn.slice(fn.indexOf('function play(i)'), fn.indexOf('function syncPlay'));
-  ok(/showChrome\(i, true\)/.test(body),
-     'a blocked clip shows its poster with no way to start it');
+  ok(/v\.play\(\)/.test(fn), 'nothing calls play');
+  ok(/poster="/.test(PV), 'a blocked clip would be a black rectangle with no first frame');
 });
 t('reduced motion never auto-starts, but still stops off-screen audio', () => {
   const src = JS.slice(JS.indexOf('function productVideos'));
@@ -972,54 +969,154 @@ t('the native control bar is gone — it is the one thing CSS cannot make consis
   no(/::-webkit-media-controls/.test(PVCSS),
      'styling the native bar is WebKit/Blink-only and cannot produce one presentation');
 });
-t('a blocked clip is still playable by hand, from our own button', () => {
-  ok(/data-pvid-toggle/.test(PV), 'no manual fallback once controls are gone');
-  ok(/<button type="button" class="pvid-toggle"/.test(PV), 'the fallback is not a real button');
-  ok(/data-pvid-toggle/.test(JS), 'the button is not wired to anything');
+t('the strip draws no controls at all', () => {
+  const css = PVCSS.replace(/\n/g, ' ');
+  no(/\bcontrols\b/.test(PV), 'native browser chrome is back');
+  no(/pvid-disc|pvid-toggle|pvid-sound\b/.test(PV), 'a control is back on the thumbnails');
+  no(/data-chrome/.test(css), 'the reveal-on-tap chrome is back in the strip');
+  const frameScoped = css.match(/\.pvid-frame[^{]*\{[^}]*\}/g) || [];
+  frameScoped.forEach((r) => no(/opacity/.test(r), 'a hidden overlay survives on the frame: ' + r));
 });
-t('sound is reachable in one tap, since muted is what buys the autoplay', () => {
-  ok(/data-pvid-sound/.test(PV), 'no way to hear a clip that autoplays muted');
-  ok(/<button type="button" class="pvid-sound"/.test(PV), 'the sound control is not a real button');
+t('the only thing over a thumbnail is a transparent target', () => {
+  ok(/<button type="button" class="pvid-open"/.test(PV), 'the tap target is not a real button');
+  ok(/data-pvid-open/.test(PV) && /data-pvid-open/.test(JS), 'the target is not wired up');
+  const css = PVCSS.replace(/\n/g, ' ');
+  const rule = /\.pvid-open\{([^}]*)\}/.exec(css);
+  ok(rule, 'the tap target has no rule');
+  ok(/background:none/.test(rule[1]), 'the target paints something over the clip');
+  ok(/inset:0/.test(rule[1]), 'the target is not the whole frame');
 });
-t('both controls are keyboard-reachable buttons, not tap handlers on a div', () => {
-  const btns = PV.match(/<button[^>]*class="pvid-(toggle|sound)"[^>]*>/g) || [];
+t('a swipe across the strip scrolls it rather than opening a clip', () => {
+  const fn = pvidJs();
+  ok(/pointerdown/.test(fn), 'no gesture guard — every scroll would open the viewer');
+  ok(/Math\.abs\(e\.clientX - px\) > 10/.test(fn), 'the guard does not measure travel');
+  ok(/e\.detail !== 0/.test(fn), 'a keyboard activation would be treated as a drag and ignored');
+});
+
+/* ---- the viewer ---- */
+
+t('tapping a clip opens a viewer rather than acting on playback', () => {
+  ok(/data-pvid-lb\b/.test(PV), 'no viewer markup');
+  const fn = pvidJs();
+  ok(/function openLb/.test(fn), 'nothing opens the viewer');
+  ok(/openLb\(i\)/.test(fn), 'the tap target does not open it');
+});
+t('the viewer carries exactly two controls: sound and a way out', () => {
+  const btns = PV.match(/<button[^>]*class="pvid-lb-btn"[^>]*>/g) || [];
   eq(btns.length, 2);
-  btns.forEach((b) => ok(/type="button"/.test(b), 'submits a form: ' + b));
   btns.forEach((b) => ok(/aria-label="/.test(b), 'unlabelled control: ' + b));
+  ok(/data-pvid-lb-sound/.test(PV) && /data-pvid-lb-close/.test(PV));
+  no(/pvid-lb-(play|pause|seek|scrub|next|prev|fullscreen)/.test(PV), 'an extra control crept in');
 });
-t('the control labels name their action and follow their state', () => {
-  const fn = pvidJs();
-  ok(/'Pause ' : 'Play '/.test(fn), 'the play button never renames itself');
-  ok(/'Turn sound off' : 'Turn sound on'/.test(fn), 'the sound button never renames itself');
+t('the viewer is one element for the section, not one per clip', () => {
+  eq((PV.match(/data-pvid-lb(?![-\w])/g) || []).length, 1,
+     'a viewer per clip means a decoder per clip');
+  ok(PV.indexOf('data-pvid-lb') > PV.indexOf('</ul>'), 'the viewer sits inside the scrolling strip');
 });
-t('state is read off the media element, not assumed at the call site', () => {
-  const fn = pvidJs();
-  ok(/'play', 'pause', 'volumechange'/.test(fn),
-     'a browser pausing a clip on its own would leave the button lying');
+t('the viewer is out of the tab order until it opens', () => {
+  ok(/<div class="pvid-lb" data-pvid-lb hidden/.test(PV),
+     'hidden is what keeps the subtree out of the accessibility tree without a stylesheet');
+  ok(/\.pvid-lb\[hidden\]\{ ?display:none/.test(PVCSS.replace(/\n/g, ' ')),
+     'display:grid would override the hidden attribute');
 });
-t('a shopper who presses pause is not overridden by the next scroll pixel', () => {
-  const fn = pvidJs();
-  ok(/held/.test(fn), 'no hold flag — the observer would restart what they just stopped');
-  ok(/held\[i\] = true/.test(fn), 'pressing pause does not set the hold');
-  ok(/held\[i\] = false/.test(fn), 'the hold is never released');
+t('the viewer is a labelled modal dialog', () => {
+  ok(/role="dialog"/.test(PV) && /aria-modal="true"/.test(PV));
+  ok(/aria-labelledby="pvid-lb-title-/.test(PV), 'the dialog has no accessible name');
+  ok(/class="visually-hidden">Product video viewer/.test(PV), 'the name has no element');
 });
-t('a refused play is never retried', () => {
-  /* Clips start muted, so a rejection is a policy this page cannot argue
-     with. Retrying it is how a page burns a battery for nothing. */
+t('the viewer traps focus, takes Escape, and gives focus back', () => {
   const fn = pvidJs();
-  const body = fn.slice(fn.indexOf('function play(i)'), fn.indexOf('function syncPlay'));
-  eq((body.match(/\.play\(\)/g) || []).length, 1, 'expected exactly one play() call');
+  ok(/e\.key === 'Escape'/.test(fn), 'no Escape');
+  ok(/e\.key !== 'Tab'/.test(fn), 'no focus trap');
+  ok(/lbClose\.focus\(\)/.test(fn), 'focus is not moved into the dialog on open');
+  ok(/back\.focus\(\{ preventScroll: true \}\)/.test(fn), 'focus is not returned on close');
 });
-t('sound is exclusive — several clips run, only one can be audible', () => {
+t('opening the viewer silences and stops the strip behind it', () => {
   const fn = pvidJs();
-  ok(/soundIndex/.test(fn), 'sound is not tracked as a single owner');
-  ok(/v\.muted = j !== soundIndex/.test(fn), 'two clips could be audible at once');
-  ok(/soundIndex === i \? -1 : i/.test(fn), 'the sound button does not toggle off');
+  ok(/list\.forEach\(function \(v\) \{ v\.pause\(\); v\.muted = true; \}\)/.test(fn),
+     'clips keep running behind the viewer');
+  ok(/if \(openIndex > -1\) \{ list\[i\]\.pause\(\); return; \}/.test(fn),
+     'the observer would restart the strip underneath an open viewer');
 });
-t('a clip scrolled away gives up the sound rather than keeping it reserved', () => {
+t('the viewer opens muted — sound is never introduced without a tap', () => {
   const fn = pvidJs();
-  ok(/if \(soundIndex === i\) \{ soundIndex = -1/.test(fn),
-     'sound stays owned by a clip that is no longer on screen');
+  const body = fn.slice(fn.indexOf('function openLb'), fn.indexOf('function closeLb'));
+  ok(/lbVideo\.muted = true/.test(body), 'the viewer could open with audio');
+  ok(/muted/.test(PV.slice(PV.indexOf('pvid-lb-video'), PV.indexOf('pvid-lb-bar'))),
+     'the viewer element is not muted in markup');
+});
+t('the viewer picks the clip up where the thumbnail had reached', () => {
+  const fn = pvidJs();
+  ok(/lbVideo\.currentTime = list\[i\]\.currentTime/.test(fn), 'the clip restarts from zero');
+  ok(/try \{ lbVideo\.currentTime/.test(fn),
+     'assigning currentTime before a duration is known throws on some browsers');
+});
+t('closing the viewer drops the source rather than downloading in the background', () => {
+  const fn = pvidJs();
+  const body = fn.slice(fn.indexOf('function closeLb'));
+  ok(/lbVideo\.removeAttribute\('src'\)/.test(body), 'the source stays attached');
+  ok(/lbVideo\.load\(\)/.test(body), 'removing src alone does not abandon the request');
+});
+t('closing the viewer restarts the clips that are actually on screen', () => {
+  const fn = pvidJs();
+  ok(/pvid:closed/.test(fn), 'no signal on close');
+  eq((fn.match(/pvid:closed/g) || []).length, 2, 'the close event is dispatched or listened for, not both');
+  ok(/vis \/ r\.height >= 0\.25/.test(fn), 'the restart does not re-check visibility');
+});
+t('the viewer ground closes on tap, the clip itself does not', () => {
+  const fn = pvidJs();
+  ok(/if \(e\.target === lb\) closeLb\(\)/.test(fn),
+     'either the backdrop does not close, or a mis-tap on the clip would');
+});
+t('the viewer sound button states are labelled and drawn', () => {
+  const css = PVCSS.replace(/\n/g, ' ');
+  ok(/\.pvid-lb:not\(\[data-sound\]\) \.pvid-i--soundoff/.test(css), 'no muted glyph');
+  ok(/\.pvid-lb\[data-sound\]\s+\.pvid-i--soundon/.test(css), 'no unmuted glyph');
+  const fn = pvidJs();
+  ok(/'Turn sound off' : 'Turn sound on'/.test(fn), 'the button never renames itself');
+  ok(/lbVideo\.addEventListener\('volumechange', syncSound\)/.test(fn),
+     'a browser muting the clip on its own would leave the button lying');
+});
+t('the viewer controls clear 44px and stay off the notch', () => {
+  const css = PVCSS.replace(/\n/g, ' ');
+  const m = /\.pvid-lb-btn\{[^}]*width:(\d+)px;\s*height:(\d+)px/.exec(css);
+  ok(m, 'the viewer buttons no longer size themselves');
+  ok(Number(m[1]) >= 44 && Number(m[2]) >= 44, 'viewer target is ' + m[1] + 'x' + m[2]);
+  ok(/env\(safe-area-inset-top\)/.test(css), 'the close button can sit under the iOS status bar');
+});
+t('the viewer glyphs clear contrast on their own ground', () => {
+  /* #FFF on the button ground, worst case a white frame behind it. */
+  const m = /\.pvid-lb-btn\{[^}]*background:rgba\(20,22,26,\.(\d+)\)/.exec(PVCSS.replace(/\n/g, ' '));
+  ok(m, 'the viewer button declares no ground');
+  const a = Number('0.' + m[1]);
+  const lin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const chan = (ink) => a * (ink / 255) + (1 - a) * 1;
+  const L = 0.2126 * lin(chan(20)) + 0.7152 * lin(chan(22)) + 0.0722 * lin(chan(26));
+  const ratio = 1.05 / (L + 0.05);
+  ok(ratio >= 4.5, 'viewer glyph is only ' + ratio.toFixed(2) + ':1 over a white frame');
+});
+t('the viewer survives the iOS address bar', () => {
+  const css = PVCSS.replace(/\n/g, ' ');
+  ok(/height:100vh; ?height:100dvh/.test(css),
+     '100vh alone puts the controls under Safari chrome; dvh needs a vh fallback under it');
+});
+t('the viewer does not crop the footage either', () =>
+  ok(/\.pvid-lb-video\{[^}]*object-fit:contain/.test(PVCSS.replace(/\n/g, ' '))));
+t('reduced motion leaves the strip on its posters', () => {
+  const fn = pvidJs();
+  const rm = fn.slice(fn.indexOf('if (RM)'), fn.indexOf('if (RM)') + 200);
+  ok(/v\.pause\(\)/.test(rm), 'reduced motion leaves every clip running');
+  /* The viewer is a deliberate request to watch one thing, so it still plays.
+     It must be wired before the RM return or it would be dead for those users. */
+  ok(fn.indexOf('lbClose.addEventListener') < fn.indexOf('if (RM)'),
+     'reduced-motion users would get a viewer with no working controls');
+});
+t('keyboard focus stays visible inside the scroller', () =>
+  ok(/\.pvid-open:focus-visible/.test(PVCSS), 'the tap target has no focus ring'));
+t('off-screen videos are paused, not left playing', () => {
+  const js = pvidJs();
+  ok(/IntersectionObserver/.test(js), 'no observer');
+  ok(/list\[i\]\.pause\(\)/.test(js), 'nothing pauses');
 });
 t('picture-in-picture and AirPlay targets are not offered on a reel', () => {
   ok(/disablepictureinpicture/.test(PV));
@@ -1185,90 +1282,20 @@ t('the strip uses the theme radius and palette', () => {
   ok(/border-radius:var\(--r-lg\)/.test(PVCSS));
   ok(/var\(--jute\)/.test(PVCSS));
 });
-t('keyboard focus stays visible inside the scroller', () => {
-  ok(/\.pvid-toggle:focus-visible/.test(PVCSS), 'the play control has no focus ring');
-  ok(/\.pvid-sound:focus-visible/.test(PVCSS), 'the sound control has no focus ring');
-});
-t('the focus ring is drawn on the disc, not on unknown footage', () => {
-  /* indigo on an arbitrary video frame is not a focus ring anyone can see;
-     white on the control's own 55% ink ground is legible over any clip. */
-  const css = PVCSS.replace(/\n/g, ' ');
-  const rule = /\.pvid-toggle:focus-visible \.pvid-disc,\s*\.pvid-sound:focus-visible \.pvid-disc\{([^}]*)\}/.exec(css);
-  ok(rule, 'the ring is no longer scoped to the disc — re-derive this test');
-  ok(/outline:2px solid #FFF/i.test(rule[1]), 'ring is not white');
-  ok(/opacity:1/.test(rule[1]), 'a focused control on a playing clip stays invisible');
-});
-t('the chrome sits on a ground dark enough to carry a white glyph', () => {
-  /* #FFF on rgba(20,22,26,.55) over any frame: the worst case is a pure white
-     clip behind it, which composites to ~#8F9195 and still clears 4.5:1. */
-  const m = /\.pvid-disc\{[^}]*background:rgba\(20,22,26,\.(\d+)\)/.exec(PVCSS.replace(/\n/g, ' '));
-  ok(m, 'the disc no longer declares its own ground');
-  const a = Number('0.' + m[1]);
-  const lin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
-  const chan = (ink) => a * (ink / 255) + (1 - a) * 1;   /* over white: worst case */
-  const L = 0.2126 * lin(chan(20)) + 0.7152 * lin(chan(22)) + 0.0722 * lin(chan(26));
-  const ratio = 1.05 / (L + 0.05);
-  ok(ratio >= 4.5, 'white glyph on the disc is only ' + ratio.toFixed(2) + ':1 over a white frame');
-});
-t('the touch target clears 44px even though the disc is 32', () => {
-  const css = PVCSS.replace(/\n/g, ' ');
-  const m = /\.pvid-sound\{[^}]*width:(\d+)px;\s*height:(\d+)px/.exec(css);
-  ok(m, 'the sound button no longer sizes itself');
-  ok(Number(m[1]) >= 44 && Number(m[2]) >= 44, 'sound target is ' + m[1] + 'x' + m[2]);
-  ok(/\.pvid-toggle\{[^}]*inset:0/.test(css), 'the play target is not the whole frame');
-});
-t('the resting state is a clean frame — no controls of any kind', () => {
-  const css = PVCSS.replace(/\n/g, ' ');
-  ok(/\.pvid-toggle \.pvid-disc,\s*\.pvid-sound \.pvid-disc\{ ?opacity:0/.test(css),
-     'a control is visible before the shopper has asked for one');
-  ok(/\[data-chrome\] \.pvid-toggle \.pvid-disc/.test(css), 'nothing reveals the controls');
-  no(/\.pvid-disc\{[^}]*display:none/.test(css),
-     'display:none would take the controls out of the tab order');
-  no(/\bcontrols\b/.test(PV), 'native browser chrome is back');
-});
-t('the first tap reveals, the second acts', () => {
-  const fn = pvidJs();
-  ok(/if \(!frames\[i\]\.hasAttribute\('data-chrome'\)\) \{ showChrome\(i\); return; \}/.test(fn),
-     'a tap while scrolling past would stop the clip');
-});
-t('controls come back for focus and hover, not only for taps', () => {
-  const css = PVCSS.replace(/\n/g, ' ');
-  ok(/\.pvid-frame:hover \.pvid-toggle \.pvid-disc/.test(css), 'no desktop reveal');
-  ok(/\.pvid-toggle:focus-visible \.pvid-disc/.test(css), 'no keyboard reveal');
-});
-t('a paused clip keeps its controls, permanently', () => {
-  const fn = pvidJs();
-  ok(/if \(!playing\) showChrome\(i, true\)/.test(fn),
-     'a stopped frame could be left with no visible way to restart it');
-  ok(/if \(!list\[i\]\.paused\) frames\[i\]\.removeAttribute\('data-chrome'\)/.test(fn),
-     'the auto-hide timer does not check whether the clip is still running');
-});
-t('the sound button cannot be hit before the controls are up', () => {
-  const css = PVCSS.replace(/\n/g, ' ');
-  ok(/\.pvid-sound\{ ?pointer-events:none/.test(css),
-     'a first tap in the corner would unmute instead of revealing');
-  ok(/\[data-chrome\] \.pvid-sound,\s*\.pvid-sound:focus-visible\{ ?pointer-events:auto/.test(css),
-     'the sound button never becomes usable again');
-});
-t('reduced motion stops the attribute and hands over the controls', () => {
-  const fn = pvidJs();
-  const rm = fn.slice(fn.indexOf('if (RM)'));
-  ok(/v\.pause\(\)/.test(rm.slice(0, 300)), 'reduced motion leaves every clip running');
-  ok(/showChrome\(i, true\)/.test(rm.slice(0, 300)),
-     'reduced motion pauses the clips without offering a way to start them');
-});
 t('the section is named for assistive tech even with no heading', () =>
   ok(/aria-label="Product videos"/.test(PV)));
 t('each video is individually labelled', () => ok(/aria-label="Product video/.test(PV)));
 t('the strip is a real list', () => ok(/<ul class="pvid"/.test(PV) && /<li class="pvid-item"/.test(PV)));
 
-t('off-screen videos are paused, not left playing audio', () => {
+t('the strip is silent in every state — sound exists only in the viewer', () => {
   const js = pvidJs();
-  ok(/IntersectionObserver/.test(js), 'no observer');
-  ok(/\.pause\(\)/.test(js), 'nothing pauses');
-  ok(/list\[i\]\.pause\(\);\s*list\[i\]\.muted = true/.test(js),
-     'a clip swiped away keeps its audio armed');
   no(/addEventListener\('scroll'/.test(js), 'a scroll listener would be the expensive way');
+  /* Nothing may unmute a thumbnail. The only assignments allowed against a
+     strip clip are to true; the viewer's own element is a separate variable. */
+  const unmutes = (js.match(/list\[[^\]]*\]\.muted = (?!true)/g) || [])
+    .concat(js.match(/\bv\.muted = (?!true)/g) || []);
+  eq(unmutes.length, 0, 'a thumbnail can be unmuted: ' + unmutes.join(', '));
+  ok(/muted/.test(PV.slice(0, PV.indexOf('pvid-open'))), 'the strip element is not muted in markup');
 });
 
 t('the product gallery was not touched', () => {
@@ -1284,8 +1311,17 @@ t('no floating video widget was added', () => {
   no(/floating-video|float-video|video-bubble/i.test(JS));
   no(/floating-video|float-video/i.test(CSS));
 });
-t('nothing new competes with the sticky buy bar for the bottom corner', () =>
-  no(/position:fixed/.test(PVCSS), 'the video section pins something to the viewport'));
+t('nothing in the strip competes with the sticky buy bar for the bottom corner', () => {
+  /* The viewer is legitimately fixed — it is a full-screen layer — and the
+     theme already hides the buy bar under body.zoom-open, which this reuses
+     rather than inventing a second lock. Nothing else may be pinned. */
+  const fixed = (PVCSS.replace(/\n/g, ' ').match(/\.[\w-]+\{[^}]*position:fixed[^}]*\}/g) || []);
+  eq(fixed.length, 1, 'more than the viewer is pinned to the viewport');
+  ok(/\.pvid-lb\{/.test(fixed[0]), 'something other than the viewer is pinned: ' + fixed[0]);
+  ok(/body\.zoom-open \.buybar\{ ?opacity:0/.test(CSS.replace(/\n/g, ' ')),
+     'the buy bar is not hidden while a full-screen layer is open');
+  ok(/zoom-open/.test(JS), 'the viewer does not use the existing scroll lock');
+});
 
 /* ------------------------------------------------- 14. Liquid tag traps
 

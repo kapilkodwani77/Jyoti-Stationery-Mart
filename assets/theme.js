@@ -1682,136 +1682,154 @@
 
 
   /* ---------------------------------------------------------------
-     Product videos: every clip you can see is running
+     Product videos: a strip that only plays, and a viewer that has the controls
 
-     Muted autoplay. The attribute does the starting, this does the stopping.
+     Two jobs, and the split is the whole design. In the strip every clip that
+     is on screen runs, muted, looping, with nothing drawn on top of it — a
+     row of moving thumbnails. Tapping one opens the viewer, which is where
+     sound and a way out live, because that is the point at which someone has
+     actually chosen to watch something.
 
-     An earlier revision inverted that: no autoplay attribute, and this module
-     picked the single most visible clip and started it. The requirement is now
-     that every clip on screen plays, so the reason for the inversion is gone,
-     and the declarative path is both simpler and more reliable — iOS Safari
-     refuses a scripted play() before a user gesture more readily than it
-     refuses a muted, playsinline autoplay attribute.
+     An earlier revision put a pause disc and a sound disc on every card and
+     hid them until tapped. Hiding them was not the fix: controls on a 212px
+     thumbnail are the wrong object, and on iOS the :hover rule that revealed
+     them stuck after a tap and left the discs sitting on the frames anyway.
+     Both problems go away when the strip has no controls to reveal.
 
-     What remains here is the performance guard the attribute does not give
-     you. The observer pauses anything below a quarter visible, including on
-     its first callback at load, so four clips three screens down do not run
-     while someone is reading the buy box. On a phone the strip shows one card
-     and about three quarters of the next, so the practical ceiling is two
-     decoders, not four.
+     Strip playback: the autoplay attribute starts the clips and the observer
+     pauses anything under a quarter visible, including on its first callback
+     at load, so four clips three screens down do not run while someone is
+     reading the buy box. On a phone the strip shows one card and about three
+     quarters of the next, so the practical ceiling is two decoders.
 
-     Sound is exclusive. With several clips running, an unmute has to mute the
-     others or the section becomes noise, so it is held as a single index
-     rather than a flag per clip.
+     The viewer is one <video> for the whole section with its source swapped,
+     not one per clip: only one can be open, so only one decoder and one
+     buffer should ever exist however many clips a merchant uploads. Its
+     source is dropped on close, which abandons any download still in flight.
 
-     Controls rest hidden and the first tap reveals rather than acts. A shopper
-     brushing the strip on the way down the page should not stop a video, and
-     a paused clip keeps its controls up permanently, because a stopped frame
-     with no visible way to restart it is the one state this must not produce.
-
-     Reduced motion is the one place the autoplay requirement yields. The
-     setting exists to stop exactly this, and WCAG 2.2.2 covers content that
-     moves for more than five seconds, so clips are paused at once and their
-     controls left up: the shopper sees a poster and a play button and starts
-     what they want. Autoplay for everyone else is unaffected.
-
-     play() returns a promise that rejects when the browser declines — a data
-     saver, a battery mode, a policy this page cannot see. That is a normal
-     outcome, not an error: the controls come up over the poster so there is a
-     way in, and nothing retries. Hammering play() at a browser that has said
-     no is how a page burns a battery.
-
-     Every visible state is read back off the media element's own play, pause
-     and volumechange events rather than set alongside the call that caused it,
-     so a browser that pauses a clip on its own moves the buttons with it. */
+     Reduced motion is the one place the autoplay yields. The setting exists
+     to stop exactly this and WCAG 2.2.2 covers content moving past five
+     seconds, so the strip is paused and left on its posters. The viewer still
+     plays: opening it is a deliberate request to watch one thing. */
   (function productVideos() {
     var frames = [].slice.call(document.querySelectorAll('[data-pvid-frame]'));
     if (!frames.length) return;
 
     var list    = frames.map(function (f) { return f.querySelector('video'); });
-    var toggles = frames.map(function (f) { return f.querySelector('[data-pvid-toggle]'); });
-    var sounds  = frames.map(function (f) { return f.querySelector('[data-pvid-sound]'); });
-    var timers  = frames.map(function () { return 0; });
+    var opens   = frames.map(function (f) { return f.querySelector('[data-pvid-open]'); });
 
-    /* A clip the shopper pressed pause on. The observer fires again on the
-       next scroll pixel, so without this the strip would restart the one
-       thing they just stopped. Cleared when the clip leaves the viewport. */
-    var held = frames.map(function () { return false; });
+    var lb       = document.querySelector('[data-pvid-lb]');
+    var lbVideo  = lb && lb.querySelector('[data-pvid-lb-video]');
+    var lbSound  = lb && lb.querySelector('[data-pvid-lb-sound]');
+    var lbClose  = lb && lb.querySelector('[data-pvid-lb-close]');
 
-    /* Which clip, if any, has the sound. -1 is all muted. */
-    var soundIndex = -1;
+    var lastFocus = null;
+    var openIndex = -1;
 
-    var CHROME_MS = 2600;
-
-    function showChrome(i, sticky) {
-      frames[i].setAttribute('data-chrome', '');
-      clearTimeout(timers[i]);
-      if (sticky) return;
-      timers[i] = setTimeout(function () {
-        /* Never take the controls away from a stopped clip. */
-        if (!list[i].paused) frames[i].removeAttribute('data-chrome');
-      }, CHROME_MS);
+    function play(v) {
+      var p = v.play();
+      if (p && p.catch) p.catch(function () {});
     }
 
-    function play(i) {
-      var p = list[i].play();
-      if (!p || !p.catch) return;
-      p.catch(function () { showChrome(i, true); });
-    }
-
-    function syncPlay(i) {
-      var playing = !list[i].paused;
-      var label = frames[i].getAttribute('data-pvid-label') || 'video';
-      if (playing) frames[i].setAttribute('data-playing', '');
-      else frames[i].removeAttribute('data-playing');
-      toggles[i].setAttribute('aria-label', (playing ? 'Pause ' : 'Play ') + label);
-      if (!playing) showChrome(i, true);
-    }
+    /* ---- the viewer ---------------------------------------------------- */
 
     function syncSound() {
-      frames.forEach(function (f, i) {
-        var on = i === soundIndex;
-        if (on) f.setAttribute('data-sound', '');
-        else f.removeAttribute('data-sound');
-        sounds[i].setAttribute('aria-label', on ? 'Turn sound off' : 'Turn sound on');
+      var on = !lbVideo.muted;
+      if (on) lb.setAttribute('data-sound', '');
+      else lb.removeAttribute('data-sound');
+      lbSound.setAttribute('aria-label', on ? 'Turn sound off' : 'Turn sound on');
+    }
+
+    function focusables() {
+      return [].slice.call(lb.querySelectorAll('button'))
+        .filter(function (el) { return el.offsetWidth > 0 || el.offsetHeight > 0; });
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeLb(); return; }
+      if (e.key !== 'Tab') return;
+      var f = focusables();
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); }
+      else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
+    }
+
+    function openLb(i) {
+      var src = opens[i].getAttribute('data-pvid-src');
+      if (!src) return;
+
+      lastFocus = document.activeElement;
+      openIndex = i;
+
+      /* Nothing in the strip should be running or audible behind the viewer. */
+      list.forEach(function (v) { v.pause(); v.muted = true; });
+
+      lbVideo.poster = opens[i].getAttribute('data-pvid-poster') || '';
+      lbVideo.src = src;
+      lbVideo.muted = true;
+      lbVideo.setAttribute('aria-label', frames[i].getAttribute('data-pvid-label') || 'Product video');
+      /* Pick the clip up where the thumbnail had got to, so opening it reads
+         as the same video getting larger rather than a different one starting.
+         Guarded: a source that has not reported a duration yet rejects the
+         assignment on some browsers. */
+      try { lbVideo.currentTime = list[i].currentTime || 0; } catch (err) {}
+
+      lb.hidden = false;
+      document.body.classList.add('zoom-open');
+      syncSound();
+      play(lbVideo);
+      lbClose.focus();
+      document.addEventListener('keydown', onKey);
+    }
+
+    function closeLb() {
+      document.removeEventListener('keydown', onKey);
+      lbVideo.pause();
+      /* Drop the source so a clip that is no longer visible is not still
+         being downloaded. */
+      lbVideo.removeAttribute('src');
+      lbVideo.load();
+      lb.hidden = true;
+      lb.removeAttribute('data-sound');
+      document.body.classList.remove('zoom-open');
+
+      var back = opens[openIndex] || lastFocus;
+      openIndex = -1;
+      if (back && back.focus) back.focus({ preventScroll: true });
+      lb.dispatchEvent(new CustomEvent('pvid:closed'));
+    }
+
+    if (lb && lbVideo && lbSound && lbClose) {
+      lbClose.addEventListener('click', closeLb);
+      lbSound.addEventListener('click', function () {
+        lbVideo.muted = !lbVideo.muted;
+        syncSound();
+      });
+      lbVideo.addEventListener('volumechange', syncSound);
+      /* Tapping the ground around the clip closes, the way every other
+         full-screen layer on this site does. The video itself does not, or a
+         mis-tap while watching would take the viewer away. */
+      lb.addEventListener('click', function (e) {
+        if (e.target === lb) closeLb();
+      });
+
+      opens.forEach(function (btn, i) {
+        var px = 0, py = 0;
+        btn.addEventListener('pointerdown', function (e) { px = e.clientX; py = e.clientY; });
+        btn.addEventListener('click', function (e) {
+          /* A swipe across the strip ends on whichever card it started from;
+             that is scrolling, not a request to open it. detail === 0 marks a
+             keyboard activation, which has no coordinates to compare. */
+          if (e.detail !== 0 && (Math.abs(e.clientX - px) > 10 || Math.abs(e.clientY - py) > 10)) return;
+          openLb(i);
+        });
       });
     }
 
-    toggles.forEach(function (btn, i) {
-      btn.addEventListener('click', function () {
-        /* First tap reveals, second acts. */
-        if (!frames[i].hasAttribute('data-chrome')) { showChrome(i); return; }
-        if (list[i].paused) {
-          held[i] = false;
-          play(i);
-          showChrome(i);
-        } else {
-          held[i] = true;
-          list[i].pause();
-        }
-      });
-    });
-
-    sounds.forEach(function (btn, i) {
-      btn.addEventListener('click', function () {
-        soundIndex = soundIndex === i ? -1 : i;
-        list.forEach(function (v, j) { v.muted = j !== soundIndex; });
-        syncSound();
-        showChrome(i);
-      });
-    });
-
-    list.forEach(function (v, i) {
-      ['play', 'pause', 'volumechange'].forEach(function (e) {
-        v.addEventListener(e, function () { syncPlay(i); });
-      });
-      syncPlay(i);
-    });
-    syncSound();
+    /* ---- the strip ----------------------------------------------------- */
 
     if (RM) {
-      /* Stop what the attribute started and hand over the controls. */
-      list.forEach(function (v, i) { v.pause(); showChrome(i, true); });
+      list.forEach(function (v) { v.pause(); });
       return;
     }
 
@@ -1824,19 +1842,30 @@
       entries.forEach(function (e) {
         var i = list.indexOf(e.target);
         if (i < 0) return;
-        if (e.intersectionRatio < 0.05) held[i] = false;
+        /* The viewer owns playback while it is open. */
+        if (openIndex > -1) { list[i].pause(); return; }
 
         if (e.intersectionRatio >= 0.25) {
-          if (list[i].paused && !held[i]) play(i);
+          if (list[i].paused) play(list[i]);
         } else if (!list[i].paused) {
           list[i].pause();
-          list[i].muted = true;
-          if (soundIndex === i) { soundIndex = -1; syncSound(); }
         }
       });
-    }, { threshold: [0, 0.05, 0.25, 0.5, 0.75, 1] });
+    }, { threshold: [0, 0.25, 0.5, 0.75, 1] });
 
     list.forEach(function (v) { io.observe(v); });
+
+    /* Coming out of the viewer, put the strip back the way the observer left
+       it rather than waiting for the next scroll pixel to restart it. */
+    if (lb) {
+      lb.addEventListener('pvid:closed', function () {
+        list.forEach(function (v, i) {
+          var r = frames[i].getBoundingClientRect();
+          var vis = Math.min(r.bottom, innerHeight) - Math.max(r.top, 0);
+          if (vis / r.height >= 0.25) play(v);
+        });
+      });
+    }
   })();
 
 })();

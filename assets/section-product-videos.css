@@ -141,86 +141,83 @@
     aspect-ratio:9/16; object-fit:contain;
   }
 
-  /* ---- controls ----------------------------------------------------------
-     Two buttons drawn by this file rather than by four browsers. Both are
-     transparent hit areas carrying one visible disc, so the target and the
-     mark are sized independently: the sound button is 44px of touch around a
-     32px disc, which is the accessible minimum without a 44px circle sitting
-     on the footage. */
-  .pvid-toggle,
-  .pvid-sound{
-    position:absolute;
-    display:grid; place-items:center;
+  /* ---- the tap target ----------------------------------------------------
+     Transparent, the whole frame, and carrying nothing. The strip draws no
+     controls at all: a 212px card is a thumbnail, and playback controls on a
+     thumbnail ask a shopper to operate something they have not chosen to
+     watch yet.
+
+     A ring is still owed to the keyboard, and it goes on the frame rather
+     than inside it — there is no disc here to hang it on, and a ring drawn
+     over unknown footage needs the page's own ground behind it. */
+  .pvid-open{
+    position:absolute; inset:0; z-index:1;
     margin:0; padding:0; border:0;
-    background:none; color:inherit;
-    cursor:pointer;
+    background:none;
+    cursor:zoom-in;
     -webkit-tap-highlight-color:transparent;
   }
-  .pvid-toggle{ inset:0; z-index:1; }
-  .pvid-sound{ right:0; bottom:0; width:44px; height:44px; z-index:2; }
+  .pvid-open:focus-visible{
+    outline:2px solid var(--indigo);
+    outline-offset:3px;
+    border-radius:var(--r-lg);
+  }
 
-  /* rgba over the ink rather than a token: this is chrome floating on someone
-     else's footage, which can be any colour, so it needs its own contrast
-     ground rather than a surface from the page's palette.
+  /* ---- the viewer --------------------------------------------------------
+     One clip, full screen, over an almost-opaque ink ground. Not the jute the
+     strip letterboxes against: this layer is the room the page is watched in
+     rather than a surface on the page, and a warm neutral behind a phone-shot
+     clip reads as an unstyled gap where near-black reads as lights-down.
 
-     62%, and the figure is derived rather than picked. The worst case is a
-     blown-out white frame behind the disc, which is exactly what a clip shot
-     on a pale play mat gives you. At 55% the white glyph composited over that
-     came to 4.02:1 — under the floor. 62% lands at 5.06:1 and leaves headroom
-     for a lighter clip than this store has yet uploaded. */
-  .pvid-disc{
+     100dvh with a 100vh fallback, because on iOS the address bar makes 100vh
+     taller than the visible viewport and the close button would sit under
+     Safari's own chrome. */
+  .pvid-lb{
+    position:fixed; inset:0; z-index:120;
     display:grid; place-items:center;
-    width:32px; height:32px;
+    height:100vh; height:100dvh;
+    background:rgba(20,22,26,.94);
+  }
+  .pvid-lb[hidden]{ display:none; }
+
+  /* contain, for the same reason the strip uses it: the merchant's footage
+     decides its own shape and this file does not crop it. */
+  .pvid-lb-video{
+    width:100%; height:100%;
+    object-fit:contain;
+    background:#000;
+  }
+
+  /* Top right, stacked, clear of the notch. The bar is a column so the two
+     targets never collide on a narrow phone, and it sits above the video
+     rather than inside a scrim — two 44px discs do not need a gradient. */
+  .pvid-lb-bar{
+    position:absolute; top:0; right:0;
+    display:flex; flex-direction:column; gap:var(--s-2);
+    padding:var(--s-3);
+    padding-top:calc(var(--s-3) + env(safe-area-inset-top));
+    padding-right:calc(var(--s-3) + env(safe-area-inset-right));
+  }
+  .pvid-lb-btn{
+    display:grid; place-items:center;
+    width:44px; height:44px;
+    margin:0; padding:0; border:0;
     border-radius:50%;
     background:rgba(20,22,26,.62);
     color:#FFF;
-    transition:opacity var(--dur-fast) var(--ease);
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    transition:background var(--dur-fast) var(--ease);
   }
-  .pvid-disc--lg{ width:52px; height:52px; }
+  .pvid-lb-btn:hover{ background:rgba(20,22,26,.78); }
+  .pvid-lb-btn:focus-visible{ outline:2px solid #FFF; outline-offset:2px; }
 
   .pvid-i{ display:none; line-height:0; }
-  .pvid-frame:not([data-playing]) .pvid-i--play{ display:block; }
-  .pvid-frame[data-playing]      .pvid-i--pause{ display:block; }
-  .pvid-frame:not([data-sound])  .pvid-i--soundoff{ display:block; }
-  .pvid-frame[data-sound]        .pvid-i--soundon{ display:block; }
-
-  /* The resting state carries nothing on top of the clip at all. Both discs
-     are at zero opacity rather than display:none, so both buttons keep their
-     place in the tab order and a keyboard user can still reach them.
-
-     data-chrome is put on by a tap, by focus, by a pause, or by an autoplay
-     the browser refused — the four moments where a control is the answer. */
-  .pvid-toggle .pvid-disc,
-  .pvid-sound .pvid-disc{ opacity:0; }
-  .pvid-frame[data-chrome] .pvid-toggle .pvid-disc,
-  .pvid-frame[data-chrome] .pvid-sound .pvid-disc{ opacity:1; }
-
-  /* Hover is a mouse-only signal and reveals without committing to anything,
-     which is the right desktop equivalent of the first tap. */
-  .pvid-frame:hover .pvid-toggle .pvid-disc,
-  .pvid-frame:hover .pvid-sound .pvid-disc{ opacity:1; }
-
-  /* The sound button is inert while the controls are down so that a first tap
-     landing in its corner reveals the controls like a tap anywhere else,
-     rather than silently unmuting a clip the shopper was only scrolling past.
-     pointer-events does not affect keyboard focus or Enter, so the tab path
-     through this button is unchanged. */
-  .pvid-sound{ pointer-events:none; }
-  .pvid-frame[data-chrome] .pvid-sound,
-  .pvid-sound:focus-visible{ pointer-events:auto; }
-
-  /* The ring is white on the disc's own dark ground rather than the theme's
-     indigo on the clip, because the clip behind it is an unknown colour and
-     indigo on a dark frame is not a focus ring anyone can see. */
-  .pvid-toggle:focus-visible .pvid-disc,
-  .pvid-sound:focus-visible .pvid-disc{
-    opacity:1;
-    outline:2px solid #FFF;
-    outline-offset:2px;
-  }
+  .pvid-lb:not([data-sound]) .pvid-i--soundoff{ display:block; }
+  .pvid-lb[data-sound]       .pvid-i--soundon{ display:block; }
 
   @media(prefers-reduced-motion:reduce){
-    .pvid-disc{ transition:none; }
+    .pvid-lb-btn{ transition:none; }
   }
 
   /* Tablet and up: the strip has room, so the items grow rather than the row

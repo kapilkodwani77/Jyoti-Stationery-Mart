@@ -49,12 +49,17 @@
   and silently do nothing in Firefox — so styling it cannot produce one
   presentation, only four slightly different ones.
 
-  What replaces it is two buttons, which is what a looping muted reel actually
-  needs: press anywhere to pause, and one tap for sound. No timeline, because
-  a 10-second loop has nowhere to seek to. No fullscreen, because the strip is
-  the format. Both are real <button>s with labels that name their action and
-  update with their state, so the keyboard and screen-reader path is better
-  than the native bar's, not worse.
+  Nor does anything of ours replace it in the strip. A revision before this
+  drew a pause disc and a sound disc over each frame, and even hidden until
+  tapped they were the wrong idea: a 212px card is a thumbnail, and putting
+  playback controls on a thumbnail asks the shopper to operate something they
+  have not yet chosen to watch. Controls belong where the watching happens.
+
+  So the strip is clips and nothing else, and a tap opens the viewer below —
+  one clip, full screen, with the two controls that mode actually needs:
+  sound, and a way out. That is also the honest place for sound, since a strip
+  where any of four frames might start talking is worse than a viewer where
+  one obviously will.
 
   What this deliberately gives up: scrubbing, playback rate, the browser's own
   fullscreen and AirPlay/Cast targets, and picture-in-picture. Long-press on
@@ -108,48 +113,67 @@
                 </video>
 
                 {%- comment -%}
-                  The play/pause target is the whole frame, not a corner badge:
-                  on a phone the clip is 212px wide and a shopper reaching for
-                  it is reaching for the picture.
+                  One transparent target over the whole frame, and nothing
+                  drawn on top of the clip at all. A tap opens the viewer
+                  rather than acting on playback: in the strip the clip is a
+                  thumbnail that happens to be moving, and the controls belong
+                  where someone has actually chosen to watch.
 
-                  It carries nothing at all in the resting state. The first tap
-                  reveals the two controls rather than acting on the clip,
-                  which is the behaviour a reel needs: the common case is a
-                  shopper touching the strip while scrolling, and having that
-                  stop the video would be a worse default than showing them
-                  what they can do. The second tap acts. Controls fade back out
-                  a few seconds later, and never while a clip is paused —
-                  a stopped frame with no way to restart it is the one state
-                  this must not produce.
+                  It is a real button rather than a click handler on the div,
+                  so it is reachable by keyboard and announces what it does.
                 {%- endcomment -%}
-                <button type="button" class="pvid-toggle" data-pvid-toggle aria-label="Play {{ vlabel | escape }}">
-                  <span class="pvid-disc pvid-disc--lg">
-                    <span class="pvid-i pvid-i--play">{% render 'icon', name: 'play', size: 24 %}</span>
-                    <span class="pvid-i pvid-i--pause">{% render 'icon', name: 'pause', size: 24 %}</span>
-                  </span>
-                </button>
-
-                {%- comment -%}
-                  Sound is the one control this format genuinely needs. Muted
-                  is what buys the autoplay, so every clip opens silent.
-
-                  It is exclusive across the strip: several clips now run at
-                  once, so unmuting one has to mute the rest or the section
-                  becomes noise. 44px of touch target around a 32px disc, and
-                  inert until the controls are up so a first tap in this corner
-                  reveals rather than unmutes.
-                {%- endcomment -%}
-                <button type="button" class="pvid-sound" data-pvid-sound aria-label="Turn sound on">
-                  <span class="pvid-disc">
-                    <span class="pvid-i pvid-i--soundoff">{% render 'icon', name: 'sound-off', size: 16 %}</span>
-                    <span class="pvid-i pvid-i--soundon">{% render 'icon', name: 'sound-on', size: 16 %}</span>
-                  </span>
-                </button>
+                <button type="button" class="pvid-open"
+                        data-pvid-open
+                        data-pvid-poster="{% if m.preview_image %}{{ m.preview_image | image_url: width: 1080 }}{% endif %}"
+                        {%- for source in m.sources -%}
+                          {%- if source.format == 'mp4' -%}data-pvid-src="{{ source.url }}"{%- endif -%}
+                        {%- endfor -%}
+                        aria-label="Watch {{ vlabel | escape }}"></button>
               </div>
             </li>
           {%- endif -%}
         {%- endfor -%}
       </ul>
+    </div>
+
+    {%- comment -%}
+      The viewer. One of these for the section rather than one per clip: only
+      one can ever be open, and a single <video> that has its source swapped
+      means only one decoder and one buffer exist no matter how many clips the
+      merchant uploads.
+
+      hidden rather than display:none in a class, so the whole subtree is out
+      of the accessibility tree and out of the tab order until it opens
+      without depending on a stylesheet having loaded.
+
+      Two controls, and the reasoning for each. Sound, because muted is what
+      bought the autoplay in the strip and this is where someone has asked to
+      watch. Close, because a full-screen layer with no visible way out is a
+      trap on a phone, where there is no Escape key. Nothing else: a short
+      looping clip has nowhere to seek to, and a viewer you opened on purpose
+      does not need a play button.
+    {%- endcomment -%}
+    <div class="pvid-lb" data-pvid-lb hidden role="dialog" aria-modal="true" aria-labelledby="pvid-lb-title-{{ section.id }}">
+      <h2 id="pvid-lb-title-{{ section.id }}" class="visually-hidden">Product video viewer</h2>
+
+      <video class="pvid-lb-video"
+             data-pvid-lb-video
+             loop
+             muted
+             playsinline
+             disablepictureinpicture
+             disableremoteplayback
+             x-webkit-airplay="deny"></video>
+
+      <div class="pvid-lb-bar">
+        <button type="button" class="pvid-lb-btn" data-pvid-lb-sound aria-label="Turn sound on">
+          <span class="pvid-i pvid-i--soundoff">{% render 'icon', name: 'sound-off', size: 20 %}</span>
+          <span class="pvid-i pvid-i--soundon">{% render 'icon', name: 'sound-on', size: 20 %}</span>
+        </button>
+        <button type="button" class="pvid-lb-btn" data-pvid-lb-close aria-label="Close video viewer">
+          {% render 'icon', name: 'close', size: 20 %}
+        </button>
+      </div>
     </div>
   </section>
 {%- endif -%}
