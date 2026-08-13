@@ -926,18 +926,24 @@ t('the browser is given the three attributes autoplay requires', () => {
   ['muted', 'loop', 'playsinline'].forEach((a) =>
     ok(new RegExp('\\b' + a + '\\b').test(PV), 'missing ' + a));
 });
-t('there is no autoplay attribute — playback is viewport-driven', () => {
-  /* The attribute would start every clip in the strip on load. */
-  no(/\bautoplay\b/.test(PV), 'the attribute would start all clips at once');
-  ok(/data-pvid/.test(JS), 'nothing drives playback');
+t('the four attributes a browser needs before it will autoplay are all present', () => {
+  ['autoplay', 'muted', 'loop', 'playsinline'].forEach((a) =>
+    ok(new RegExp('\\b' + a + '\\b').test(PV), 'missing ' + a));
+  ok(/data-pvid/.test(JS), 'nothing manages playback');
 });
-t('exactly one video plays: the most visible', () => {
-  const src = JS.slice(JS.indexOf('function productVideos'));
-  const fn = src.slice(0, src.indexOf('\n  })();'));
+t('every visible clip plays — no single-clip selection survives', () => {
+  const fn = pvidJs();
   ok(/intersectionRatio/.test(fn), 'visibility is not measured');
-  ok(/bestRatio/.test(fn), 'no most-visible selection — clips would play together');
+  no(/bestRatio/.test(fn), 'a most-visible selection is back — only one clip would run');
+  ok(/intersectionRatio >= 0\.25/.test(fn), 'no visibility threshold for playing');
   ok(/\.pause\(\)/.test(fn), 'nothing is paused');
-  ok(/0\.6/.test(fn), 'no minimum visibility before playing');
+});
+t('clips below the visibility threshold are paused, including at load', () => {
+  const fn = pvidJs();
+  ok(/list\[i\]\.pause\(\);\s*list\[i\]\.muted = true/.test(fn),
+     'an off-screen clip keeps running, or keeps its audio armed');
+  ok(/\{ threshold: \[0,/.test(fn),
+     'the observer must report a 0 ratio so off-screen clips pause on the first callback');
 });
 t('playback is viewport-driven by observer, not scroll listeners', () => {
   const src = JS.slice(JS.indexOf('function productVideos'));
@@ -945,11 +951,13 @@ t('playback is viewport-driven by observer, not scroll listeners', () => {
   ok(/IntersectionObserver/.test(fn), 'no observer');
   no(/addEventListener\('scroll'/.test(fn), 'a scroll listener would be the expensive way');
 });
-t('a refused autoplay is handled, not thrown', () => {
-  const src = JS.slice(JS.indexOf('function productVideos'));
-  const fn = src.slice(0, src.indexOf('\n  })();'));
+t('a refused autoplay is handled, not thrown, and not left as a dead frame', () => {
+  const fn = pvidJs();
   ok(/\.catch\(/.test(fn), 'the play() rejection is unhandled');
-  ok(/v\.play\(\)/.test(fn), 'nothing calls play');
+  ok(/list\[i\]\.play\(\)/.test(fn), 'nothing calls play');
+  const body = fn.slice(fn.indexOf('function play(i)'), fn.indexOf('function syncPlay'));
+  ok(/showChrome\(i, true\)/.test(body),
+     'a blocked clip shows its poster with no way to start it');
 });
 t('reduced motion never auto-starts, but still stops off-screen audio', () => {
   const src = JS.slice(JS.indexOf('function productVideos'));
@@ -995,15 +1003,23 @@ t('a shopper who presses pause is not overridden by the next scroll pixel', () =
   ok(/held\[i\] = true/.test(fn), 'pressing pause does not set the hold');
   ok(/held\[i\] = false/.test(fn), 'the hold is never released');
 });
-t('the retry after a refused play is bounded to one, and only for sound', () => {
+t('a refused play is never retried', () => {
+  /* Clips start muted, so a rejection is a policy this page cannot argue
+     with. Retrying it is how a page burns a battery for nothing. */
   const fn = pvidJs();
-  const body = fn.slice(fn.indexOf('function play(v)'), fn.indexOf('function syncPlay'));
-  ok(/if \(v\.muted\) return/.test(body), 'a muted rejection would retry forever');
-  eq((body.match(/\.play\(\)/g) || []).length, 2, 'expected exactly one retry');
+  const body = fn.slice(fn.indexOf('function play(i)'), fn.indexOf('function syncPlay'));
+  eq((body.match(/\.play\(\)/g) || []).length, 1, 'expected exactly one play() call');
 });
-t('turning sound on mutes every other clip', () => {
+t('sound is exclusive — several clips run, only one can be audible', () => {
   const fn = pvidJs();
-  ok(/if \(j !== i\) o\.muted = true/.test(fn), 'two clips could be audible at once');
+  ok(/soundIndex/.test(fn), 'sound is not tracked as a single owner');
+  ok(/v\.muted = j !== soundIndex/.test(fn), 'two clips could be audible at once');
+  ok(/soundIndex === i \? -1 : i/.test(fn), 'the sound button does not toggle off');
+});
+t('a clip scrolled away gives up the sound rather than keeping it reserved', () => {
+  const fn = pvidJs();
+  ok(/if \(soundIndex === i\) \{ soundIndex = -1/.test(fn),
+     'sound stays owned by a clip that is no longer on screen');
 });
 t('picture-in-picture and AirPlay targets are not offered on a reel', () => {
   ok(/disablepictureinpicture/.test(PV));
@@ -1201,13 +1217,45 @@ t('the touch target clears 44px even though the disc is 32', () => {
   ok(Number(m[1]) >= 44 && Number(m[2]) >= 44, 'sound target is ' + m[1] + 'x' + m[2]);
   ok(/\.pvid-toggle\{[^}]*inset:0/.test(css), 'the play target is not the whole frame');
 });
-t('a playing clip carries no visible chrome, but the control is still there', () => {
+t('the resting state is a clean frame — no controls of any kind', () => {
   const css = PVCSS.replace(/\n/g, ' ');
-  ok(/\[data-playing\] \.pvid-toggle \.pvid-disc\{ ?opacity:0/.test(css),
-     'the disc sits on top of every playing clip');
-  no(/\[data-playing\] \.pvid-toggle \.pvid-disc\{[^}]*display:none/.test(css),
-     'display:none would take the control out of the tab order');
-  ok(/\[data-playing\] \.pvid-toggle:hover \.pvid-disc/.test(css), 'no way back to pause on hover');
+  ok(/\.pvid-toggle \.pvid-disc,\s*\.pvid-sound \.pvid-disc\{ ?opacity:0/.test(css),
+     'a control is visible before the shopper has asked for one');
+  ok(/\[data-chrome\] \.pvid-toggle \.pvid-disc/.test(css), 'nothing reveals the controls');
+  no(/\.pvid-disc\{[^}]*display:none/.test(css),
+     'display:none would take the controls out of the tab order');
+  no(/\bcontrols\b/.test(PV), 'native browser chrome is back');
+});
+t('the first tap reveals, the second acts', () => {
+  const fn = pvidJs();
+  ok(/if \(!frames\[i\]\.hasAttribute\('data-chrome'\)\) \{ showChrome\(i\); return; \}/.test(fn),
+     'a tap while scrolling past would stop the clip');
+});
+t('controls come back for focus and hover, not only for taps', () => {
+  const css = PVCSS.replace(/\n/g, ' ');
+  ok(/\.pvid-frame:hover \.pvid-toggle \.pvid-disc/.test(css), 'no desktop reveal');
+  ok(/\.pvid-toggle:focus-visible \.pvid-disc/.test(css), 'no keyboard reveal');
+});
+t('a paused clip keeps its controls, permanently', () => {
+  const fn = pvidJs();
+  ok(/if \(!playing\) showChrome\(i, true\)/.test(fn),
+     'a stopped frame could be left with no visible way to restart it');
+  ok(/if \(!list\[i\]\.paused\) frames\[i\]\.removeAttribute\('data-chrome'\)/.test(fn),
+     'the auto-hide timer does not check whether the clip is still running');
+});
+t('the sound button cannot be hit before the controls are up', () => {
+  const css = PVCSS.replace(/\n/g, ' ');
+  ok(/\.pvid-sound\{ ?pointer-events:none/.test(css),
+     'a first tap in the corner would unmute instead of revealing');
+  ok(/\[data-chrome\] \.pvid-sound,\s*\.pvid-sound:focus-visible\{ ?pointer-events:auto/.test(css),
+     'the sound button never becomes usable again');
+});
+t('reduced motion stops the attribute and hands over the controls', () => {
+  const fn = pvidJs();
+  const rm = fn.slice(fn.indexOf('if (RM)'));
+  ok(/v\.pause\(\)/.test(rm.slice(0, 300)), 'reduced motion leaves every clip running');
+  ok(/showChrome\(i, true\)/.test(rm.slice(0, 300)),
+     'reduced motion pauses the clips without offering a way to start them');
 });
 t('the section is named for assistive tech even with no heading', () =>
   ok(/aria-label="Product videos"/.test(PV)));
@@ -1218,7 +1266,8 @@ t('off-screen videos are paused, not left playing audio', () => {
   const js = pvidJs();
   ok(/IntersectionObserver/.test(js), 'no observer');
   ok(/\.pause\(\)/.test(js), 'nothing pauses');
-  ok(/v\.pause\(\);\s*v\.muted = true/.test(js), 'a clip swiped away keeps its audio armed');
+  ok(/list\[i\]\.pause\(\);\s*list\[i\]\.muted = true/.test(js),
+     'a clip swiped away keeps its audio armed');
   no(/addEventListener\('scroll'/.test(js), 'a scroll listener would be the expensive way');
 });
 

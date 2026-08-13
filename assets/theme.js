@@ -1682,38 +1682,48 @@
 
 
   /* ---------------------------------------------------------------
-     Product videos: exactly one plays, and it is the one being looked at
+     Product videos: every clip you can see is running
 
-     Muted autoplay, driven from here rather than from an autoplay attribute.
-     The attribute would start every clip in the strip on load, whether or not
-     the shopper ever reaches this section — the bytes and the battery spent
-     before anyone has scrolled, and several clips running at once the moment
-     they do. This starts one.
+     Muted autoplay. The attribute does the starting, this does the stopping.
 
-     "Most visible" is the whole rule. The strip deliberately shows a second
-     clip at around 80%, so two of them clear any single visibility threshold
-     at the same time; picking the highest ratio each time the observer fires
-     is what keeps that from becoming two videos playing side by side. The
-     rest are paused, including the one that was playing a moment ago, so
-     nothing is ever running off screen.
+     An earlier revision inverted that: no autoplay attribute, and this module
+     picked the single most visible clip and started it. The requirement is now
+     that every clip on screen plays, so the reason for the inversion is gone,
+     and the declarative path is both simpler and more reliable — iOS Safari
+     refuses a scripted play() before a user gesture more readily than it
+     refuses a muted, playsinline autoplay attribute.
 
-     Reduced motion takes the autoplay away and leaves the buttons: nothing
-     starts by itself, but a clip the shopper started is still stopped when it
-     leaves, because unexpected audio from off screen is not motion.
+     What remains here is the performance guard the attribute does not give
+     you. The observer pauses anything below a quarter visible, including on
+     its first callback at load, so four clips three screens down do not run
+     while someone is reading the buy box. On a phone the strip shows one card
+     and about three quarters of the next, so the practical ceiling is two
+     decoders, not four.
+
+     Sound is exclusive. With several clips running, an unmute has to mute the
+     others or the section becomes noise, so it is held as a single index
+     rather than a flag per clip.
+
+     Controls rest hidden and the first tap reveals rather than acts. A shopper
+     brushing the strip on the way down the page should not stop a video, and
+     a paused clip keeps its controls up permanently, because a stopped frame
+     with no visible way to restart it is the one state this must not produce.
+
+     Reduced motion is the one place the autoplay requirement yields. The
+     setting exists to stop exactly this, and WCAG 2.2.2 covers content that
+     moves for more than five seconds, so clips are paused at once and their
+     controls left up: the shopper sees a poster and a play button and starts
+     what they want. Autoplay for everyone else is unaffected.
 
      play() returns a promise that rejects when the browser declines — a data
      saver, a battery mode, a policy this page cannot see. That is a normal
-     outcome, not an error. There is exactly one retry, and only for the one
-     cause this code can actually fix: sound. An unmuted play() is the request
-     a browser is most likely to refuse, so a rejection with sound on drops
-     back to muted and tries once more. A rejection while already muted is
-     final — the poster and the play button are the fallback, and hammering
-     play() at a browser that has said no is how a page burns a battery.
+     outcome, not an error: the controls come up over the poster so there is a
+     way in, and nothing retries. Hammering play() at a browser that has said
+     no is how a page burns a battery.
 
      Every visible state is read back off the media element's own play, pause
-     and volumechange events rather than set alongside the call that caused
-     it. A browser that pauses a clip on its own — a phone call, a background
-     tab, an OS media key — moves the button with it. */
+     and volumechange events rather than set alongside the call that caused it,
+     so a browser that pauses a clip on its own moves the buttons with it. */
   (function productVideos() {
     var frames = [].slice.call(document.querySelectorAll('[data-pvid-frame]'));
     if (!frames.length) return;
@@ -1721,29 +1731,32 @@
     var list    = frames.map(function (f) { return f.querySelector('video'); });
     var toggles = frames.map(function (f) { return f.querySelector('[data-pvid-toggle]'); });
     var sounds  = frames.map(function (f) { return f.querySelector('[data-pvid-sound]'); });
-    var ratio   = frames.map(function () { return 0; });
+    var timers  = frames.map(function () { return 0; });
 
     /* A clip the shopper pressed pause on. The observer fires again on the
        next scroll pixel, so without this the strip would restart the one
-       thing they just stopped. Cleared when the clip leaves the viewport, so
-       the hold lasts as long as they are looking at it and no longer. */
+       thing they just stopped. Cleared when the clip leaves the viewport. */
     var held = frames.map(function () { return false; });
 
-    /* Sound belongs to the strip, not to a clip: one clip plays at a time, so
-       a per-clip setting would mean turning it on again at every swipe. */
-    var soundOn = false;
+    /* Which clip, if any, has the sound. -1 is all muted. */
+    var soundIndex = -1;
 
-    function play(v) {
-      var p = v.play();
+    var CHROME_MS = 2600;
+
+    function showChrome(i, sticky) {
+      frames[i].setAttribute('data-chrome', '');
+      clearTimeout(timers[i]);
+      if (sticky) return;
+      timers[i] = setTimeout(function () {
+        /* Never take the controls away from a stopped clip. */
+        if (!list[i].paused) frames[i].removeAttribute('data-chrome');
+      }, CHROME_MS);
+    }
+
+    function play(i) {
+      var p = list[i].play();
       if (!p || !p.catch) return;
-      p.catch(function () {
-        if (v.muted) return;
-        v.muted = true;
-        soundOn = false;
-        syncSound();
-        var q = v.play();
-        if (q && q.catch) q.catch(function () {});
-      });
+      p.catch(function () { showChrome(i, true); });
     }
 
     function syncPlay(i) {
@@ -1752,43 +1765,39 @@
       if (playing) frames[i].setAttribute('data-playing', '');
       else frames[i].removeAttribute('data-playing');
       toggles[i].setAttribute('aria-label', (playing ? 'Pause ' : 'Play ') + label);
+      if (!playing) showChrome(i, true);
     }
 
     function syncSound() {
       frames.forEach(function (f, i) {
-        if (soundOn) f.setAttribute('data-sound', '');
+        var on = i === soundIndex;
+        if (on) f.setAttribute('data-sound', '');
         else f.removeAttribute('data-sound');
-        sounds[i].setAttribute('aria-label', soundOn ? 'Turn sound off' : 'Turn sound on');
+        sounds[i].setAttribute('aria-label', on ? 'Turn sound off' : 'Turn sound on');
       });
     }
 
     toggles.forEach(function (btn, i) {
       btn.addEventListener('click', function () {
-        var v = list[i];
-        if (v.paused) {
+        /* First tap reveals, second acts. */
+        if (!frames[i].hasAttribute('data-chrome')) { showChrome(i); return; }
+        if (list[i].paused) {
           held[i] = false;
-          v.muted = !soundOn;
-          play(v);
+          play(i);
+          showChrome(i);
         } else {
           held[i] = true;
-          v.pause();
+          list[i].pause();
         }
       });
     });
 
     sounds.forEach(function (btn, i) {
       btn.addEventListener('click', function () {
-        soundOn = !soundOn;
-        list.forEach(function (o, j) { if (j !== i) o.muted = true; });
-        list[i].muted = !soundOn;
+        soundIndex = soundIndex === i ? -1 : i;
+        list.forEach(function (v, j) { v.muted = j !== soundIndex; });
         syncSound();
-        /* Turning sound on is a gesture, and a gesture is what a browser
-           wants before it will allow audible playback — so it is also the
-           right moment to start a clip that autoplay never got to start. */
-        if (soundOn && list[i].paused) {
-          held[i] = false;
-          play(list[i]);
-        }
+        showChrome(i);
       });
     });
 
@@ -1800,41 +1809,32 @@
     });
     syncSound();
 
-    /* The buttons above work without an observer. Only the autoplay does not,
-       so a browser without IntersectionObserver gets a strip of posters with
-       play buttons, which is the same fallback a blocked autoplay gets. */
+    if (RM) {
+      /* Stop what the attribute started and hand over the controls. */
+      list.forEach(function (v, i) { v.pause(); showChrome(i, true); });
+      return;
+    }
+
+    /* Without an observer the autoplay attribute still plays everything; only
+       the off-screen pausing is lost, which is a performance guard rather
+       than a feature the shopper can see. */
     if (!window.IntersectionObserver) return;
 
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
         var i = list.indexOf(e.target);
-        if (i > -1) {
-          ratio[i] = e.intersectionRatio;
-          if (e.intersectionRatio < 0.05) held[i] = false;
+        if (i < 0) return;
+        if (e.intersectionRatio < 0.05) held[i] = false;
+
+        if (e.intersectionRatio >= 0.25) {
+          if (list[i].paused && !held[i]) play(i);
+        } else if (!list[i].paused) {
+          list[i].pause();
+          list[i].muted = true;
+          if (soundIndex === i) { soundIndex = -1; syncSound(); }
         }
       });
-
-      if (RM) {
-        /* Never started here, but still stopped on the way out. */
-        list.forEach(function (v, i) { if (ratio[i] < 0.25 && !v.paused) v.pause(); });
-        return;
-      }
-
-      var best = -1, bestRatio = 0.6;
-      ratio.forEach(function (r, i) { if (r > bestRatio) { bestRatio = r; best = i; } });
-
-      list.forEach(function (v, i) {
-        if (i === best && !held[i]) {
-          if (v.paused) {
-            v.muted = !soundOn;
-            play(v);
-          }
-        } else if (!v.paused) {
-          v.pause();
-          v.muted = true;
-        }
-      });
-    }, { threshold: [0, 0.05, 0.25, 0.5, 0.6, 0.75, 1] });
+    }, { threshold: [0, 0.05, 0.25, 0.5, 0.75, 1] });
 
     list.forEach(function (v) { io.observe(v); });
   })();

@@ -18,15 +18,25 @@
   with the buy box about the same decision. The videos are the content.
 
   muted, loop and playsinline are the three attributes a browser requires
-  before it will let anything start on its own. There is deliberately no
-  autoplay attribute: that would start every clip in the strip at once, on
-  load, whether or not the shopper ever scrolls here. theme.js starts exactly
-  one — the most visible — when the strip is actually on screen, which is the
-  same outcome without the cost.
+  before it will let anything start on its own, and autoplay is now the fourth.
+
+  An earlier revision left autoplay off and had theme.js start exactly one
+  clip — the most visible — on the grounds that the attribute starts all of
+  them. The requirement changed: every clip the shopper can see is meant to be
+  running, so the objection no longer applies and the declarative path is the
+  better one. It is also the more reliable one on iOS Safari, where a
+  scripted play() before any user gesture is refused more often than a
+  muted+playsinline autoplay attribute is.
+
+  What theme.js still does is pause the clips that are off screen, including
+  on first load, so the attribute's cost is bounded to the clips in view. On a
+  phone that is the first card and most of the second.
 
   preload="metadata" rather than "none": the first frame has to exist before a
   clip can be started for someone, and metadata is a header rather than a
-  file. width and height still come off the poster, so nothing shifts.
+  file. width and height still come off the poster, so nothing shifts, and the
+  poster is also what a blocked autoplay falls back to — a first frame with a
+  play button on it rather than a black rectangle.
 
   No `controls` attribute, and that is the whole of the visual argument here.
   The native control bar is the one part of this page that no stylesheet owns:
@@ -80,6 +90,7 @@
             <li class="pvid-item">
               <div class="pvid-frame" data-pvid-frame data-pvid-label="{{ vlabel | escape }}">
                 <video class="pvid-video"
+                       autoplay
                        muted
                        loop
                        playsinline
@@ -98,11 +109,18 @@
 
                 {%- comment -%}
                   The play/pause target is the whole frame, not a corner badge:
-                  on a phone the clip is 187px wide and a shopper reaching for
-                  it is reaching for the picture. It carries no visible chrome
-                  while a clip is running and brings the disc back the moment
-                  it is paused, hovered or focused, so a playing reel is just
-                  the reel.
+                  on a phone the clip is 212px wide and a shopper reaching for
+                  it is reaching for the picture.
+
+                  It carries nothing at all in the resting state. The first tap
+                  reveals the two controls rather than acting on the clip,
+                  which is the behaviour a reel needs: the common case is a
+                  shopper touching the strip while scrolling, and having that
+                  stop the video would be a worse default than showing them
+                  what they can do. The second tap acts. Controls fade back out
+                  a few seconds later, and never while a clip is paused —
+                  a stopped frame with no way to restart it is the one state
+                  this must not produce.
                 {%- endcomment -%}
                 <button type="button" class="pvid-toggle" data-pvid-toggle aria-label="Play {{ vlabel | escape }}">
                   <span class="pvid-disc pvid-disc--lg">
@@ -113,10 +131,13 @@
 
                 {%- comment -%}
                   Sound is the one control this format genuinely needs. Muted
-                  is what buys the autoplay, so every clip opens silent and the
-                  shopper is one tap from hearing it. The button stays visible
-                  over a playing clip for that reason — it is the affordance,
-                  not decoration. 44px of touch target around a 32px disc.
+                  is what buys the autoplay, so every clip opens silent.
+
+                  It is exclusive across the strip: several clips now run at
+                  once, so unmuting one has to mute the rest or the section
+                  becomes noise. 44px of touch target around a 32px disc, and
+                  inert until the controls are up so a first tap in this corner
+                  reveals rather than unmutes.
                 {%- endcomment -%}
                 <button type="button" class="pvid-sound" data-pvid-sound aria-label="Turn sound on">
                   <span class="pvid-disc">

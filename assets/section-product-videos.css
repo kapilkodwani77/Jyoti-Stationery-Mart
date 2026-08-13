@@ -184,12 +184,30 @@
   .pvid-frame:not([data-sound])  .pvid-i--soundoff{ display:block; }
   .pvid-frame[data-sound]        .pvid-i--soundon{ display:block; }
 
-  /* A running clip carries nothing on top of it. The disc is still there and
-     still pressable — it is at zero opacity, not display:none — and it comes
-     back on pause, on hover and on keyboard focus. */
-  .pvid-frame[data-playing] .pvid-toggle .pvid-disc{ opacity:0; }
-  .pvid-frame[data-playing] .pvid-toggle:hover .pvid-disc,
-  .pvid-frame[data-playing] .pvid-toggle:focus-visible .pvid-disc{ opacity:1; }
+  /* The resting state carries nothing on top of the clip at all. Both discs
+     are at zero opacity rather than display:none, so both buttons keep their
+     place in the tab order and a keyboard user can still reach them.
+
+     data-chrome is put on by a tap, by focus, by a pause, or by an autoplay
+     the browser refused — the four moments where a control is the answer. */
+  .pvid-toggle .pvid-disc,
+  .pvid-sound .pvid-disc{ opacity:0; }
+  .pvid-frame[data-chrome] .pvid-toggle .pvid-disc,
+  .pvid-frame[data-chrome] .pvid-sound .pvid-disc{ opacity:1; }
+
+  /* Hover is a mouse-only signal and reveals without committing to anything,
+     which is the right desktop equivalent of the first tap. */
+  .pvid-frame:hover .pvid-toggle .pvid-disc,
+  .pvid-frame:hover .pvid-sound .pvid-disc{ opacity:1; }
+
+  /* The sound button is inert while the controls are down so that a first tap
+     landing in its corner reveals the controls like a tap anywhere else,
+     rather than silently unmuting a clip the shopper was only scrolling past.
+     pointer-events does not affect keyboard focus or Enter, so the tab path
+     through this button is unchanged. */
+  .pvid-sound{ pointer-events:none; }
+  .pvid-frame[data-chrome] .pvid-sound,
+  .pvid-sound:focus-visible{ pointer-events:auto; }
 
   /* The ring is white on the disc's own dark ground rather than the theme's
      indigo on the clip, because the clip behind it is an unknown colour and
