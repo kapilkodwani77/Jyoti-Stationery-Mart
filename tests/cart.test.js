@@ -696,53 +696,59 @@ t('the copied state is not an instant 0ms change', () => {
 });
 
 /* ---- urgency line: sourced, never manufactured ---- */
-t('the manufactured urgency line is gone', () => {
-  no(/Limited-time price/.test(BUYBOX_RAW), 'the invented deadline survives');
-  no(/% OFF &middot;/.test(BUYBOX_RAW));
+t('the approved urgency copy is exact', () => {
+  ok(/A mom favourite &middot; Selling fast/.test(BUYBOX_RAW), 'copy drifted from what was approved');
 });
-t('urgency comes from real inventory, not a constant', () => {
-  ok(/inventory_quantity/.test(BUYBOX_RAW), 'no inventory source');
-  ok(/inventory_policy == 'deny'/.test(BUYBOX_RAW), 'an overselling variant is not scarce');
+t('the urgency line is unconditional', () => {
+  /* Persistent by construction: one assign, no branch that can blank it. */
+  const block = BUYBOX_RAW.slice(BUYBOX_RAW.indexOf("assign urgency ="));
+  const stmt = block.slice(0, block.indexOf('\n'));
+  ok(/^assign urgency = 'A mom favourite/.test(stmt.trim()), 'urgency is computed, not stated');
+  no(/assign urgency = ''/.test(BUYBOX_RAW), 'a blank-then-maybe-fill branch survives');
 });
-t('the stock line hides itself when stock is healthy', () =>
-  ok(/inventory_quantity <= \d+/.test(BUYBOX_RAW), 'no threshold — it would always show'));
-t('the threshold is tight enough for the line to mean something', () => {
-  const m = /inventory_quantity <= (\d+)/.exec(BUYBOX_RAW);
-  ok(m, 'no threshold');
-  ok(Number(m[1]) <= 5, 'at ' + m[1] + ' the line becomes furniture');
+t('the urgency line survives any stock level', () => {
+  /* 2, 5, 9, 20 — none of them can reach this line, because nothing reads
+     inventory to build it. Asserting the absence of the input is stronger
+     than asserting four outputs. */
+  const block = BUYBOX_RAW.slice(BUYBOX_RAW.indexOf('assign urgency ='),
+                                BUYBOX_RAW.indexOf('-%}'));
+  no(/inventory/.test(block), 'the urgency line still reads inventory');
 });
-t('scarcity pairs with the dispatch promise when one is set', () => {
-  ok(/dispatch_promise/.test(BUYBOX_RAW), 'no reassurance half');
-  ok(/append: ' &middot; ' \| append: settings\.dispatch_promise/.test(BUYBOX_RAW),
-     'the two halves are not joined');
+t('no inventory threshold controls any customer-facing copy', () => {
+  no(/inventory_quantity <=/.test(BUYBOX_RAW), 'a stock threshold survives');
+  no(/inventory_policy/.test(BUYBOX_RAW), 'stock policy still gates copy');
 });
-t('the dispatch promise is never written by the theme', () => {
-  /* A delivery commitment is the merchant's to make. Blank until they fill it. */
-  const schema = fs.readFileSync(path.join(ROOT, 'config/settings_schema.json'), 'utf8');
-  const block = schema.slice(schema.indexOf('"id": "dispatch_promise"'));
-  no(/"default":/.test(block.slice(0, 400)), 'the theme invented a delivery promise');
+t('no "Only N left" copy remains', () => {
+  no(/Only .*left/i.test(BUYBOX), 'stock-count copy survives');
+  no(/left in stock|remaining|selling out/i.test(BUYBOX), 'scarcity-count copy survives');
 });
-t('scarcity is not painted as an error', () => {
+t('the urgency line renders no number at all', () => {
+  /* The copy is built in a Liquid assign, not written as literal markup, so
+     the statement is where it has to be read. A digit appearing here would
+     mean a count was appended to an approved sentence. */
+  const block = BUYBOX_RAW.slice(BUYBOX_RAW.indexOf('assign urgency ='));
+  const stmt = block.slice(0, block.indexOf('\n'));
+  no(/\d/.test(stmt), 'a figure was appended: ' + stmt.trim());
+  no(/append:/.test(stmt), 'the approved sentence is being concatenated with something');
+});t('the manufactured deadline stays gone', () => {
+  no(/Limited-time price/.test(BUYBOX_RAW), 'the invented deadline returned');
+  no(/countdown|ends (in|today)|hurry/i.test(BUYBOX), 'a deadline claim appeared');
+});
+t('urgency does not outrank the offer beside it', () => {
   const flat = BUYCSS.replace(/\n/g, ' ');
-  ok(/\.buybox-urgency\{[^}]*color:var\(--ink\)/.test(flat), 'urgency is not ink');
+  ok(/\.buybox-urgency\{[^}]*color:var\(--ink-2\)/.test(flat), 'urgency is not stepped back');
   no(/\.buybox-urgency\{[^}]*color:var\(--danger\)/.test(flat), 'error red used for a sales line');
 });
-t('the offer copy says where the code is spent', () =>
-  ok(/at checkout/.test(BUYBOX), 'the highest-value phrase is missing'));
-t('the offer copy claims no condition it cannot enforce', () => {
-  /* Rendered text only. The legacy setting ids still say "prepaid" — renaming
-     them would orphan the merchant's saved values — but a variable name is not
-     a promise. What a customer reads is. */
-  const visible = BUYBOX
-    .replace(/\{%[\s\S]*?%\}/g, ' ')
-    .replace(/\{\{[\s\S]*?\}\}/g, ' ')
-    .replace(/<[^>]+>/g, ' ');
-  no(/first order|new here|welcome back|prepaid|pay online|online payment|members only/i.test(visible),
-     'a condition Shopify Basic cannot enforce was promised: ' + visible.slice(0, 160));
+t('urgency uses only existing tokens and no decoration', () => {
+  const flat = BUYCSS.replace(/\n/g, ' ');
+  const block = /\.buybox \.buybox-urgency\{[^}]*\}/.exec(flat);
+  ok(block, 'no urgency rule');
+  no(/background|border|box-shadow|animation/.test(block[0]), 'decorative UI added');
+  no(/#[0-9a-fA-F]{3,6}/.test(block[0]), 'a raw colour was introduced');
 });
-t('no invented scarcity beyond the sourced stock figure', () => {
-  no(/countdown|hurry|selling fast|almost gone|\bends (in|today)\b/i.test(BUYBOX),
-     'a manufactured urgency claim appeared');
+t('dispatch_promise keeps a home so the setting is not orphaned', () => {
+  const bar = fs.readFileSync(path.join(ROOT, 'sections/sticky-buy-bar.liquid'), 'utf8');
+  ok(/settings\.dispatch_promise/.test(bar), 'the setting no longer renders anywhere');
 });
 
 /* ---- haptics ---- */

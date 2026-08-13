@@ -51,11 +51,20 @@
      which also matches this element and would otherwise repaint it as a 12px
      secondary caption. Winning on specificity rather than by editing that
      rule, which belongs to the price block and is not this change's to move. */
+  /* Secondary ink, not full ink. This line used to be exceptional — it only
+     appeared when stock ran low — so it could afford to carry weight. It is
+     permanent now, and a permanent line at the same weight as the offer row
+     directly beneath it flattens the whole column into one tone. Stepping it
+     back leaves the price loudest, the offer actionable, and this reading as
+     what it is: a quiet cue, not an announcement.
+
+     Weight stays at 500 so it does not merge with the tax note above it, and
+     500 on --ink-2 measures 6.4:1 on chalk. Tabular figures are gone with the
+     numerals they were aligning. */
   .buybox .buybox-urgency{
     margin:var(--s-3) 0 0;
     font-size:13px; font-weight:500; line-height:1.35;
-    letter-spacing:.005em; color:var(--ink);
-    font-variant-numeric:tabular-nums;
+    letter-spacing:.005em; color:var(--ink-2);
   }
 
   .qty-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--s-4); margin-top:var(--s-5); }

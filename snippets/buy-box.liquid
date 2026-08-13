@@ -38,49 +38,28 @@
   endif
 
   comment
-    The urgency line, and the only things it is ever allowed to say.
+    The urgency line. One sentence, always shown, and it says exactly what the
+    merchant approved: a mom favourite, selling fast.
 
-    "31% OFF, limited-time price" is gone. The percentage was already on the
-    price pill and in the struck figure two lines above, so it was the third
-    statement of one fact, and "limited-time" was attached to no time — a
-    deadline nobody had set and nothing could enforce. On a store selling to
-    parents, an urgency claim a customer can catch costs more than the few
-    percent it buys.
+    It is deliberately not conditional. The version before this read stock and
+    rendered "Only N left" under a threshold, which meant the line vanished the
+    moment inventory was healthy — a reassurance cue that is only present when
+    stock is low is not a reassurance cue, it is an alarm with a mute button.
+    This one is either true of the product or it is not, and that is a judgment
+    the merchant makes in the copy rather than a number the theme derives.
 
-    What replaced it is the one urgent thing that is actually true and that
-    the theme can actually read: the stock figure. An earlier note here said
-    no such source existed. That was wrong — Liquid carries
-    inventory_quantity whenever the merchant tracks inventory, so this is
-    sourced rather than invented, it updates itself as stock moves, and it
-    disappears on its own once there is plenty. It is gated on the policy
-    being deny, because a variant that oversells is not scarce.
+    Nothing here reads inventory any more, and nothing here may. The rule this
+    file has held to since the "limited-time price" line was removed still
+    stands: a figure shown to a customer has to come from somewhere real. The
+    way to honour that is not to dress an approved sentence up with a count —
+    it is to state the sentence and add no number to it at all. No stock
+    figure, no shopper count, no deadline, no percentage.
 
-    The threshold is five rather than ten. At ten it sat on the page more or
-    less permanently, and a scarcity line that is always there is not a
-    scarcity line — it is furniture the eye stops reading. Five means the
-    sentence only appears when it is both true and worth saying.
-
-    Paired with the dispatch promise when the merchant has set one, because
-    scarcity on its own is pressure and pressure on its own is not what sells
-    a play mat to a parent. "Only 4 left" asks them to hurry; the second half
-    tells them what hurrying gets. The promise stays blank until someone fills
-    it in, and it is deliberately not written here — a delivery commitment is
-    the merchant's to make, not the theme's.
-
-    No countdown, no shopper count, no deadline. Those still have no source.
+    dispatch_promise is no longer appended here. It keeps its documented home
+    in the sticky bar's trust line, so the setting is not orphaned, and this
+    line stays the single sentence it was approved as.
   endcomment
-
-  assign urgency = ''
-  if v.inventory_management != blank and v.inventory_policy == 'deny' and v.inventory_quantity > 0 and v.inventory_quantity <= 5
-    assign urgency = 'Only ' | append: v.inventory_quantity | append: ' left'
-    if settings.dispatch_promise != blank
-      assign urgency = urgency | append: ' &middot; ' | append: settings.dispatch_promise
-    else
-      assign urgency = urgency | append: ' in stock'
-    endif
-  elsif settings.dispatch_promise != blank
-    assign urgency = settings.dispatch_promise
-  endif
+  assign urgency = 'A mom favourite &middot; Selling fast'
 -%}
 <div class="buybox {% if compact %}buybox--compact{% endif %}" data-buybox id="buybox">
 
