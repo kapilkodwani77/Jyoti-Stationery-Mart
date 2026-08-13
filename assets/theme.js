@@ -1694,15 +1694,64 @@
      poster images until someone shows intent.
 
      One observer for the whole strip, no scroll listener, no polling. */
+  /* ---------------------------------------------------------------
+     Product videos: exactly one plays, and it is the one being looked at
+
+     Muted autoplay, driven from here rather than from an autoplay attribute.
+     The attribute would start every clip in the strip on load, whether or not
+     the shopper ever reaches this section — the bytes and the battery spent
+     before anyone has scrolled, and several clips running at once the moment
+     they do. This starts one.
+
+     "Most visible" is the whole rule. The strip deliberately shows a second
+     clip at around 80%, so two of them clear any single visibility threshold
+     at the same time; picking the highest ratio each time the observer fires
+     is what keeps that from becoming two videos playing side by side. The
+     rest are paused, including the one that was playing a moment ago, so
+     nothing is ever running off screen.
+
+     Reduced motion takes the autoplay away and leaves the controls: nothing
+     starts by itself, but a clip the shopper started is still stopped when it
+     leaves, because unexpected audio from off screen is not motion.
+
+     play() returns a promise that rejects when the browser declines — a data
+     saver, a battery mode, a policy this page cannot see. That is a normal
+     outcome, not an error: the controls are still there and the clip is still
+     playable by hand, so the rejection is swallowed rather than logged. */
   (function productVideos() {
-    var vids = document.querySelectorAll('[data-pvid] video');
-    if (!vids.length || !window.IntersectionObserver) return;
+    var list = [].slice.call(document.querySelectorAll('[data-pvid] video'));
+    if (!list.length || !window.IntersectionObserver) return;
+
+    var ratio = list.map(function () { return 0; });
+
     var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (!entry.isIntersecting && !entry.target.paused) entry.target.pause();
+      entries.forEach(function (e) {
+        var i = list.indexOf(e.target);
+        if (i > -1) ratio[i] = e.intersectionRatio;
       });
-    }, { threshold: 0.4 });
-    [].forEach.call(vids, function (v) { io.observe(v); });
+
+      if (RM) {
+        /* Never started here, but still stopped on the way out. */
+        list.forEach(function (v, i) { if (ratio[i] < 0.25 && !v.paused) v.pause(); });
+        return;
+      }
+
+      var best = -1, bestRatio = 0.6;
+      ratio.forEach(function (r, i) { if (r > bestRatio) { bestRatio = r; best = i; } });
+
+      list.forEach(function (v, i) {
+        if (i === best) {
+          if (v.paused) {
+            var p = v.play();
+            if (p && p.catch) p.catch(function () {});
+          }
+        } else if (!v.paused) {
+          v.pause();
+        }
+      });
+    }, { threshold: [0, 0.25, 0.5, 0.6, 0.75, 1] });
+
+    list.forEach(function (v) { io.observe(v); });
   })();
 
 })();

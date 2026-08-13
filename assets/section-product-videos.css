@@ -1,4 +1,15 @@
 @layer sections {
+  /* The strip sat in an empty field on a phone: the FAQ above closes with
+     --rhythm of padding and this section opened with --s-7 of its own, so
+     roughly 112px of nothing separated a question from the first frame of a
+     video. Its own top padding goes to zero.
+
+     64px still remains, and it is not this file's to remove — that is the
+     FAQ's own closing rhythm, and reaching the 16-24px ideal would mean
+     reducing it. The bottom keeps a step so the last clip is not sitting
+     under the sticky Add to Cart bar. */
+  .pvid-sec{ padding-top:0; padding-bottom:var(--s-6); }
+
   /* ---- product videos ---------------------------------------------------
      A reel strip. Horizontal on every size, because the alternative on a phone
      is a stack of tall clips that turns four videos into four screens of
@@ -28,12 +39,29 @@
     }
   }
 
-  /* 9:16 is the shape these are shot in. flex-basis is a viewport fraction so
-     a phone shows one and a bit — the "and a bit" is the whole affordance,
-     because a strip where the second item is fully off screen looks like a
-     single video. */
+  /* 9:16 is the shape these are shot in, and the width is set by how much of
+     the second clip has to be visible rather than by how large the first one
+     could be.
+
+     The strip is padding + card + gap + card. At 62vw the second clip showed
+     45.8% at 375px — a sliver, which reads as one video with an edge artefact
+     rather than as a strip that scrolls. Solving for at least 70%:
+
+       (vw - 24 - W - 12) / W >= 0.70   ->   W <= (vw - 36) / 1.7
+
+     which is 199px at 375. 50vw sits under that at every phone width and
+     lands near 81%, comfortably inside the 75-80% target with room for a
+     wider gutter later:
+
+       375 -> card 187.5, second clip 80.8%
+       390 -> card 195.0, second clip 81.5%
+       393 -> card 196.5, second clip 81.7%
+       414 -> card 207.0, second clip 82.6%
+
+     The floor of 170px stops the card collapsing on a very narrow phone,
+     where showing both clips badly is worse than showing one well. */
   .pvid-item{
-    flex:0 0 clamp(200px, 62vw, 260px);
+    flex:0 0 clamp(170px, 50vw, 230px);
     scroll-snap-align:start;
   }
 

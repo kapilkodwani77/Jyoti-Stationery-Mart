@@ -17,11 +17,16 @@
   above and below; repeating them turns a reel strip into a card grid arguing
   with the buy box about the same decision. The videos are the content.
 
-  preload="none" is the performance decision that matters: metadata opens a
-  connection per clip the moment this parses, whether or not anyone scrolls
-  this far. The poster carries the strip; video bytes wait for a press. width
-  and height come off the poster so nothing shifts. No autoplay, because this
-  is a section you scroll past, not a hero.
+  muted, loop and playsinline are the three attributes a browser requires
+  before it will let anything start on its own. There is deliberately no
+  autoplay attribute: that would start every clip in the strip at once, on
+  load, whether or not the shopper ever scrolls here. theme.js starts exactly
+  one — the most visible — when the strip is actually on screen, which is the
+  same outcome without the cost.
+
+  preload="metadata" rather than "none": the first frame has to exist before a
+  clip can be started for someone, and metadata is a header rather than a
+  file. width and height still come off the poster, so nothing shifts.
 {%- endcomment -%}
 {{ 'section-product-videos.css' | asset_url | stylesheet_tag }}
 
@@ -31,7 +36,7 @@
 {%- endfor -%}
 
 {%- if video_count > 0 -%}
-  <section class="sec sec--tight {% render 'surface-class', s: section.settings.surface %}"
+  <section class="sec sec--tight pvid-sec {% render 'surface-class', s: section.settings.surface %}"
            id="jump-{{ section.id }}"
            {% if section.settings.jump_label != blank %}data-jump="{{ section.settings.jump_label | escape }}"{% endif %}
            {% if section.settings.heading == blank %}aria-label="Product videos"{% endif %}>
@@ -46,8 +51,10 @@
             <li class="pvid-item">
               <video class="pvid-video"
                      controls
+                     muted
+                     loop
                      playsinline
-                     preload="none"
+                     preload="metadata"
                      {% if m.preview_image %}poster="{{ m.preview_image | image_url: width: 720 }}" width="{{ m.preview_image.width }}" height="{{ m.preview_image.height }}"{% endif %}
                      {% if m.alt != blank %}aria-label="{{ m.alt | escape }}"{% else %}aria-label="Product video {{ forloop.index }}"{% endif %}>
                 {%- for source in m.sources -%}

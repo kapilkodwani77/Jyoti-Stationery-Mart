@@ -906,15 +906,51 @@ t('videos have no Add to Cart', () =>
   no(/add-to-cart|cartAdd|buybox-form|<form/i.test(PV)));
 t('videos carry no product card markup', () => no(/product-card|card/i.test(PV)));
 
-t('video is lazy by the strongest available setting', () => {
-  ok(/preload="none"/.test(PV), 'preload is not none — bytes fetch before intent');
-  no(/preload="(auto|metadata)"/.test(PV));
+t('video is lazy without being unstartable', () => {
+  /* metadata, not auto: a header rather than a file, which is the least that
+     lets a clip be started for someone. Never "auto". */
+  ok(/preload="metadata"/.test(PV), 'preload is not metadata');
+  no(/preload="auto"/.test(PV), 'the whole file is being fetched up front');
 });
-t('video does not autoplay', () => no(/autoplay/i.test(PV)));
-t('video is muted-safe by never starting itself', () => {
-  const js = JS.slice(JS.indexOf('function productVideos'));
-  no(/\.play\(\)/.test(js.slice(0, 900)), 'the script starts playback');
+t('the browser is given the three attributes autoplay requires', () => {
+  ['muted', 'loop', 'playsinline'].forEach((a) =>
+    ok(new RegExp('\\b' + a + '\\b').test(PV), 'missing ' + a));
 });
+t('there is no autoplay attribute — playback is viewport-driven', () => {
+  /* The attribute would start every clip in the strip on load. */
+  no(/\bautoplay\b/.test(PV), 'the attribute would start all clips at once');
+  ok(/data-pvid/.test(JS), 'nothing drives playback');
+});
+t('exactly one video plays: the most visible', () => {
+  const src = JS.slice(JS.indexOf('function productVideos'));
+  const fn = src.slice(0, src.indexOf('\n  })();'));
+  ok(/intersectionRatio/.test(fn), 'visibility is not measured');
+  ok(/bestRatio/.test(fn), 'no most-visible selection — clips would play together');
+  ok(/\.pause\(\)/.test(fn), 'nothing is paused');
+  ok(/0\.6/.test(fn), 'no minimum visibility before playing');
+});
+t('playback is viewport-driven by observer, not scroll listeners', () => {
+  const src = JS.slice(JS.indexOf('function productVideos'));
+  const fn = src.slice(0, src.indexOf('\n  })();'));
+  ok(/IntersectionObserver/.test(fn), 'no observer');
+  no(/addEventListener\('scroll'/.test(fn), 'a scroll listener would be the expensive way');
+});
+t('a refused autoplay is handled, not thrown', () => {
+  const src = JS.slice(JS.indexOf('function productVideos'));
+  const fn = src.slice(0, src.indexOf('\n  })();'));
+  ok(/\.catch\(/.test(fn), 'the play() rejection is unhandled');
+  ok(/v\.play\(\)/.test(fn), 'nothing calls play');
+});
+t('reduced motion never auto-starts, but still stops off-screen audio', () => {
+  const src = JS.slice(JS.indexOf('function productVideos'));
+  const fn = src.slice(0, src.indexOf('\n  })();'));
+  ok(/if \(RM\)/.test(fn), 'reduced motion is ignored');
+  const rm = fn.slice(fn.indexOf('if (RM)'), fn.indexOf('var best'));
+  ok(/pause\(\)/.test(rm), 'reduced motion leaves off-screen audio running');
+  no(/play\(\)/.test(rm), 'reduced motion still auto-starts');
+});
+t('controls remain, so a blocked clip is still playable by hand', () =>
+  ok(/\bcontrols\b/.test(PV), 'no manual fallback'));
 t('video plays inline on iOS rather than hijacking fullscreen', () =>
   ok(/playsinline/.test(PV)));
 t('video has a poster so the strip renders before any video loads', () =>
@@ -929,6 +965,32 @@ t('video is never stretched or cropped', () => {
   ok(/object-fit:contain/.test(PVCSS), 'contain is what guarantees no crop');
   no(/object-fit:cover/.test(PVCSS));
 });
+t('the second clip clears 70% at every phone width', () => {
+  /* strip = gutter + card + gap + card. Solved from the shipped clamp so the
+     assertion moves if the CSS does. */
+  const m = /\.pvid-item\{[^}]*flex:0 0 clamp\((\d+)px,\s*(\d+)vw,\s*(\d+)px\)/
+    .exec(PVCSS.replace(/\n/g, ' '));
+  ok(m, 'card width is no longer a clamp — re-derive this test');
+  const [min, vwPct, max] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const gutter = 24, gap = 12;
+  [375, 390, 393, 414].forEach((vw) => {
+    const W = Math.min(Math.max(min, vw * vwPct / 100), max);
+    const visible = (vw - gutter - W - gap) / W;
+    ok(visible >= 0.70, vw + 'px: second clip only ' + (visible * 100).toFixed(1) + '%');
+  });
+});
+t('the cards are not shrunk to nothing to pass that rule', () => {
+  const m = /flex:0 0 clamp\((\d+)px/.exec(PVCSS);
+  ok(Number(m[1]) >= 150, 'card floor of ' + m[1] + 'px is too small to read');
+});
+t('the section no longer opens on its own block of empty space', () => {
+  ok(/\.pvid-sec\{[^}]*padding-top:0/.test(PVCSS.replace(/\n/g, ' ')),
+     'the section still adds its own top padding under the FAQ');
+  ok(/class="[^"]*pvid-sec/.test(PV), 'the section does not carry the class');
+});
+t('the last clip is not left under the sticky bar', () =>
+  ok(/\.pvid-sec\{[^}]*padding-bottom:var\(--s-\d\)/.test(PVCSS.replace(/\n/g, ' ')),
+     'no bottom breathing room above the sticky Add to Cart'));
 t('the strip scrolls horizontally with snap', () => {
   ok(/overflow-x:auto/.test(PVCSS));
   ok(/scroll-snap-type:x/.test(PVCSS));
