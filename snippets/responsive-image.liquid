@@ -35,6 +35,22 @@
   
   assign base_class = class | default: ''
   assign final_class = base_class | append: ' ' | append: fit_class | strip
+
+  comment
+    fetchpriority is an enumerated HTML attribute — "high", "low" or "auto"
+    are the only valid values, and image_tag passes whatever this filter
+    parameter holds straight through as the attribute's string value rather
+    than converting a boolean the way preload: true/false does. Passing the
+    Liquid boolean `priority` directly rendered fetchpriority="true", which
+    browsers reject and fall back to "auto" on — quietly cancelling the LCP
+    hint call sites asked for with priority: true. fp is nil (omits the
+    attribute entirely, the same way width: nil does) unless priority is
+    truthy, in which case it is the one valid value that means anything here.
+  endcomment
+  assign fp = nil
+  if priority
+    assign fp = 'high'
+  endif
 -%}
 {%- if img != blank -%}
   {{ img
@@ -43,7 +59,7 @@
          widths: w,
          sizes: sz,
          loading: ld,
-         fetchpriority: priority,
+         fetchpriority: fp,
          decoding: 'async',
          alt: alt,
          class: final_class

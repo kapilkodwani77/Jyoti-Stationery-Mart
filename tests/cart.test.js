@@ -1474,6 +1474,105 @@ t('nothing in the skin pins itself to the viewport on a phone', () => {
     });
   });
 
+/* ------------------------------------------------- 15. SEO / structured data
+
+   The brand-leak, fetchpriority and video-rendition fixes in this pass are
+   each a one-line change with no visible symptom when they regress — a
+   revert or a copy-paste of the old pattern into a new file would ship
+   silently. These assert the specific bytes that made each bug real. */
+
+t('product schema seller reads the brand setting, not shop.name', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'snippets/product-schema.liquid'), 'utf8');
+  ok(src.includes('"seller": { "@type": "Organization", "name": {{ settings.brand_name | default: shop.name | json }} }'),
+    'seller name must fall back through settings.brand_name before shop.name');
+  no(/"name":\s*\{\{\s*shop\.name\s*\|\s*json\s*\}\}/.test(src),
+    'seller name must not read shop.name directly — that is the literal account name "Baby Products"');
+});
+
+t('og:title shares the brand-corrected doc_title, not raw page_title', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'snippets/meta-tags.liquid'), 'utf8');
+  ok(/<meta property="og:title" content="\{\{\s*doc_title\s*\|\s*escape\s*\}\}">/.test(src),
+    'og:title must render doc_title, the same brand-corrected value <title> uses');
+  no(/og:title" content="\{\{\s*page_title/.test(src),
+    'og:title must not read page_title directly on the homepage template');
+});
+
+t('fetchpriority never receives a raw Liquid boolean', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'snippets/responsive-image.liquid'), 'utf8');
+  ok(src.includes('fetchpriority: fp'), 'must pass the derived fp variable');
+  no(src.includes('fetchpriority: priority'),
+    'passing the raw boolean renders fetchpriority="true", which is not a valid value — browsers silently fall back to auto');
+  ok(/assign fp = 'high'/.test(src), 'fp must resolve to the one valid value this theme sets: "high"');
+});
+
+t('video viewer selects one explicit rendition, not attribute-order luck', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'sections/product-videos.liquid'), 'utf8');
+  const openButton = src.slice(src.indexOf('class="pvid-open"'), src.indexOf('</button>'));
+  const srcAttrs = (openButton.match(/data-pvid-src=/g) || []).length;
+  eq(srcAttrs, 1, 'exactly one data-pvid-src per button — a duplicate is a parse error the browser silently resolves by keeping only the first');
+  ok(src.includes('viewer_width') && src.includes('source.width > viewer_width'),
+    'viewer rendition must be chosen by comparing width, not by loop order');
+});
+
+t('strip video keeps exactly one <source>, chosen by smallest width', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'sections/product-videos.liquid'), 'utf8');
+  const stripBlock = src.slice(src.indexOf('class="pvid-video"'), src.indexOf('</video>'));
+  const sourceCount = (stripBlock.match(/<source /g) || []).length;
+  eq(sourceCount, 1, 'the strip <video> must emit one <source>, not one per rendition');
+});
+
+[
+  ['snippets/organization-schema.liquid', 'Organization'],
+  ['snippets/website-schema.liquid', 'WebSite'],
+].forEach(([rel, type]) => {
+  t(rel + ' declares @type ' + type + ' and never the literal old brand name', () => {
+    const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    ok(src.includes('"@type": "' + type + '"'), 'must declare @type ' + type);
+    no(/"Baby Products"/.test(src), 'must not hardcode the legacy account name');
+    ok(src.includes('settings.brand_name | default: shop.name'),
+      'name must resolve through the brand setting, matching the fallback chain used everywhere else in the theme');
+  });
+});
+
+t('breadcrumb schema looks up the Play Mats collection rather than assuming it', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'snippets/breadcrumb-schema.liquid'), 'utf8');
+  ok(src.includes("c.handle == 'play-mats'"),
+    'must find the collection by handle, not hardcode "Play Mats" as a name every product is assumed to carry');
+  ok(/"position":\s*1/.test(src) && /"position":\s*2/.test(src),
+    'must emit at least a two-level trail (Home, Product) even when no matching collection is found');
+  no(/"item":\s*\{\{\s*shop\.url\s*\|\s*append:\s*pm_collection\.url\s*\|\s*json\s*\}\}\s*\}\s*,\s*\{[^}]*"position":\s*3[\s\S]*"item"/.test(src),
+    'the final crumb (the current page) must not carry an "item" — it is the page already being viewed');
+});
+
+t('theme.liquid renders each site-wide schema snippet exactly once', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'layout/theme.liquid'), 'utf8');
+  ['organization-schema', 'website-schema'].forEach((name) => {
+    const count = (src.match(new RegExp("render '" + name + "'", 'g')) || []).length;
+    eq(count, 1, name + ' must render exactly once — a duplicate is a second competing node of the same @type');
+  });
+});
+
+t('the PDP renders exactly one Product schema node', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'sections/main-product.liquid'), 'utf8');
+  const count = (src.match(/render 'product-schema'/g) || []).length;
+  eq(count, 1, 'a second Product node on the page is worse than none — Google picks between them arbitrarily');
+});
+
+t('main nav carries no link to an empty or demo collection', () => {
+  /* This asserts the theme's own capacity to create one, not live Shopify
+     navigation data — the menu itself lives in Shopify admin, outside this
+     repository, and this suite has no way to reach it. What belongs here is
+     making sure nothing in the theme hardcodes a link back to a collection
+     this pass removed from navigation. */
+  ['sections/header.liquid', 'sections/footer.liquid'].forEach((rel) => {
+    const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    ['learning-toys', 'nursery', 'feeding', 'travel', 'bath-care', 'best-sellers',
+     'asset-pack-88482512898-example-products'].forEach((handle) => {
+      no(src.includes(handle), rel + ' must not hardcode a link to /collections/' + handle);
+    });
+  });
+});
+
 /* ---------------------------------------------------------------- report */
 
 const total = pass + failures.length;

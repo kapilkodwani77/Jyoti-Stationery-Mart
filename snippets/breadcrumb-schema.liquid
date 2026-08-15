@@ -1,0 +1,34 @@
+{%- comment -%}
+  BreadcrumbList JSON-LD for the PDP. Rendered from main-product.liquid,
+  where `product` is in scope.
+
+  The middle crumb is found, not assumed: this loops product.collections for
+  the one whose handle is play-mats rather than hardcoding "Play Mats" as a
+  category every product is in. Today both products are, so the loop always
+  finds it — but a future product that ships before it is added to that
+  collection gets a two-step Home -> Product breadcrumb instead of a false
+  claim about where it lives. The final crumb carries no "item" per the
+  BreadcrumbList spec: it is the page the visitor is already on.
+{%- endcomment -%}
+{%- assign pm_collection = blank -%}
+{%- for c in product.collections -%}
+  {%- if c.handle == 'play-mats' -%}
+    {%- assign pm_collection = c -%}
+    {%- break -%}
+  {%- endif -%}
+{%- endfor -%}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": {{ shop.url | json }} }
+    {%- if pm_collection != blank -%}
+    ,{ "@type": "ListItem", "position": 2, "name": {{ pm_collection.title | json }}, "item": {{ shop.url | append: pm_collection.url | json }} }
+    ,{ "@type": "ListItem", "position": 3, "name": {{ product.title | strip_html | json }} }
+    {%- else -%}
+    ,{ "@type": "ListItem", "position": 2, "name": {{ product.title | strip_html | json }} }
+    {%- endif -%}
+  ]
+}
+</script>

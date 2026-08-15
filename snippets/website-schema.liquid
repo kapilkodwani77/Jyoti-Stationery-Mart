@@ -1,0 +1,23 @@
+{%- comment -%}
+  WebSite JSON-LD. Site-wide, in <head>, once.
+
+  A second entity from Organization: Organization is who MamaJoy is, WebSite
+  is what mamajoy.in is. Two @type nodes in one page is normal and expected
+  here — they describe different things — which is not the same situation
+  organization-schema.liquid and product-schema.liquid warn about, where two
+  nodes of the *same* @type on one page make Google pick arbitrarily.
+
+  No SearchAction: that markup is for a site search Google can link to
+  directly from the SERP, and /search on this theme is noindex,follow (see
+  meta-tags.liquid) — advertising a search entry point to a page Google has
+  been told not to index would be one schema block disagreeing with another.
+{%- endcomment -%}
+{%- assign brand = settings.brand_name | default: shop.name -%}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": {{ brand | json }},
+  "url": {{ shop.url | json }}
+}
+</script>
