@@ -1,0 +1,30 @@
+{%- comment -%}
+  Organization JSON-LD. Site-wide, in <head>, once.
+
+  Declares MamaJoy as an entity separate from any one page — the raw
+  material for a brand SERP feature or a knowledge panel, neither of which
+  Google can build from a Product node alone.
+
+  Deliberately narrow: name, url, email and the registered address, because
+  those are the only facts that are both true and already public. No logo
+  (no confirmed asset URL), no sameAs (no verified social profile URLs), no
+  telephone (that number is the store's billing contact, not a public
+  support line). Absent is safer than wrong — adding any of the four back in
+  is a one-line change once each is confirmed.
+{%- endcomment -%}
+{%- assign brand = settings.brand_name | default: shop.name -%}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": {{ brand | json }},
+  "url": {{ shop.url | json }},
+  "email": "contact@mamajoy.in",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Raipur",
+    "addressRegion": "Chhattisgarh",
+    "addressCountry": "IN"
+  }
+}
+</script>

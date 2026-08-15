@@ -67,7 +67,7 @@
     "priceCurrency": {{ cart.currency.iso_code | json }},
     "availability": {% if v.available %}"https://schema.org/InStock"{% else %}"https://schema.org/OutOfStock"{% endif %},
     "itemCondition": "https://schema.org/NewCondition",
-    "seller": { "@type": "Organization", "name": {{ shop.name | json }} }
+    "seller": { "@type": "Organization", "name": {{ settings.brand_name | default: shop.name | json }} }
   }
 }
 {%- endcapture -%}

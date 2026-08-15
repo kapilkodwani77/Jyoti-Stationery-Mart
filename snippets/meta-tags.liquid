@@ -8,15 +8,19 @@
 {%- endcomment -%}
 {%- assign brand = settings.brand_name | default: shop.name -%}
 
+{%- comment -%}
+  Captured once and reused for og:title below. The homepage's page_title is
+  the account name, which no amount of appending fixes — it has to be
+  replaced outright — and og:title read page_title directly, which put
+  "Baby Products" into every shared link's preview on the one template
+  <title> was written to protect.
+{%- endcomment -%}
 {%- if template.name == 'index' -%}
-  {%- comment -%}
-    The homepage's page_title is the account name, which no amount of appending
-    fixes — it has to be replaced outright.
-  {%- endcomment -%}
-  <title>{{ brand }}{% if settings.brand_tagline != blank %} · {{ settings.brand_tagline }}{% endif %}</title>
+  {%- capture doc_title -%}{{ brand }}{% if settings.brand_tagline != blank %} · {{ settings.brand_tagline }}{% endif %}{%- endcapture -%}
 {%- else -%}
-  <title>{{ page_title }}{% unless page_title contains brand %} · {{ brand }}{% endunless %}</title>
+  {%- capture doc_title -%}{{ page_title }}{% unless page_title contains brand %} · {{ brand }}{% endunless %}{%- endcapture -%}
 {%- endif -%}
+<title>{{ doc_title }}</title>
 {%- if page_description -%}<meta name="description" content="{{ page_description | escape }}">{%- endif -%}
 
 {%- if template.name == 'page' and page.metafields.custom.lp_canonical_product != blank -%}
@@ -30,7 +34,7 @@
 {%- endif -%}
 
 <meta property="og:site_name" content="{{ brand | escape }}">
-<meta property="og:title" content="{{ page_title | escape }}">
+<meta property="og:title" content="{{ doc_title | escape }}">
 {%- if page_description -%}<meta property="og:description" content="{{ page_description | escape }}">{%- endif -%}
 <meta property="og:type" content="{% if template.name == 'product' %}product{% else %}website{% endif %}">
 <meta property="og:url" content="{{ canonical_url }}">

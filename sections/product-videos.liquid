@@ -92,6 +92,37 @@
             {%- else -%}
               {%- assign vlabel = 'Product video ' | append: vidx -%}
             {%- endif -%}
+
+            {%- comment -%}
+              Shopify transcodes every upload into several mp4 renditions
+              (SD-480p, HD-720p, HD-1080p). A <video> with one <source> per
+              rendition only ever plays the first one it meets that it can
+              play — not the best one — so which rendition showed up here was
+              an accident of API return order rather than a choice. Explicit
+              is safer than implicit: smallest width for the strip, since a
+              212px thumbnail gains nothing from 1080p; largest for the
+              viewer, since that is a full-screen frame someone tapped to see
+              closely.
+            {%- endcomment -%}
+            {%- assign strip_src = '' -%}
+            {%- assign strip_width = 999999 -%}
+            {%- assign strip_type = 'video/mp4' -%}
+            {%- assign viewer_src = '' -%}
+            {%- assign viewer_width = 0 -%}
+            {%- for source in m.sources -%}
+              {%- if source.format == 'mp4' -%}
+                {%- if source.width < strip_width -%}
+                  {%- assign strip_src = source.url -%}
+                  {%- assign strip_width = source.width -%}
+                  {%- assign strip_type = source.mime_type -%}
+                {%- endif -%}
+                {%- if source.width > viewer_width -%}
+                  {%- assign viewer_src = source.url -%}
+                  {%- assign viewer_width = source.width -%}
+                {%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+
             <li class="pvid-item">
               <div class="pvid-frame" data-pvid-frame data-pvid-label="{{ vlabel | escape }}">
                 <video class="pvid-video"
@@ -105,11 +136,9 @@
                        x-webkit-airplay="deny"
                        {% if m.preview_image %}poster="{{ m.preview_image | image_url: width: 720 }}" width="{{ m.preview_image.width }}" height="{{ m.preview_image.height }}"{% endif %}
                        aria-label="{{ vlabel | escape }}">
-                  {%- for source in m.sources -%}
-                    {%- if source.format == 'mp4' -%}
-                      <source src="{{ source.url }}" type="{{ source.mime_type }}">
-                    {%- endif -%}
-                  {%- endfor -%}
+                  {%- if strip_src != blank -%}
+                    <source src="{{ strip_src }}" type="{{ strip_type }}">
+                  {%- endif -%}
                 </video>
 
                 {%- comment -%}
@@ -125,9 +154,7 @@
                 <button type="button" class="pvid-open"
                         data-pvid-open
                         data-pvid-poster="{% if m.preview_image %}{{ m.preview_image | image_url: width: 1080 }}{% endif %}"
-                        {%- for source in m.sources -%}
-                          {%- if source.format == 'mp4' -%}data-pvid-src="{{ source.url }}"{%- endif -%}
-                        {%- endfor -%}
+                        {%- if viewer_src != blank %} data-pvid-src="{{ viewer_src }}"{% endif -%}
                         aria-label="Watch {{ vlabel | escape }}"></button>
               </div>
             </li>
