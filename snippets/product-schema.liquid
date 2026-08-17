@@ -16,6 +16,15 @@
   is deliberately absent: Google treats it as optional, and inventing a date is
   exactly the kind of unverifiable claim this theme refuses elsewhere.
 
+  No gtin/mpn, and that is correct rather than incomplete. These mats have no
+  manufacturer barcode — every variant's `barcode` is empty in the admin — so
+  there is nothing truthful to put in either field, and both are optional for
+  a Product rich result. The thing that actually wants an identifier answer is
+  Google Merchant Center, and the property it wants (`identifier_exists: false`)
+  is a *product feed* attribute, not schema.org vocabulary: emitting it here
+  would be invalid markup, not a fix. It is set in the Google & YouTube sales
+  channel instead — see the report's manual actions.
+
   ONE node. Duplicate or competing Product nodes on a page are worse than none,
   because Google picks arbitrarily between them. Judge.me can also emit product
   rich snippets from its own settings; if it is switched on there, one of the two
@@ -31,7 +40,7 @@
 -%}
 {%- capture product_ld -%}
 {
-  "@context": "https://schema.org/",
+  "@context": "https://schema.org",
   "@type": "Product",
   "name": {{ product.title | strip_html | json }},
   "url": {{ shop.url | append: product.url | json }},

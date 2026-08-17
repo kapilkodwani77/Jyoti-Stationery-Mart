@@ -5,12 +5,24 @@
   material for a brand SERP feature or a knowledge panel, neither of which
   Google can build from a Product node alone.
 
-  Deliberately narrow: name, url, email and the registered address, because
-  those are the only facts that are both true and already public. No logo
-  (no confirmed asset URL), no sameAs (no verified social profile URLs), no
-  telephone (that number is the store's billing contact, not a public
-  support line). Absent is safer than wrong — adding any of the four back in
-  is a one-line change once each is confirmed.
+  Every property here is a fact that is already published somewhere a
+  shopper can see, which is the test each one has to pass:
+
+    email        the branded support address, also shown in the footer and
+                 on /pages/support.
+    telephone    the number printed under "Talk to us" on /pages/about and
+                 "Contact us" on /pages/support, with the same hours. It is
+                 a public support line, not the billing contact it was
+                 mistaken for when this file first went in.
+    founder      a name, and only a name. No jobTitle beyond "Founder", no
+                 bio, no credentials, no award — none of that is
+                 established anywhere, and Person is exactly the node where
+                 inventing it would be most damaging.
+
+  Still deliberately absent: logo (the header is a text wordmark; there is
+  no logo asset to point at, and Google requires a real image) and sameAs
+  (no verified social profiles exist yet). Both are a one-line addition the
+  day they do. Absent is safer than wrong.
 {%- endcomment -%}
 {%- assign brand = settings.brand_name | default: shop.name -%}
 <script type="application/ld+json">
@@ -19,7 +31,24 @@
   "@type": "Organization",
   "name": {{ brand | json }},
   "url": {{ shop.url | json }},
-  "email": "contact@mamajoy.in",
+  {%- if settings.email != blank %}
+  "email": {{ settings.email | json }},
+  {%- endif %}
+  {%- if settings.founder_name != blank %}
+  "founder": { "@type": "Person", "name": {{ settings.founder_name | json }} },
+  {%- endif %}
+  {%- if settings.phone != blank %}
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "customer support",
+    "telephone": {{ settings.phone | remove: ' ' | json }},
+    {%- if settings.email != blank %}
+    "email": {{ settings.email | json }},
+    {%- endif %}
+    "areaServed": "IN",
+    "availableLanguage": ["en", "hi"]
+  },
+  {%- endif %}
   "address": {
     "@type": "PostalAddress",
     "addressLocality": "Raipur",

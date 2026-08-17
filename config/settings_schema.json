@@ -26,6 +26,19 @@
         "id": "brand_tagline",
         "label": "Brand tagline",
         "default": "Thoughtful essentials for early years"
+      },
+      {
+        "type": "text",
+        "id": "founder_name",
+        "label": "Founder name",
+        "default": "Kapil Kodwani",
+        "info": "Named in Organization schema as the founder. A real name only — leave blank rather than inventing one."
+      },
+      {
+        "type": "image_picker",
+        "id": "share_image",
+        "label": "Default sharing image",
+        "info": "Used as og:image on pages with no image of their own — the homepage most of all. 1200x630 or wider works best."
       }
     ]
   },
@@ -66,6 +79,7 @@
         "type": "text",
         "id": "phone",
         "label": "Support phone",
+        "default": "+91 83190 40006",
         "info": "Include country code"
       },
       {
@@ -77,12 +91,15 @@
       {
         "type": "text",
         "id": "email",
-        "label": "Support email"
+        "label": "Support email",
+        "default": "support@mamajoy.in",
+        "info": "The branded support address. Also used as the Organization schema email."
       },
       {
         "type": "text",
         "id": "whatsapp",
-        "label": "WhatsApp number (digits only)"
+        "label": "WhatsApp number (digits only)",
+        "default": "918319040006"
       },
       {
         "type": "richtext",

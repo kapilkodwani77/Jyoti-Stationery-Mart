@@ -44,6 +44,17 @@
         "max_products": 8
       }
     },
+    "statement": {
+      "type": "brand-statement",
+      "settings": {
+        "surface": "chalk",
+        "eyebrow": "The short version",
+        "heading": "What a MamaJoy play mat is.",
+        "body": "A play mat is the padded floor a baby spends their first years on — for tummy time, then crawling, then first steps. Ours is 6.5 by 5 ft with a 6 mm XPE foam core: thick enough to soften a fall on tile or stone, light enough to fold in three and stand behind a sofa. The surface is waterproof and wipes clean in seconds, so spilt milk is a cloth rather than a wash. The foam is BPA free, phthalate free and odour free, and one mat covers newborn to around three years.",
+        "cta_collection": "play-mats",
+        "cta_label": "Shop play mats"
+      }
+    },
     "trusted": {
       "type": "trust-bar",
       "blocks": {
@@ -165,42 +176,42 @@
           "type": "faq",
           "settings": {
             "question": "Do you deliver to my area?",
-            "answer": "<p>Anywhere in India. Most orders arrive within 2 to 5 business days of dispatch.</p>"
+            "answer": "<p>Anywhere in India, with free shipping on every order and no minimum spend. Orders leave us within 1 to 2 business days, and most arrive 2 to 5 business days after dispatch depending on how far they travel. A tracking link reaches you the moment your order ships.</p>"
           }
         },
         "q2": {
           "type": "faq",
           "settings": {
             "question": "Can I pay cash on delivery?",
-            "answer": "<p>Yes, with nothing to pay until it reaches you. If you would rather pay online, the discount for doing so is offered in your cart.</p>"
+            "answer": "<p>Yes, on every order, with nothing to pay until it reaches your door. If you would rather pay online there is a 5% discount for doing so, and the code is shown in your cart. Prepaid returns are refunded to the original payment method, cash-on-delivery returns by bank transfer or UPI.</p>"
           }
         },
         "q3": {
           "type": "faq",
           "settings": {
             "question": "What if it is not right for us?",
-            "answer": "<p>Use it properly first — that is what the 30 days are for. If it still is not right, contact us and we will arrange a pickup from your address.</p>"
+            "answer": "<p>You have 30 days from delivery. Use it properly first, because that is what the 30 days are for, and if it still is not right, contact us and we arrange the pickup from your address. It should come back in the condition you received it: used is fine, damaged beyond normal use is not.</p>"
           }
         },
         "q4": {
           "type": "faq",
           "settings": {
             "question": "Are your products safe for newborns?",
-            "answer": "<p>Everything we make is chosen with the youngest users in mind. Product pages list exact materials and age suitability so you can decide for yourself.</p>"
+            "answer": "<p>Our play mats are suitable from birth. The foam is BPA free and phthalate free, made without harmful chemicals, and arrives odour free rather than needing to be aired out first. Every product page lists the exact materials, dimensions and age range so you can check the specifics yourself.</p>"
           }
         },
         "q5": {
           "type": "faq",
           "settings": {
             "question": "Who are you?",
-            "answer": "<p>A small team in Raipur, India. You can reach us directly by phone or WhatsApp during working hours.</p>"
+            "answer": "<p>MamaJoy is a small team in Raipur, Chhattisgarh, founded by Kapil Kodwani. We make baby essentials for the first few years, starting with play mats. You can reach us by phone or WhatsApp on +91 83190 40006, Monday to Saturday, 10am to 7pm. It reaches us directly, not a call centre.</p>"
           }
         },
         "q6": {
           "type": "faq",
           "settings": {
             "question": "What is coming next?",
-            "answer": "<p>We are working through learning toys, nursery and feeding. Categories marked coming soon are genuinely in development, not placeholders.</p>"
+            "answer": "<p>Learning toys, nursery and feeding, in roughly that order. Categories marked coming soon are genuinely in development rather than placeholders. We would rather show you what is planned than pretend the range is bigger than it is today. Play mats are what we actually make right now.</p>"
           }
         }
       },
@@ -223,6 +234,7 @@
     "hero",
     "emotional",
     "products",
+    "statement",
     "trusted",
     "why",
     "faq"

@@ -1,19 +1,23 @@
 {%- comment -%} Canonical + noindex rules per Vol II §10.4. Include once in <head>. {%- endcomment -%}
 
 {%- comment -%}
-  Titles key off the brand setting, not shop.name. The Shopify account is still
-  named "Baby Products", and shop.name is what Shopify feeds page_title on the
-  homepage — so reading it directly put the account name in every tab and every
-  shared link. Same fallback chain the header and footer already use.
+  Titles key off the brand setting, not shop.name. The Shopify account was
+  named "Baby Products" when this was written — shop.name is what Shopify
+  feeds page_title on the homepage, so reading it directly put the account
+  name in every tab and every shared link. The account has since been renamed
+  to MamaJoy, which makes the two agree today; the indirection stays because
+  agreeing today is not the same as being the same field, and the store name
+  is editable by anyone with admin access. Same fallback chain the header and
+  footer already use.
 {%- endcomment -%}
 {%- assign brand = settings.brand_name | default: shop.name -%}
 
 {%- comment -%}
   Captured once and reused for og:title below. The homepage's page_title is
   the account name, which no amount of appending fixes — it has to be
-  replaced outright — and og:title read page_title directly, which put
-  "Baby Products" into every shared link's preview on the one template
-  <title> was written to protect.
+  replaced outright — and og:title read page_title directly, which put the
+  account name into every shared link's preview on the one template <title>
+  was written to protect.
 {%- endcomment -%}
 {%- if template.name == 'index' -%}
   {%- capture doc_title -%}{{ brand }}{% if settings.brand_tagline != blank %} · {{ settings.brand_tagline }}{% endif %}{%- endcapture -%}
@@ -23,14 +27,61 @@
 <title>{{ doc_title }}</title>
 {%- if page_description -%}<meta name="description" content="{{ page_description | escape }}">{%- endif -%}
 
+{%- comment -%}
+  Collections are no longer noindexed as a class. They were, and at the time
+  that was right: every collection was either empty or a second listing of
+  the same two mats, and a blanket rule was the only one that could not get
+  it wrong.
+
+  It is wrong now in one specific way — it also suppresses /collections/play-mats,
+  which has products, has a hand-written SEO title and description, and is the
+  page that should rank for the category term the whole catalog is built on.
+  A store cannot rank for "baby play mats" while telling Google not to look at
+  its baby play mats page.
+
+  So the rule is earned rather than assumed: a collection is indexable when it
+  has at least one product AND carries a hand-written SEO meta description.
+  Both halves matter. Products alone would let /collections/all and
+  /collections/new-arrivals in — same two mats, third and fourth URL, which is
+  the thin-duplicate problem the blanket rule existed to prevent.
+
+  The second half is specifically the global.description_tag metafield — the
+  Search engine listing box in the admin — and not collection.description,
+  which is the body copy shown on the page. Every collection in this store
+  already has body copy, including all six empty ones, so testing that would
+  admit new-arrivals on the strength of a line someone wrote to fill a page.
+  The SEO field is the one nobody fills in by accident.
+
+  This is also why the six empty collections need no special handling and no
+  deletion. They stay live, stay linked-to when the merchant wants them, and
+  stay out of the index on their own — and the day one is stocked and given a
+  description, it becomes indexable with no code change. Empty is a state
+  here, not a decision.
+
+  noindex,follow rather than plain noindex throughout: the crawler is still
+  wanted on the product links these pages carry.
+{%- endcomment -%}
+{%- liquid
+  assign robots_noindex = false
+  if template.name == 'page' and page.metafields.custom.lp_canonical_product != blank
+    assign robots_noindex = true
+  elsif template.name == 'search' or template.name == 'cart'
+    assign robots_noindex = true
+  elsif template.name == 'collection'
+    assign robots_noindex = true
+    assign collection_seo_desc = collection.metafields.global.description_tag
+    if collection.products_count > 0 and collection_seo_desc != blank
+      assign robots_noindex = false
+    endif
+  endif
+-%}
 {%- if template.name == 'page' and page.metafields.custom.lp_canonical_product != blank -%}
   <link rel="canonical" href="{{ shop.url }}{{ page.metafields.custom.lp_canonical_product.value.url }}">
-  <meta name="robots" content="noindex,follow">
-{%- elsif template.name == 'collection' or template.name == 'search' or template.name == 'cart' -%}
-  <link rel="canonical" href="{{ canonical_url }}">
-  <meta name="robots" content="noindex,follow">
 {%- else -%}
   <link rel="canonical" href="{{ canonical_url }}">
+{%- endif -%}
+{%- if robots_noindex -%}
+  <meta name="robots" content="noindex,follow">
 {%- endif -%}
 
 <meta property="og:site_name" content="{{ brand | escape }}">
@@ -38,6 +89,61 @@
 {%- if page_description -%}<meta property="og:description" content="{{ page_description | escape }}">{%- endif -%}
 <meta property="og:type" content="{% if template.name == 'product' %}product{% else %}website{% endif %}">
 <meta property="og:url" content="{{ canonical_url }}">
-{%- if template.name == 'product' and product.featured_image -%}
-  <meta property="og:image" content="https:{{ product.featured_image | image_url: width: 1200 }}">
+<meta property="og:locale" content="{{ request.locale.iso_code | replace: '-', '_' }}">
+
+{%- comment -%}
+  og:image, resolved in priority order rather than on the product template
+  alone. Before this, every page that was not a PDP — the homepage most of
+  all — shared with no image at all, and a link preview with no image is the
+  one a person scrolls past. Each candidate is only used if it actually
+  exists, so nothing here can emit a broken image URL:
+
+    1. the product's own featured image, on a PDP
+    2. the collection's image, on a collection page
+    3. the page's own featured image, on a content page
+    4. the brand's share image from Theme settings, anywhere
+    5. the first product's own featured image, as the last resort that
+       still shows what this shop actually sells
+
+  Step 5 is what makes this hold on the homepage today, where no image of
+  its own exists and no setting has been picked yet: the alternative was
+  emitting nothing, which is the state this replaced. It is a catalog read
+  in <head>, so it is deliberately last and only reached when the four
+  cheaper candidates have all come back blank.
+
+  1200px wide is the width both Facebook and X want for a large card, and
+  Shopify's CDN negotiates the format per requesting client.
+{%- endcomment -%}
+{%- liquid
+  assign og_img = blank
+  if template.name == 'product' and product.featured_image != blank
+    assign og_img = product.featured_image
+  elsif template.name == 'collection' and collection.image != blank
+    assign og_img = collection.image
+  elsif template.name == 'page' and page.featured_image != blank
+    assign og_img = page.featured_image
+  elsif settings.share_image != blank
+    assign og_img = settings.share_image
+  elsif settings.featured_product.featured_image != blank
+    assign og_img = settings.featured_product.featured_image
+  else
+    assign og_fallback_product = collections.all.products.first
+    if og_fallback_product.featured_image != blank
+      assign og_img = og_fallback_product.featured_image
+    endif
+  endif
+-%}
+{%- if og_img != blank -%}
+  <meta property="og:image" content="https:{{ og_img | image_url: width: 1200 }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:alt" content="{{ og_img.alt | default: doc_title | escape }}">
 {%- endif -%}
+
+{%- comment -%}
+  Twitter/X reads og:* for title, description and image, so only the card
+  type genuinely has to be declared. Declaring it is what upgrades the
+  preview from a thumbnail beside a line of text to a full-width image card
+  — and summary_large_image is only honest when an image actually resolved,
+  which is why it is inside the same guard.
+{%- endcomment -%}
+<meta name="twitter:card" content="{% if og_img != blank %}summary_large_image{% else %}summary{% endif %}">

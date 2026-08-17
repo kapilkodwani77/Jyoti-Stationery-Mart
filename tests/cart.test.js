@@ -916,20 +916,42 @@ t('videos have no Add to Cart', () =>
   no(/add-to-cart|cartAdd|buybox-form|<form/i.test(PV)));
 t('videos carry no product card markup', () => no(/product-card|card/i.test(PV)));
 
-t('video is lazy without being unstartable', () => {
-  /* metadata, not auto: a header rather than a file, which is the least that
-     lets a clip be started for someone. Never "auto". */
-  ok(/preload="metadata"/.test(PV), 'preload is not metadata');
+t('no strip clip downloads before it is scrolled to', () => {
+  /* The section sits several screens below the fold, so every byte a clip
+     spends at first paint is a byte nobody asked for. preload="none" plus no
+     autoplay attribute is what buys that back; either one alone does not,
+     because for an autoplay-eligible video the browser lets autoplay win over
+     preload. */
+  ok(/preload="none"/.test(PV), 'preload is not none — clips load before they are wanted');
   no(/preload="auto"/.test(PV), 'the whole file is being fetched up front');
+  no(/preload="metadata"/.test(PV), 'metadata preload is back on the strip');
+  const stripBlock = PV.slice(PV.indexOf('class="pvid-video"'), PV.indexOf('</video>'));
+  no(/\bautoplay\b/.test(stripBlock),
+     'the autoplay attribute is back on the strip clip, which restarts the eager download it was removed to stop');
 });
-t('the browser is given the three attributes autoplay requires', () => {
+t('the deferred clip still satisfies what a scripted play() needs', () => {
+  /* muted + playsinline is the combination iOS requires before it will let
+     play() run without a user gesture. Losing either turns every clip in the
+     strip into a still frame on a phone. */
   ['muted', 'loop', 'playsinline'].forEach((a) =>
     ok(new RegExp('\\b' + a + '\\b').test(PV), 'missing ' + a));
-});
-t('the four attributes a browser needs before it will autoplay are all present', () => {
-  ['autoplay', 'muted', 'loop', 'playsinline'].forEach((a) =>
-    ok(new RegExp('\\b' + a + '\\b').test(PV), 'missing ' + a));
   ok(/data-pvid/.test(JS), 'nothing manages playback');
+});
+t('the deferred source is handed to JS and attached exactly once', () => {
+  ok(/data-pvid-strip-src=/.test(PV), 'the strip source is not deferred to a data attribute');
+  const fn = pvidJs();
+  ok(/data-pvid-strip-src/.test(fn), 'nothing in theme.js ever attaches the deferred source');
+  ok(/removeAttribute\('data-pvid-strip-src'\)/.test(fn),
+     'the attribute must be consumed, or a clip scrolled past repeatedly re-assigns src and restarts the download');
+});
+t('a browser without IntersectionObserver still plays every clip', () => {
+  /* The autoplay attribute used to cover this path. It is gone, so the
+     fallback has to start them explicitly or the strip is dead on old
+     browsers. */
+  const fn = pvidJs();
+  const bail = fn.slice(fn.indexOf('if (!window.IntersectionObserver)'));
+  ok(/list\.forEach\(play\)/.test(bail.slice(0, 200)),
+     'the no-observer path must start the clips itself now that autoplay no longer does');
 });
 t('every visible clip plays — no single-clip selection survives', () => {
   const fn = pvidJs();
@@ -1514,11 +1536,15 @@ t('video viewer selects one explicit rendition, not attribute-order luck', () =>
     'viewer rendition must be chosen by comparing width, not by loop order');
 });
 
-t('strip video keeps exactly one <source>, chosen by smallest width', () => {
+t('strip video carries exactly one deferred source, chosen by smallest width', () => {
   const src = fs.readFileSync(path.join(ROOT, 'sections/product-videos.liquid'), 'utf8');
   const stripBlock = src.slice(src.indexOf('class="pvid-video"'), src.indexOf('</video>'));
-  const sourceCount = (stripBlock.match(/<source /g) || []).length;
-  eq(sourceCount, 1, 'the strip <video> must emit one <source>, not one per rendition');
+  eq((stripBlock.match(/<source /g) || []).length, 0,
+     'the strip must not emit a <source> — the URL is deferred to a data attribute so nothing downloads at parse time');
+  eq((stripBlock.match(/data-pvid-strip-src=/g) || []).length, 1,
+     'exactly one deferred source per clip — a duplicate attribute is a parse error the browser silently resolves by keeping only the first');
+  ok(src.includes('strip_width') && src.includes('source.width < strip_width'),
+    'strip rendition must be chosen by comparing width, not by loop order');
 });
 
 [
@@ -1571,6 +1597,221 @@ t('main nav carries no link to an empty or demo collection', () => {
       no(src.includes(handle), rel + ' must not hardcode a link to /collections/' + handle);
     });
   });
+});
+
+
+/* ------------------------------------------------- SEO finalization pass */
+
+const META = fs.readFileSync(path.join(ROOT, 'snippets/meta-tags.liquid'), 'utf8');
+const ORG  = fs.readFileSync(path.join(ROOT, 'snippets/organization-schema.liquid'), 'utf8');
+const PROD_SCHEMA = fs.readFileSync(path.join(ROOT, 'snippets/product-schema.liquid'), 'utf8');
+const SETTINGS_SCHEMA = fs.readFileSync(path.join(ROOT, 'config/settings_schema.json'), 'utf8');
+
+function stripLiquidComments(src) {
+  return src.replace(/\{%-?\s*comment\s*-?%\}[\s\S]*?\{%-?\s*endcomment\s*-?%\}/g, '');
+}
+function readTemplate(rel) {
+  const raw = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  return JSON.parse(raw.replace(/\/\*[\s\S]*?\*\//, ''));
+}
+function faqBlocks(rel) {
+  const tpl = readTemplate(rel);
+  const out = [];
+  Object.values(tpl.sections).forEach((sec) => {
+    if (sec.type !== 'faq-accordion') return;
+    Object.values(sec.blocks || {}).forEach((b) => out.push(b.settings));
+  });
+  return out;
+}
+
+/* --- brand + contact identity ------------------------------------------ */
+
+t('no customer-facing surface carries the personal Gmail address', () => {
+  ['snippets', 'sections', 'layout', 'templates', 'config'].forEach((dir) => {
+    fs.readdirSync(path.join(ROOT, dir)).forEach((f) => {
+      const src = fs.readFileSync(path.join(ROOT, dir, f), 'utf8');
+      no(/kplkodwani|@gmail\.com/i.test(src),
+         dir + '/' + f + ' exposes a personal Gmail as the support contact');
+    });
+  });
+});
+
+t('the branded support address is the theme default', () => {
+  ok(/"id":\s*"email"[\s\S]{0,200}?"default":\s*"support@mamajoy\.in"/.test(SETTINGS_SCHEMA),
+     'Theme settings must default the support email to support@mamajoy.in');
+});
+
+t('Organization schema names the real founder and nothing more about them', () => {
+  /* Asserted against emitted markup only. The comments in these files discuss
+     the very properties being banned, and a test that reads them is testing
+     the prose rather than the payload. */
+  const org = stripLiquidComments(ORG);
+  ok(/"founder"/.test(org), 'no founder entity — the brand has no named person behind it');
+  ok(/"@type":\s*"Person"/.test(org), 'founder must be a Person node');
+  ok(/settings\.founder_name/.test(org), 'the founder name must come from settings, not a literal');
+  /* A name is established. A biography, job history or credential is not, and
+     Person is the node where inventing one does the most damage. */
+  no(/jobTitle|alumniOf|award|knowsAbout|"description"/.test(org),
+     'an unverifiable claim about the founder has been added');
+});
+
+t('the founder name has a real default and is shared with the About signature', () => {
+  ok(/"id":\s*"founder_name"[\s\S]{0,200}?"default":\s*"Kapil Kodwani"/.test(SETTINGS_SCHEMA),
+     'founder name must default to the real, owner-confirmed name');
+  const FN = fs.readFileSync(path.join(ROOT, 'sections/founder-note.liquid'), 'utf8');
+  ok(/section\.settings\.founder_name \| default: settings\.founder_name/.test(FN),
+     'the visible signature and the schema founder must read from one value');
+});
+
+t('Organization schema carries a contactable support channel', () => {
+  ok(/"contactPoint"/.test(ORG), 'no contactPoint — nothing tells an engine how to reach support');
+  ok(/settings\.email/.test(ORG), 'support email must come from settings');
+  ok(/settings\.phone/.test(ORG), 'support phone must come from settings');
+});
+
+t('Organization schema still claims no logo and no social profiles', () => {
+  /* Both are absent because neither exists yet. A sameAs pointing at a
+     profile that has never been created is a fabricated entity signal. */
+  no(/"sameAs"/.test(ORG), 'a sameAs appeared but no social profile has been confirmed');
+  no(/"logo"/.test(ORG), 'a logo appeared but the header is a text wordmark with no logo asset');
+});
+
+/* --- product schema: identifiers ---------------------------------------- */
+
+t('Product schema invents no GTIN, MPN or barcode', () => {
+  const ps = stripLiquidComments(PROD_SCHEMA);
+  no(/"gtin|"mpn"|"gtin8"|"gtin13"|"gtin14"|"isbn"/i.test(ps),
+     'an identifier the owner does not have has been fabricated');
+  /* identifier_exists is a Merchant Center feed attribute, not schema.org
+     vocabulary — emitting it here would be invalid markup, not a fix. */
+  no(/identifier_exists/.test(ps),
+     'identifier_exists is a product-feed attribute and is invalid inside JSON-LD');
+});
+
+t('every JSON-LD block uses the canonical schema.org context', () => {
+  ['snippets/product-schema.liquid', 'snippets/organization-schema.liquid',
+   'snippets/website-schema.liquid', 'snippets/breadcrumb-schema.liquid',
+   'sections/faq-accordion.liquid'].forEach((rel) => {
+    const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    if (!/@context/.test(src)) return;
+    no(/"https:\/\/schema\.org\/"/.test(src),
+       rel + ' uses a trailing-slash @context — normalize to https://schema.org');
+    ok(/"https:\/\/schema\.org"/.test(src), rel + ' must declare the schema.org context');
+  });
+});
+
+/* --- indexing policy ----------------------------------------------------- */
+
+t('a stocked, deliberately-described collection is indexable', () => {
+  const m = stripLiquidComments(META);
+  ok(/collection\.products_count > 0/.test(m),
+     'an empty collection must not be indexable');
+  ok(/metafields\.global\.description_tag/.test(m),
+     'indexability must hinge on the hand-written SEO description, not on body copy every collection already has');
+  no(/template\.name == 'collection'\s+or/.test(m),
+     'collections are being noindexed as a class again, which suppresses the one category page that should rank');
+});
+
+t('search and cart stay out of the index', () => {
+  const m = stripLiquidComments(META);
+  ok(/template\.name == 'search' or template\.name == 'cart'/.test(m),
+     'search and cart must remain noindex');
+  ok(/noindex,follow/.test(m), 'noindex must keep follow so product links are still crawled');
+});
+
+t('every page emits exactly one canonical', () => {
+  const m = stripLiquidComments(META);
+  eq((m.match(/rel="canonical"/g) || []).length, 2,
+     'exactly two canonical branches expected: the landing-page override and the default');
+});
+
+/* --- social metadata ----------------------------------------------------- */
+
+t('og:image resolves on pages that own no image', () => {
+  const m = stripLiquidComments(META);
+  ok(/settings\.share_image/.test(m), 'no theme-level sharing image in the fallback chain');
+  ok(/collections\.all\.products\.first/.test(m),
+     'nothing catches the homepage, which owns no image and has no setting picked yet');
+  ok(/og:image:alt/.test(m), 'the share image is unlabelled');
+});
+
+t('the share image setting exists for a merchant to fill', () => {
+  ok(/"id":\s*"share_image"/.test(SETTINGS_SCHEMA), 'share_image is referenced but never declared');
+});
+
+t('a Twitter card is declared and only claims a large image when one exists', () => {
+  const m = stripLiquidComments(META);
+  ok(/twitter:card/.test(m), 'no Twitter card type — previews stay a text line');
+  ok(/og_img != blank.*summary_large_image/s.test(m),
+     'summary_large_image must be conditional on an image actually resolving');
+});
+
+t('og:title never falls back to the raw page title', () => {
+  const m = stripLiquidComments(META);
+  ok(/og:title" content="\{\{ doc_title/.test(m),
+     'og:title must reuse the brand-corrected title, not page_title');
+});
+
+/* --- FAQ content + schema ------------------------------------------------ */
+
+[['templates/index.json', 6], ['templates/product.json', 6]].forEach(([rel, count]) => {
+  t(rel + ' FAQ answers sit in the extractable range', () => {
+    const blocks = faqBlocks(rel);
+    eq(blocks.length, count, 'unexpected FAQ block count');
+    blocks.forEach((b) => {
+      const words = b.answer.replace(/<[^>]+>/g, ' ').trim().split(/\s+/).length;
+      /* 40-60 words is the window AI engines extract from most reliably.
+         Under it the answer is not self-contained; well over it and the
+         answer stops being an answer. */
+      ok(words >= 40, '"' + b.question + '" is ' + words + ' words — too thin to stand alone');
+      ok(words <= 70, '"' + b.question + '" is ' + words + ' words — padded past the point of being an answer');
+    });
+  });
+});
+
+t('FAQ answers claim no certification and make no medical claim', () => {
+  [].concat(faqBlocks('templates/index.json'), faqBlocks('templates/product.json'))
+    .forEach((b) => {
+      no(/certified|certification|ISO |ASTM|CE mark|lab.tested|non.?toxic certified/i.test(b.answer),
+         '"' + b.question + '" claims a certification that has not been established');
+      no(/hypoallergenic|prevents|cures|treats|doctor.recommended|pediatrician.recommended/i.test(b.answer),
+         '"' + b.question + '" makes a medical claim');
+    });
+});
+
+t('FAQPage schema is emitted once per page and mirrors the visible answers', () => {
+  const FAQ = fs.readFileSync(path.join(ROOT, 'sections/faq-accordion.liquid'), 'utf8');
+  eq((FAQ.match(/"@type":"FAQPage"/g) || []).length, 1, 'exactly one FAQPage node per section');
+  ok(/block\.settings\.answer \| strip_html \| json/.test(FAQ),
+     'the schema answer must be the same string the shopper reads, not a second copy');
+  ok(/block\.settings\.question \| strip_html \| json/.test(FAQ),
+     'the schema question must be the same string the shopper reads');
+});
+
+/* --- homepage answer block ----------------------------------------------- */
+
+t('the homepage says plainly what it sells, without touching the H1', () => {
+  const tpl = readTemplate('templates/index.json');
+  const hero = Object.values(tpl.sections).find((s) => s.type === 'hero-editorial');
+  eq(hero.settings.heading, 'Safe beginnings.', 'the brand H1 must not be rewritten for keywords');
+
+  const stmt = Object.values(tpl.sections).find((s) => s.type === 'brand-statement');
+  ok(stmt, 'no self-contained answer block on the homepage');
+  ok(tpl.order.includes('statement'), 'the answer block is defined but never rendered');
+  const body = stmt.settings.body;
+  ['play mat', '6.5', '6 mm', 'waterproof', 'BPA free'].forEach((fact) =>
+    ok(body.includes(fact), 'the answer block omits a concrete fact: ' + fact));
+  const words = body.trim().split(/\s+/).length;
+  ok(words >= 60 && words <= 140, 'answer block is ' + words + ' words — aim for a paragraph, not an essay');
+});
+
+/* --- LCP hint ------------------------------------------------------------ */
+
+t('fetchpriority is a valid enumerated value or absent', () => {
+  const RI = fs.readFileSync(path.join(ROOT, 'snippets/responsive-image.liquid'), 'utf8');
+  no(/fetchpriority: priority\b/.test(RI),
+     'a raw Liquid boolean reaches fetchpriority again — it renders as "true", which browsers reject');
+  ok(/assign fp = 'high'/.test(RI), 'the only valid value that means anything here is high');
 });
 
 /* ---------------------------------------------------------------- report */

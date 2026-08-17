@@ -1,12 +1,27 @@
 {{ 'section-founder.css' | asset_url | stylesheet_tag }}
+{%- comment -%}
+  The name falls back to the Brand theme setting so the signature, the
+  portrait's alt text and the Organization schema's founder all read from one
+  value. A merchant who wants a different name on this one section can still
+  set it per-section; nobody has to type it twice to keep them in step.
+
+  The portrait is rendered only when one exists. Passing a blank image to
+  responsive-image draws its "Image pending" placeholder, and a grey box where
+  a face should be, directly beside a founder's name, undoes the trust the
+  section is here to build — worse than the asymmetric layout of no portrait
+  at all.
+{%- endcomment -%}
+{%- assign fname = section.settings.founder_name | default: settings.founder_name -%}
 <section class="sec {% if section.settings.compact %}sec--tight{% endif %} {% render 'surface-class', s: section.settings.surface %}">
   <div class="wrap">
     <h2 class="h2">{{ section.settings.heading }}</h2>
 
     <div class="fnd">
-      <div class="portrait" data-reveal>
-        {% render 'responsive-image', img: section.settings.portrait, alt: section.settings.founder_name | append: ', founder', widths: '400,600,800', sizes: '(min-width:900px) 35vw, 90vw' %}
-      </div>
+      {%- if section.settings.portrait != blank -%}
+        <div class="portrait" data-reveal>
+          {% render 'responsive-image', img: section.settings.portrait, alt: fname | append: ', founder', widths: '400,600,800', sizes: '(min-width:900px) 35vw, 90vw' %}
+        </div>
+      {%- endif -%}
       <div data-reveal>
         <p class="body-copy" style="font-size:18px">{{ section.settings.body }}</p>
         <p class="body-copy" style="font-size:18px;margin-top:var(--s-5)">If something is wrong with yours, this is my number:</p>
@@ -16,7 +31,9 @@
           <span class="bc-todo" data-todo="phone">add phone in Theme settings</span>
         {%- endif -%}
         <p class="micro" style="margin-top:var(--s-3)">It reaches me, not a call centre.</p>
-        <p class="sig">{{ section.settings.founder_name }}, {{ section.settings.founder_role }}</p>
+        {%- if fname != blank -%}
+          <p class="sig">{{ fname }}, {{ section.settings.founder_role }}</p>
+        {%- endif -%}
       </div>
     </div>
   </div>
@@ -31,7 +48,7 @@
     { "type": "text", "id": "heading", "label": "Heading", "default": "We are new. Here is who we are." },
     { "type": "image_picker", "id": "portrait", "label": "Founder portrait" },
     { "type": "textarea", "id": "body", "label": "Body", "default": "MamaJoy is run from Raipur. We made this mat because we could not find one we wanted in our own living room." },
-    { "type": "text", "id": "founder_name", "label": "Founder name" },
+    { "type": "text", "id": "founder_name", "label": "Founder name", "info": "Leave blank to use the founder name from Theme settings > Brand." },
     { "type": "text", "id": "founder_role", "label": "Founder role", "default": "Founder" }
   ],
   "presets": [{ "name": "Founder note" }]

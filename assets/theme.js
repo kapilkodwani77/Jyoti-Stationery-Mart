@@ -1707,10 +1707,13 @@
      buffer should ever exist however many clips a merchant uploads. Its
      source is dropped on close, which abandons any download still in flight.
 
-     Reduced motion is the one place the autoplay yields. The setting exists
-     to stop exactly this and WCAG 2.2.2 covers content moving past five
-     seconds, so the strip is paused and left on its posters. The viewer still
-     plays: opening it is a deliberate request to watch one thing. */
+     Reduced motion is the one place the strip yields entirely. The setting
+     exists to stop exactly this and WCAG 2.2.2 covers content moving past
+     five seconds, so the strip is left on its posters. Since the clips now
+     arrive with no src, that also means someone who asked for less motion
+     downloads no video at all rather than downloading it and pausing it.
+     The viewer still plays: opening it is a deliberate request to watch one
+     thing. */
   (function productVideos() {
     var frames = [].slice.call(document.querySelectorAll('[data-pvid-frame]'));
     if (!frames.length) return;
@@ -1726,7 +1729,20 @@
     var lastFocus = null;
     var openIndex = -1;
 
+    /* The strip's clips ship with their source in a data attribute and no src
+       at all, so nothing downloads until something here asks for it — see the
+       comment in sections/product-videos.liquid for why. Whoever wants the
+       clip first attaches it, and consuming the attribute makes that a
+       one-time cost: a clip scrolled past four times still loads once. */
+    function hydrate(v) {
+      var src = v.getAttribute('data-pvid-strip-src');
+      if (!src) return;
+      v.removeAttribute('data-pvid-strip-src');
+      v.src = src;
+    }
+
     function play(v) {
+      hydrate(v);
       var p = v.play();
       if (p && p.catch) p.catch(function () {});
     }
@@ -1833,11 +1849,21 @@
       return;
     }
 
-    /* Without an observer the autoplay attribute still plays everything; only
-       the off-screen pausing is lost, which is a performance guard rather
-       than a feature the shopper can see. */
-    if (!window.IntersectionObserver) return;
+    /* Without an observer there is no scroll position to key off, and the
+       clips no longer carry an autoplay attribute to fall back on, so they
+       are all started here. That restores the old behaviour exactly — every
+       clip running, off-screen pausing lost — for the browsers that cannot
+       do better. */
+    if (!window.IntersectionObserver) {
+      list.forEach(play);
+      return;
+    }
 
+    /* rootMargin buys a screenful of warning, so a clip is loaded and already
+       running by the time it is scrolled to rather than starting from its
+       poster once it arrives. It is still far short of the section, which
+       sits several screens below the fold, so first paint downloads no video
+       either way. */
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
         var i = list.indexOf(e.target);
@@ -1851,7 +1877,7 @@
           list[i].pause();
         }
       });
-    }, { threshold: [0, 0.25, 0.5, 0.75, 1] });
+    }, { threshold: [0, 0.25, 0.5, 0.75, 1], rootMargin: '200px 0px' });
 
     list.forEach(function (v) { io.observe(v); });
 

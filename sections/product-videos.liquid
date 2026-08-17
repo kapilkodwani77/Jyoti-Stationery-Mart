@@ -17,26 +17,22 @@
   above and below; repeating them turns a reel strip into a card grid arguing
   with the buy box about the same decision. The videos are the content.
 
-  muted, loop and playsinline are the three attributes a browser requires
-  before it will let anything start on its own, and autoplay is now the fourth.
+  muted, loop and playsinline are the three attributes that let a clip start
+  on its own. autoplay was briefly a fourth and is deliberately gone; the
+  block above the <video> explains what it cost and what replaced it.
 
-  An earlier revision left autoplay off and had theme.js start exactly one
-  clip — the most visible — on the grounds that the attribute starts all of
-  them. The requirement changed: every clip the shopper can see is meant to be
-  running, so the objection no longer applies and the declarative path is the
-  better one. It is also the more reliable one on iOS Safari, where a
-  scripted play() before any user gesture is refused more often than a
-  muted+playsinline autoplay attribute is.
+  Every clip the shopper can see is meant to be running, and still is. What
+  changed is when the browser is told to fetch one: theme.js starts a clip as
+  it approaches the viewport instead of the browser fetching all of them while
+  the page is still parsing. On a phone the clips actually running are the
+  first card and most of the second, which is what it was before — the
+  difference is the other clips no longer cost anything until scrolled to.
 
-  What theme.js still does is pause the clips that are off screen, including
-  on first load, so the attribute's cost is bounded to the clips in view. On a
-  phone that is the first card and most of the second.
-
-  preload="metadata" rather than "none": the first frame has to exist before a
-  clip can be started for someone, and metadata is a header rather than a
-  file. width and height still come off the poster, so nothing shifts, and the
-  poster is also what a blocked autoplay falls back to — a first frame with a
-  play button on it rather than a black rectangle.
+  preload="none" rather than "metadata": with no src attached there is nothing
+  to fetch a header for either, so this is belt and braces rather than the
+  load-bearing part. width and height still come off the poster, so nothing
+  shifts, and the poster is what fills the frame until playback starts — a
+  real first frame rather than a black rectangle.
 
   No `controls` attribute, and that is the whole of the visual argument here.
   The native control bar is the one part of this page that no stylesheet owns:
@@ -103,10 +99,16 @@
               212px thumbnail gains nothing from 1080p; largest for the
               viewer, since that is a full-screen frame someone tapped to see
               closely.
+
+              Neither URL is written into a <source> element any more — both
+              are handed to JS as data attributes — so no mime type is
+              carried alongside them. A src set from script needs no type
+              hint: the type attribute exists to let a browser skip a
+              candidate it cannot play without fetching it, and there is only
+              ever one candidate here.
             {%- endcomment -%}
             {%- assign strip_src = '' -%}
             {%- assign strip_width = 999999 -%}
-            {%- assign strip_type = 'video/mp4' -%}
             {%- assign viewer_src = '' -%}
             {%- assign viewer_width = 0 -%}
             {%- for source in m.sources -%}
@@ -114,7 +116,6 @@
                 {%- if source.width < strip_width -%}
                   {%- assign strip_src = source.url -%}
                   {%- assign strip_width = source.width -%}
-                  {%- assign strip_type = source.mime_type -%}
                 {%- endif -%}
                 {%- if source.width > viewer_width -%}
                   {%- assign viewer_src = source.url -%}
@@ -123,23 +124,50 @@
               {%- endif -%}
             {%- endfor -%}
 
+            {%- comment -%}
+              The source is a data-src, and the clip carries neither autoplay
+              nor a real src until it is close to being seen.
+
+              What that fixes: this section sits below the buy box, the
+              benefits, the specs and the FAQ, so on every device none of
+              these clips is ever on screen at first paint. With the autoplay
+              attribute the browser began downloading all of them anyway —
+              measured from Shopify's own rendition data, 4.7 MB on the
+              alphabets mat and 7.8 MB on the cars mat — and theme.js then
+              paused every one for being off screen. The bytes were spent in
+              full, during the render of the page, and none of them were
+              wanted yet. That is the remaining weight the audit's 17 MB
+              figure was mostly made of.
+
+              preload="none" alone would not have done it: for a video the
+              browser considers autoplay-eligible, autoplay wins over
+              preload, which is why the attribute has to come off rather
+              than be counterweighted.
+
+              The UX is unchanged and deliberately so — every clip still
+              starts by itself, silent, looping, with no play button to
+              press. It starts when it is nearly in view rather than when
+              the HTML parses, which on this page is the first moment
+              anybody could see it. theme.js already drove exactly this
+              transition: it has always called play() on clips entering the
+              viewport and paused them on the way out, so this reuses a
+              path that was load-bearing before, not a new one. Muted plus
+              playsinline is what makes a scripted play() permitted on iOS,
+              and that combination is preserved.
+            {%- endcomment -%}
             <li class="pvid-item">
               <div class="pvid-frame" data-pvid-frame data-pvid-label="{{ vlabel | escape }}">
                 <video class="pvid-video"
-                       autoplay
                        muted
                        loop
                        playsinline
-                       preload="metadata"
+                       preload="none"
+                       {%- if strip_src != blank %} data-pvid-strip-src="{{ strip_src }}"{% endif -%}
                        disablepictureinpicture
                        disableremoteplayback
                        x-webkit-airplay="deny"
                        {% if m.preview_image %}poster="{{ m.preview_image | image_url: width: 720 }}" width="{{ m.preview_image.width }}" height="{{ m.preview_image.height }}"{% endif %}
-                       aria-label="{{ vlabel | escape }}">
-                  {%- if strip_src != blank -%}
-                    <source src="{{ strip_src }}" type="{{ strip_type }}">
-                  {%- endif -%}
-                </video>
+                       aria-label="{{ vlabel | escape }}"></video>
 
                 {%- comment -%}
                   One transparent target over the whole frame, and nothing
