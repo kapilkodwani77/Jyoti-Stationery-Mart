@@ -86,7 +86,26 @@
     {%- endfor -%}
   </nav>
 
+  {%- comment -%}
+    Order tracking, in the menu rather than in the nav list above it.
+
+    It belongs in the header because "where is my order" is the single most
+    common reason an existing customer returns to a shop, and hunting the
+    footer for it on a phone is the worst version of that visit. It does not
+    belong in the nav list itself: those three links are what someone deciding
+    whether to buy needs, and a fourth aimed at people who already have would
+    crowd the one job that list does on a 375px screen.
+
+    routes.account_url rather than a hardcoded path. This store runs New
+    Customer Accounts, where sign-in is an emailed code rather than a password,
+    and Shopify matches orders to the address they were placed with — so a
+    guest who never created an account still finds their order and its tracking
+    here. That is also why this is not a bespoke order-lookup form: Shopify
+    already carries the tracking number the courier writes back, and a second
+    lookup built on top of it would be a worse copy of a thing that exists.
+  {%- endcomment -%}
   <div class="nav-overlay-foot">
+    <a href="{{ routes.account_url }}">Track your order</a>
     {%- if settings.phone != blank -%}<a href="tel:{{ settings.phone | replace: ' ', '' }}">{{ settings.phone }}</a>{%- endif -%}
     {%- if settings.email != blank -%}<a href="mailto:{{ settings.email }}">{{ settings.email }}</a>{%- endif -%}
     <p class="micro" style="margin-top:var(--s-3)">Cash on delivery &middot; 30-day returns</p>

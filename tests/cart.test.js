@@ -1814,6 +1814,162 @@ t('fetchpriority is a valid enumerated value or absent', () => {
   ok(/assign fp = 'high'/.test(RI), 'the only valid value that means anything here is high');
 });
 
+
+/* ------------------------------------- pincode delivery check + tracking */
+
+const PIN_LIQUID = fs.readFileSync(path.join(ROOT, 'snippets/pincode-check.liquid'), 'utf8');
+const PIN_CSS    = fs.readFileSync(path.join(ROOT, 'assets/component-pincode.css'), 'utf8');
+/* BUYBOX is already read and comment-stripped further up this file. Reused
+   rather than re-read: the placement assertions below are about real markup,
+   and the stripped copy is the one that cannot be fooled by a comment
+   mentioning the thing it is looking for. */
+const HEADER     = fs.readFileSync(path.join(ROOT, 'sections/header.liquid'), 'utf8');
+const FOOTER     = fs.readFileSync(path.join(ROOT, 'sections/footer.liquid'), 'utf8');
+
+function pincodeJs() {
+  const src = JS.slice(JS.indexOf('function pincodeCheck'));
+  const end = src.indexOf('\n  })();');
+  ok(end > -1, 'could not find the end of pincodeCheck');
+  return src.slice(0, end);
+}
+
+/* The business-day walk is the one piece of real arithmetic in this feature,
+   and a promise that lands on a Sunday is the exact failure it exists to
+   prevent. Lifted out of the shipped source and run, rather than pattern
+   matched, because "looks like it skips weekends" is not the same claim. */
+function addBusinessDays() {
+  const fn = pincodeJs();
+  const start = fn.indexOf('function addBusinessDays');
+  const end = fn.indexOf('\n    }', start);
+  ok(start > -1 && end > -1, 'could not extract addBusinessDays');
+  // eslint-disable-next-line no-new-func
+  return new Function(fn.slice(start, end + 6) + '; return addBusinessDays;')();
+}
+
+t('the delivery estimate never lands on a weekend', () => {
+  const add = addBusinessDays();
+  /* Walk every weekday start across a fortnight so no single lucky date
+     carries the test. */
+  for (let d = 1; d <= 14; d++) {
+    for (let n = 1; n <= 10; n++) {
+      const out = add(new Date(2026, 7, d), n);
+      const wd = out.getDay();
+      ok(wd !== 0 && wd !== 6,
+         'start ' + d + ' + ' + n + ' business days landed on a weekend');
+    }
+  }
+});
+
+t('business days skip the weekend rather than counting through it', () => {
+  const add = addBusinessDays();
+  /* 2026-08-17 is a Monday. One business day on is Tuesday the 18th; five is
+     the following Monday the 24th, not Saturday the 22nd. */
+  const mon = new Date(2026, 7, 17);
+  eq(mon.getDay(), 1, 'fixture is not a Monday — the rest of this test is meaningless');
+  eq(add(mon, 1).getDate(), 18, 'one business day from Monday should be Tuesday');
+  eq(add(mon, 5).getDate(), 24, 'five business days from Monday should be the next Monday');
+
+  /* From a Friday, one business day is the following Monday. */
+  const fri = new Date(2026, 7, 21);
+  eq(fri.getDay(), 5, 'fixture is not a Friday');
+  eq(add(fri, 1).getDate(), 24, 'one business day from Friday should be Monday');
+});
+
+t('the estimate window is ordered and never collapses backwards', () => {
+  const add = addBusinessDays();
+  const now = new Date(2026, 7, 17);
+  const from = add(now, 1 + 2);   // dispatch min + transit min
+  const to   = add(now, 2 + 5);   // dispatch max + transit max
+  ok(to.getTime() > from.getTime(), 'the far end of the window must be later than the near end');
+});
+
+t('pincode validation rejects what is not an Indian pincode', () => {
+  const fn = pincodeJs();
+  ok(/replace\(\/\\D\/g, ''\)/.test(fn), 'input must be stripped to digits before length is judged');
+  ok(/raw\.length !== 6/.test(fn), 'no six-digit length check');
+  ok(/charAt\(0\) === '0'/.test(fn), 'a leading zero is not a valid Indian pincode and must be caught');
+  ok(/charAt\(0\) === '9'/.test(fn), 'the 9xxxxx Army Postal Service range must be handled explicitly');
+});
+
+t('the pincode field invents no delivery promise the store has not made', () => {
+  const fn = pincodeJs();
+  /* Every number in the estimate has to arrive from theme settings via data
+     attributes. A literal day count here is a promise nobody approved. */
+  ok(/data-dispatch-min/.test(fn) && /data-transit-max/.test(fn),
+     'the window must be read from the settings-driven data attributes');
+  ok(/data-dispatch-min="\{\{ dispatch_min \}\}"/.test(PIN_LIQUID),
+     'the snippet must pass the setting through, not a hardcoded number');
+  /* It must not quote a shipping price while the storefront and the live rate
+     disagree about what shipping costs. */
+  no(/₹|Rs\.?\s*\d|FREE|free shipping/i.test(fn.replace(/\/\*[\s\S]*?\*\//g, '')),
+     'the estimator must not state a shipping cost');
+});
+
+t('the pincode input is usable on a phone', () => {
+  /* Comment-stripped: the snippet's own comments discuss type=number and
+     role=alert to explain why neither is used, and a test that reads those
+     is testing the prose rather than the markup. */
+  const pin = stripLiquidComments(PIN_LIQUID);
+  ok(/inputmode="numeric"/.test(pin), 'no numeric keypad on mobile');
+  ok(/autocomplete="postal-code"/.test(pin), 'no autofill hint');
+  ok(/maxlength="6"/.test(pin), 'the field should stop at six digits');
+  no(/type="number"/.test(pin),
+     'type=number gives a spinner and accepts 1e5 — text plus inputmode is the pattern this theme uses');
+  ok(/font-size:16px/.test(PIN_CSS), 'under 16px iOS zooms the page when the field is focused');
+  ok(/height:var\(--tap\)/.test(PIN_CSS), 'the field and button must meet the theme 44px tap floor');
+});
+
+t('the pincode result is announced but does not interrupt', () => {
+  const pin = stripLiquidComments(PIN_LIQUID);
+  ok(/role="status"/.test(pin), 'the answer must be announced to a screen reader');
+  no(/role="alert"/.test(pin),
+     'alert interrupts whatever is being read — a wrong pincode is a correction, not an emergency');
+  ok(/aria-describedby="pincode-result"/.test(pin), 'the field and its answer must be associated');
+});
+
+t('the delivery check sits under Add to Cart, not above it', () => {
+  const cta = BUYBOX.indexOf('data-add-to-cart');
+  const pin = BUYBOX.indexOf("render 'pincode-check'");
+  ok(cta > -1 && pin > -1, 'expected both the CTA and the pincode render in the buy box');
+  ok(pin > cta, 'the pincode block must not push the primary CTA down the page');
+});
+
+t('the delivery check is absent from the compact buy box', () => {
+  /* The compact variant is the sticky bar copy. A text field there would be
+     cramped and a second copy of the same control on one page.
+
+     The buy box carries several `unless compact` guards, so this walks back
+     from the render call to whichever one actually encloses it rather than
+     matching the first in the file. */
+  const at = BUYBOX.indexOf("render 'pincode-check'");
+  ok(at > -1, 'the pincode block is not rendered from the buy box at all');
+  const before = BUYBOX.slice(0, at);
+  const lastOpen  = before.lastIndexOf('{%- unless compact -%}');
+  const lastClose = before.lastIndexOf('{%- endunless -%}');
+  ok(lastOpen > lastClose,
+     'the pincode block is not inside an open `unless compact` guard — it would render in the sticky bar too');
+});
+
+t('order tracking is reachable from the header and the footer', () => {
+  ok(/Track your order/.test(HEADER), 'no tracking entry in the header menu');
+  ok(/Track your order/.test(FOOTER), 'no tracking entry in the footer');
+  /* routes.account_url, not a hardcoded /account: this store runs New Customer
+     Accounts, which Shopify hosts on its own domain, and the route filter is
+     what resolves that correctly. */
+  ok(/routes\.account_url/.test(HEADER) && /routes\.account_url/.test(FOOTER),
+     'tracking links must resolve through routes.account_url');
+});
+
+t('no bespoke order-tracking form was built alongside Shopify’s', () => {
+  ['sections', 'snippets'].forEach((dir) => {
+    fs.readdirSync(path.join(ROOT, dir)).forEach((f) => {
+      const src = fs.readFileSync(path.join(ROOT, dir, f), 'utf8');
+      no(/name=["']tracking_number["']|awb|shiprocket|delhivery/i.test(src),
+         dir + '/' + f + ' looks like a second tracking system — Shopify already carries the courier number');
+    });
+  });
+});
+
 /* ---------------------------------------------------------------- report */
 
 const total = pass + failures.length;

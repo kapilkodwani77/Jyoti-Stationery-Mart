@@ -1,0 +1,77 @@
+{%- comment -%}
+  Pincode delivery check. Rendered in the buy box, directly under Add to Cart.
+
+  WHERE THE NUMBERS COME FROM, and what this deliberately does not say.
+
+  This store has no pincode-level shipping data to draw on. There is no
+  carrier service connected (carrierServices is empty), so Shopify never
+  rates a real courier for a given pincode, and the one domestic delivery
+  zone covers all 36 Indian states and union territories with a single flat
+  method. Two things follow, and both shape this component:
+
+    Serviceability is universal, not looked up. Every valid Indian pincode
+    is inside the delivery zone, so "do you deliver here" has one honest
+    answer for the whole country. This does not pretend to query anything.
+
+    The timeframe is the store's own published promise, not a courier
+    estimate. dispatch_days and transit_days below are theme settings whose
+    defaults match what /pages/support, the shipping accordion and the FAQ
+    already tell customers — 1-2 business days to dispatch, 2-5 in transit.
+    Change the promise in one place and every surface moves together.
+
+  It says nothing at all about shipping cost, and that omission is
+  deliberate rather than an oversight: the storefront promises free shipping
+  and the live domestic rate charges Rs 379. Until that is resolved, a
+  delivery estimator quoting either figure would be repeating a claim the
+  checkout is going to contradict. Delivery time is independent of that
+  question, so this answers only the question it can answer honestly.
+
+  The region label is derived from the pincode's first two digits, which is
+  a published, stable property of the India Post numbering plan rather than
+  a lookup. Where a prefix genuinely spans more than one state the label
+  names the group instead of guessing one — a shopper in Raipur reading
+  "Chhattisgarh / Madhya Pradesh" learns their area was recognised, which is
+  the whole job of that line, without being told something false.
+
+  Business days, not calendar days: the estimate skips Saturdays and Sundays
+  because dispatch does. That is why the range is computed in JS from today
+  rather than rendered here — Liquid caches, and a date range baked into a
+  cached page is wrong by the second day it is served.
+{%- endcomment -%}
+{%- assign dispatch_min = settings.dispatch_days_min | default: 1 -%}
+{%- assign dispatch_max = settings.dispatch_days_max | default: 2 -%}
+{%- assign transit_min = settings.transit_days_min | default: 2 -%}
+{%- assign transit_max = settings.transit_days_max | default: 5 -%}
+<div class="pincode"
+     data-pincode
+     data-dispatch-min="{{ dispatch_min }}"
+     data-dispatch-max="{{ dispatch_max }}"
+     data-transit-min="{{ transit_min }}"
+     data-transit-max="{{ transit_max }}">
+  <label class="pincode-label" for="pincode-input">Check delivery to your pincode</label>
+  <div class="pincode-row">
+    {%- comment -%}
+      type="text" with inputmode="numeric" rather than type="number": a
+      number input on a pincode gives a spinner nobody wants, silently
+      accepts "1e5", and on some Android keyboards still offers a decimal
+      point. maxlength does the constraining instead, and the keypad is what
+      inputmode is actually for.
+    {%- endcomment -%}
+    <input type="text"
+           id="pincode-input"
+           class="pincode-input"
+           data-pincode-input
+           inputmode="numeric"
+           autocomplete="postal-code"
+           maxlength="6"
+           placeholder="6-digit pincode"
+           aria-describedby="pincode-result">
+    <button type="button" class="pincode-btn" data-pincode-submit>Check</button>
+  </div>
+  {%- comment -%}
+    role="status" so the answer is announced when it appears. It is not
+    role="alert": an invalid pincode is a correction, not an emergency, and
+    alert interrupts whatever a screen reader was saying.
+  {%- endcomment -%}
+  <p class="pincode-result" id="pincode-result" data-pincode-result role="status" hidden></p>
+</div>

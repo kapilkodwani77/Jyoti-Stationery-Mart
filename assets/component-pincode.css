@@ -1,0 +1,62 @@
+/* Pincode delivery check — buy box, under Add to Cart.
+
+   Deliberately quiet. This sits between the primary CTA and the trust list,
+   so a border, a fill or a shadow would read as a second card competing with
+   the button above it. A label, a field and a line of text.
+
+   The field matches .ftr-signup-input rather than inventing a second input
+   style: same jute border, same chalk fill, same indigo focus, same 16px
+   floor that stops iOS zooming the page on focus. Only the height differs —
+   44px here against the footer's 52px, because this one sits inside a dense
+   buy box rather than a spacious footer, and 44px is the theme's --tap. */
+
+@layer components {
+  .pincode{
+    margin-top:var(--s-4);
+    padding-top:var(--s-4);
+    border-top:1px solid var(--jute);
+  }
+
+  .pincode-label{
+    display:block; font-size:13px; color:var(--ink-2);
+    margin-bottom:var(--s-2);
+  }
+
+  .pincode-row{ display:flex; gap:var(--s-2); align-items:stretch; }
+
+  /* flex-basis large enough that the button wraps to its own line before the
+     field collapses — same reasoning as the footer signup. */
+  .pincode-input{
+    flex:1 1 160px; min-width:0; height:var(--tap);
+    border:1px solid var(--jute); border-radius:var(--r-md);
+    padding-inline:var(--s-3); background:var(--chalk); color:var(--ink);
+    font-size:16px; font-family:inherit; letter-spacing:.04em;
+  }
+  .pincode-input::placeholder{ color:var(--ink-2); opacity:.75; letter-spacing:normal; }
+  .pincode-input:focus-visible{ border-color:var(--indigo); }
+
+  .pincode-btn{
+    flex:0 0 auto; height:var(--tap); padding-inline:var(--s-4);
+    font-family:inherit; font-size:14px; font-weight:500;
+    color:var(--ink); background:transparent;
+    border:1px solid var(--ink); border-radius:var(--r-md);
+    cursor:pointer;
+  }
+  .pincode-btn:hover{ background:var(--ink); color:var(--chalk); }
+  .pincode-btn:focus-visible{ outline:2px solid var(--indigo); outline-offset:2px; }
+
+  .pincode-result{
+    margin:var(--s-2) 0 0; font-size:13px; line-height:1.5; color:var(--ink-2);
+  }
+  /* The delivery window is the one thing here worth reading twice. */
+  .pincode-result strong{ color:var(--ink); font-weight:500; }
+  .pincode-result[data-state="error"]{ color:var(--danger); }
+
+  @media (prefers-reduced-motion:no-preference){
+    .pincode-result{ animation:pincode-in var(--dur-fast) var(--ease); }
+    @keyframes pincode-in{
+      from{ opacity:0; transform:translateY(-2px); }
+      to{ opacity:1; transform:none; }
+    }
+  }
+}

@@ -103,8 +103,15 @@
       </div>
 
       <div class="ftr-grid">
+        {%- comment -%}
+          Track your order leads the Support column rather than trailing it.
+          Of the four things in here it is the only one a customer looks for
+          with a specific order already in their head, and the other three are
+          reference material they read before buying.
+        {%- endcomment -%}
         <div>
           <h3>Support</h3>
+          <a href="{{ routes.account_url }}">Track your order</a>
           <a href="/pages/support">Shipping</a>
           <a href="/pages/support#returns">Returns</a>
           <a href="/pages/support#contact">Contact</a>

@@ -270,6 +270,23 @@
   {%- endform -%}
 
   {%- comment -%}
+    Delivery check, under the button rather than over it.
+
+    "When does it arrive?" is asked at the same moment as "should I buy this",
+    so the answer belongs in the buy box rather than in the shipping accordion
+    four sections down. Under Add to Cart specifically: above it, the field
+    would push the one control this panel exists for further down every phone
+    screen, and a delivery estimate is worth less than the button it displaced.
+
+    Rendered only in the full buy box. The compact variant is the sticky bar's
+    condensed copy, where a text field would be both cramped and duplicated.
+  {%- endcomment -%}
+  {%- unless compact -%}
+    {{ 'component-pincode.css' | asset_url | stylesheet_tag }}
+    {% render 'pincode-check' %}
+  {%- endunless -%}
+
+  {%- comment -%}
     Four facts, each one true and each one already promised elsewhere on the
     site: the announcement bar, the FAQ and the shipping accordion all say the
     same things. No countdown, no visitor count, no invented stock figure —

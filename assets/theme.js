@@ -1894,4 +1894,171 @@
     }
   })();
 
+  /* Pincode delivery check (product page buy box).
+
+     Answers one question — "when does this reach me?" — at the moment it is
+     asked, which is immediately after someone has decided to buy.
+
+     Nothing here calls out. There is no pincode API to call: this store has
+     no carrier service connected, so Shopify itself never rates a courier for
+     a pincode, and its single domestic zone covers all 36 states and union
+     territories. Serviceability therefore has one honest answer for the whole
+     country, and inventing a network request to dress that up as a lookup
+     would be theatre with a latency cost.
+
+     What is computed is the delivery window, and it is computed here rather
+     than in Liquid for a specific reason: Liquid output is cached, and a date
+     range baked into a cached page is wrong the second day it is served. The
+     inputs are the store's own published promise, passed down as data
+     attributes from theme settings so the FAQ, the shipping accordion and
+     this box cannot drift apart.
+
+     It says nothing about shipping cost. See the comment in
+     snippets/pincode-check.liquid — the storefront and the live rate disagree,
+     and repeating either claim here would be repeating one the checkout is
+     about to contradict. */
+  (function pincodeCheck() {
+    var root = document.querySelector('[data-pincode]');
+    if (!root) return;
+
+    var input  = root.querySelector('[data-pincode-input]');
+    var btn    = root.querySelector('[data-pincode-submit]');
+    var result = root.querySelector('[data-pincode-result]');
+    if (!input || !btn || !result) return;
+
+    /* India Post's numbering plan, keyed by the first two digits. This is a
+       published, stable property of the pincode itself, not a lookup table of
+       guesses — but it is only accurate to the postal circle, and several
+       circles span more than one state. Where that happens the label names the
+       group rather than picking one, because a shopper learning their area was
+       recognised is the entire job of this line and naming the wrong state
+       fails it louder than naming two right ones.
+
+       First digit 9 is the Army Postal Service, which is a real destination
+       but not one this store's civilian courier zone covers, so it is handled
+       as its own case rather than silently accepted. */
+    var CIRCLES = {
+      11:'Delhi',
+      12:'Haryana', 13:'Haryana',
+      14:'Punjab', 15:'Punjab', 16:'Punjab',
+      17:'Himachal Pradesh',
+      18:'Jammu & Kashmir', 19:'Jammu & Kashmir / Ladakh',
+      20:'Uttar Pradesh', 21:'Uttar Pradesh', 22:'Uttar Pradesh', 23:'Uttar Pradesh',
+      24:'Uttar Pradesh', 25:'Uttar Pradesh', 26:'Uttar Pradesh', 27:'Uttar Pradesh',
+      28:'Uttar Pradesh',
+      30:'Rajasthan', 31:'Rajasthan', 32:'Rajasthan', 33:'Rajasthan', 34:'Rajasthan',
+      36:'Gujarat', 37:'Gujarat', 38:'Gujarat', 39:'Gujarat',
+      40:'Maharashtra', 41:'Maharashtra', 42:'Maharashtra', 43:'Maharashtra',
+      44:'Maharashtra',
+      45:'Madhya Pradesh', 46:'Madhya Pradesh', 47:'Madhya Pradesh',
+      48:'Madhya Pradesh', 49:'Chhattisgarh / Madhya Pradesh',
+      50:'Telangana', 51:'Andhra Pradesh', 52:'Andhra Pradesh', 53:'Andhra Pradesh',
+      56:'Karnataka', 57:'Karnataka', 58:'Karnataka', 59:'Karnataka',
+      60:'Tamil Nadu', 61:'Tamil Nadu', 62:'Tamil Nadu', 63:'Tamil Nadu',
+      64:'Tamil Nadu', 65:'Tamil Nadu', 66:'Tamil Nadu / Puducherry',
+      67:'Kerala', 68:'Kerala', 69:'Kerala / Lakshadweep',
+      70:'West Bengal', 71:'West Bengal', 72:'West Bengal', 73:'West Bengal',
+      74:'West Bengal / Sikkim / Andaman & Nicobar',
+      75:'Odisha', 76:'Odisha', 77:'Odisha',
+      78:'Assam',
+      79:'North East India',
+      80:'Bihar', 81:'Bihar', 82:'Bihar', 83:'Jharkhand', 84:'Bihar', 85:'Jharkhand'
+    };
+
+    function num(name, fallback) {
+      var v = parseInt(root.getAttribute(name), 10);
+      return (isFinite(v) && v >= 0) ? v : fallback;
+    }
+
+    /* Business days, because dispatch is. Saturdays and Sundays are stepped
+       over rather than counted, so an order placed on a Friday does not get
+       promised a Sunday delivery. Public holidays are not modelled and
+       deliberately so: there is no holiday calendar in this store to read, and
+       hardcoding one would be inventing a promise this theme cannot keep. */
+    function addBusinessDays(from, days) {
+      var d = new Date(from.getTime());
+      var added = 0;
+      while (added < days) {
+        d.setDate(d.getDate() + 1);
+        var wd = d.getDay();
+        if (wd !== 0 && wd !== 6) added++;
+      }
+      return d;
+    }
+
+    var FMT = { day: 'numeric', month: 'short' };
+    function fmt(d) {
+      try { return d.toLocaleDateString('en-IN', FMT); }
+      catch (e) { return d.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]; }
+    }
+
+    function show(html, state) {
+      result.innerHTML = html;
+      if (state) result.setAttribute('data-state', state);
+      else result.removeAttribute('data-state');
+      result.hidden = false;
+    }
+
+    function check() {
+      var raw = (input.value || '').replace(/\D/g, '');
+
+      if (raw.length === 0) {
+        show('Enter your 6-digit pincode to see a delivery estimate.', 'error');
+        return;
+      }
+      if (raw.length !== 6) {
+        show('That is ' + raw.length + ' digit' + (raw.length === 1 ? '' : 's') +
+             '. An Indian pincode has 6.', 'error');
+        return;
+      }
+      /* A pincode never starts with 0. Catching it here is the difference
+         between "we do not deliver there" and "that is not a pincode", and
+         those are very different things to tell someone about to buy. */
+      if (raw.charAt(0) === '0') {
+        show('That does not look like an Indian pincode &mdash; none begin with 0.', 'error');
+        return;
+      }
+
+      var prefix = parseInt(raw.slice(0, 2), 10);
+
+      if (raw.charAt(0) === '9') {
+        show('That is an Army Postal Service code. We ship with civilian couriers, so please use a residential pincode &mdash; or call us on ' +
+             '<a href="tel:+918319040006">+91 83190 40006</a> and we will help.', 'error');
+        return;
+      }
+
+      var circle = CIRCLES[prefix];
+      if (!circle) {
+        show('We could not place that pincode. Check the digits, or call us on ' +
+             '<a href="tel:+918319040006">+91 83190 40006</a>.', 'error');
+        return;
+      }
+
+      var dMin = num('data-dispatch-min', 1) + num('data-transit-min', 2);
+      var dMax = num('data-dispatch-max', 2) + num('data-transit-max', 5);
+      var now  = new Date();
+      var from = addBusinessDays(now, dMin);
+      var to   = addBusinessDays(now, dMax);
+
+      show('Delivers to <strong>' + circle + '</strong> &middot; estimated <strong>' +
+           fmt(from) + ' &ndash; ' + fmt(to) + '</strong>' +
+           '<br>Cash on delivery available. Business days, from dispatch.');
+    }
+
+    btn.addEventListener('click', check);
+
+    /* Enter submits the check, not the product form. This markup sits outside
+       the form element for exactly that reason, but a stray Enter on a field
+       inside a buy box is worth stopping regardless. */
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); check(); }
+    });
+
+    /* Typing after an answer clears it rather than leaving a stale estimate
+       sitting under a pincode that no longer matches it. */
+    input.addEventListener('input', function () {
+      if (!result.hidden) { result.hidden = true; result.removeAttribute('data-state'); }
+    });
+  })();
+
 })();
