@@ -1,0 +1,243 @@
+/* ---------------------------------------------------------------------------
+   mj-features.css — styles for the features under test.
+
+   Uses the theme's own tokens (--ease, --dur-fast, --s-*, --ink, --jute) so
+   nothing here introduces a parallel vocabulary. Paired with mj-features.js;
+   removing both tags from layout/theme.liquid removes every trace.
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* The palette had no success colour — only --danger (#9A3B2E), a muted
+     brick. A bright success green beside it would read as a different design
+     system, so this is pitched at the same saturation and darkness: a forest
+     green that sits down rather than shouts. */
+  --ok: #356B4F;
+}
+
+/* ---- urgency dot ---------------------------------------------------------
+   A slow shrink-and-fade rather than a grow-and-glow. Two and a half seconds
+   with a long rest phase reads as a live indicator; anything faster reads as
+   a blinking advertisement, which is the register this brand does not use.
+
+   No scale above 1 and no bounce: the dot never grows past its own footprint,
+   so it cannot nudge the text beside it or draw the eye off the sentence it
+   belongs to. */
+.buybox-urgency-dot {
+  animation: mjUrgencyPulse 2400ms var(--ease) infinite;
+}
+
+@keyframes mjUrgencyPulse {
+  0%, 70%, 100% { opacity: 1;   transform: scale(1); }
+  35%           { opacity: .55; transform: scale(.82); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .buybox-urgency-dot { animation: none; }
+}
+
+/* ---- pincode: the serviceable answer ------------------------------------
+   Only the first line turns green — the line that answers "do you deliver
+   here". The second line ("Cash on delivery available. Business days, from
+   dispatch.") is a caveat about the estimate, not a confirmation, and giving
+   it the same colour would spend the signal on the wrong sentence.
+
+   The error state is untouched and keeps --danger. */
+.mj-pin-ok {
+  display: block;
+  color: var(--ok);
+}
+
+.mj-pin-ok strong {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.mj-pin-tick {
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 6px;
+  color: var(--ok);
+}
+
+.mj-pin-tick svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+/* ---- cart cross-sell -----------------------------------------------------
+   Full product tiles in a horizontal strip, not a compact list row. A tile
+   carries its own photograph at a size worth looking at, which is what makes
+   a cross-sell read as a product rather than as an upsell prompt.
+
+   Tiles are 46% of the drawer's width so a second one is always half in
+   frame. That partial tile is the only affordance saying the row scrolls,
+   and it costs nothing — a visible arrow or dots would take vertical space
+   from the cart itself. */
+.mj-upsell {
+  margin-top: var(--s-5);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--jute);
+}
+
+.mj-up-head {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--ink-2);
+  margin-bottom: var(--s-4);
+}
+
+.mj-up-list {
+  list-style: none;
+  margin: 0;
+  /* The negative inline margin lets the strip bleed to the drawer's edges
+     while the padding keeps the first and last tile off them, so a scrolled
+     tile passes under the edge instead of stopping short of it. */
+  margin-inline: calc(var(--s-5) * -1);
+  padding: 2px var(--s-5) var(--s-2);
+  display: flex;
+  gap: var(--s-4);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.mj-up-list::-webkit-scrollbar { display: none; }
+
+.mj-up-tile {
+  flex: 0 0 46%;
+  min-width: 0;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--jute);
+  border-radius: var(--r-md, 8px);
+  overflow: hidden;
+  background: var(--chalk);
+}
+
+.mj-up-img {
+  aspect-ratio: 1 / 1;
+  background: var(--jute);
+  overflow: hidden;
+}
+
+.mj-up-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.mj-up-body {
+  padding: var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+/* Two lines then an ellipsis. These titles run past 70 characters and a third
+   line would push the button out of the tile. */
+.mj-up-title {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mj-up-price {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-top: auto;
+}
+
+/* The theme's minimum tap target, held here too. */
+.mj-up-add {
+  min-height: var(--tap);
+  width: 100%;
+  padding-inline: var(--s-3);
+  border: 1px solid var(--ink);
+  border-radius: var(--r-sm, 6px);
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.mj-up-add:hover {
+  background: var(--ink);
+  color: var(--chalk);
+}
+
+.mj-up-add:active {
+  transform: scale(.97);
+}
+
+/* Same pending pattern the buy box uses: both labels ship, CSS shows one,
+   keyed off the aria-busy the handler sets. No spinner. */
+.mj-up-add-busy { display: none; }
+.mj-up-add[aria-busy="true"] .mj-up-add-idle { display: none; }
+.mj-up-add[aria-busy="true"] .mj-up-add-busy { display: inline; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mj-up-add { transition: none; }
+  .mj-up-add:active { transform: none; }
+}
+
+/* ---- cart drawer refinements ---------------------------------------------
+   This file is linked after theme.css, so everything below overrides the base
+   rules on source order at equal specificity. No selector here is inflated to
+   out-rank theme.css, and none uses !important — if the link order in
+   layout/theme.liquid ever changes, these stop applying rather than half
+   applying, which is the failure that can actually be seen and fixed. */
+
+/* The drawer was min(420px, 100vw). On any phone narrower than 420px that
+   resolves to the full viewport, so the cart arrived as a full-screen page
+   rather than a panel over the shop, and nothing behind it said what it was
+   covering. Three quarters leaves a strip of the store visible, which is what
+   makes it read as dismissable.
+
+   Desktop is untouched by design: 75vw of a 1280px window is 960px, so min()
+   still settles on 420px there. The change only bites below a 560px viewport,
+   which is the width at which 75vw and 420px cross. */
+.cart-drawer { width: min(420px, 75vw); }
+
+/* The line thumbnail is a fixed 72px square and the image inside carries
+   .img-cover, so a portrait product photograph was centre-cropped to fill it.
+   That crop is what read as zoomed in. contain fits the whole frame inside the
+   box instead, and the chalk background the box already paints becomes the
+   letterbox, so no part of the product is trimmed away.
+
+   One class plus one element out-ranks .img-cover on its own, so the shared
+   utility keeps working everywhere else in the theme. */
+.cart-line-img img { object-fit: contain; }
+
+/* The saving was --indigo — the same colour as the checkout button and every
+   link around it — so the one number in the drawer that is unambiguously good
+   news read as furniture. --ok is the forest green already defined at the top
+   of this file for the pincode confirmation, so this introduces no new colour:
+   it measures about 5.7:1 against --chalk, past the 4.5:1 floor for normal
+   text. The "You Save" label stays exactly as it was, so the meaning never
+   rests on the colour alone for anyone who cannot separate the two. */
+.cart-summary-bar-save { color: var(--ok); }
+
+/* At 46% of a 420px drawer a tile is about 180px and the next one sits half in
+   frame — the affordance that says the row scrolls. At 46% of a 75vw drawer on
+   a 390px phone it collapses to about 118px, too narrow to carry a square
+   photograph, a two-line title, a price and a full-width button without the
+   button wrapping.
+
+   Widening the basis below the crossover point restores a legible tile and
+   still leaves the next one peeking, so the scroll cue survives. */
+@media (max-width: 560px) {
+  .mj-up-tile { flex-basis: 58%; }
+}
