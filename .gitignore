@@ -2,3 +2,8 @@ node_modules/
 .DS_Store
 *.log
 .gstack/
+
+# Bytecode from the Python tooling inside .claude/skills (ui-ux-pro-max ships a
+# search script that writes __pycache__ next to itself when it runs).
+__pycache__/
+*.pyc
