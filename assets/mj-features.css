@@ -241,3 +241,125 @@
 @media (max-width: 560px) {
   .mj-up-tile { flex-basis: 58%; }
 }
+
+/* ---- compact cart line ----------------------------------------------------
+   The middle column stacked four rows — title, price, stepper, then Remove on
+   a line of its own — and a single line ran tall enough to push the cross-sell
+   under the fold on a phone. Everything below removes height without removing
+   a control and without shrinking a tap target.
+
+   This is an Operate surface in impeccable's sense: the shopper is completing
+   a task, so scanning and consistency outrank expression. Nothing here is
+   decorative. */
+
+/* 72 to 56. The thumbnail's job is to confirm which product this is. It was
+   sized like a hero and was not one. */
+.cart-line {
+  grid-template-columns: 56px 1fr auto;
+  gap: var(--s-4);
+  padding-block: var(--s-4);
+}
+
+.cart-line-img { width: 56px; height: 56px; }
+
+/* Two lines then an ellipsis. These titles run past 70 characters, so the
+   third line carried no information the first two had not already given —
+   it was pure height. */
+.cart-line-title {
+  font-size: 13px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* The stepper was display:flex, which is block-level, so Remove was pushed
+   onto a fourth row. inline-flex puts the two on one line and reclaims that
+   row outright.
+
+   Both keep the --tap minimum they already carried, so the touch targets are
+   the size they always were — only the stacking changed. That matters: this
+   is the one saving here that could have been taken by shrinking a control
+   instead, and it was not. */
+.cart-line-stepper {
+  display: inline-flex;
+  margin-top: var(--s-3);
+  vertical-align: middle;
+}
+
+.cart-line-remove {
+  margin-top: 0;
+  margin-left: var(--s-4);
+  vertical-align: middle;
+}
+
+/* ---- cross-sell: state the saving ----------------------------------------
+   A tile showed one price with nothing to compare it against, so a pillow at
+   53% off read exactly like a full-price one. Both figures now appear, and
+   the percentage sits on the photograph where the eye already is.
+
+   --danger is the theme's existing brick red: 6.06:1 on --chalk, 6.91:1 under
+   white. No new colour enters the palette and both readings clear the 4.5:1
+   floor. */
+.mj-up-img { position: relative; }
+
+.mj-up-off {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: var(--r-sm, 6px);
+  /* A badge that wraps has failed at being a badge. */
+  white-space: nowrap;
+}
+
+/* The row, not the figure, is what gets pushed to the bottom of the tile now. */
+.mj-up-prices {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+.mj-up-price { margin-top: 0; }
+
+.mj-up-was {
+  font-size: 12px;
+  color: var(--ink-2);
+  text-decoration: line-through;
+}
+
+/* ---- cross-sell heading ---------------------------------------------------
+   Heading and badge share one row. The heading is the part allowed to shrink;
+   the badge never wraps. That is the pattern ui-ux-pro-max's badge guidance
+   asks for — nowrap on the compact label, min-width:0 on the flexible one.
+
+   Outlined rather than filled: the filled red already belongs to the discount
+   badge on the photograph below, and two solid reds in one block would make
+   the panel shout in a register this brand does not use. */
+.mj-up-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.mj-up-head-label { min-width: 0; }
+
+.mj-up-stock {
+  white-space: nowrap;
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  line-height: 1.3;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  border-radius: var(--r-sm, 6px);
+}

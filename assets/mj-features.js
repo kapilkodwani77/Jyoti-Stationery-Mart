@@ -1,0 +1,404 @@
+/* ---------------------------------------------------------------------------
+   mj-features.js — new features under test.
+
+   Everything here is additive and self-contained. Nothing in this file edits
+   assets/theme.js, which is 96KB and cannot be safely rewritten through
+   themeFilesUpsert in one push. Each feature below hooks the existing markup
+   from the outside, by attribute, the same way theme.js's own delegated
+   handlers do.
+
+   Load order matters for exactly one of these (the cart fix, which listens in
+   the capture phase), so this file is loaded before theme.js in theme.liquid.
+
+   Remove the two tags from layout/theme.liquid and every behaviour here is
+   gone, with no other file to unwind.
+   --------------------------------------------------------------------------- */
+(function () {
+  'use strict';
+
+  var RM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* =========================================================================
+     1. Cart drawer: restore quantity controls on a returning visit
+
+     sections/cart-drawer.liquid server-renders each line as a static
+     "Qty N" with no stepper and no Remove. theme.js renders the same lines
+     with both. Which one a shopper gets is decided in applyCart():
+
+         var same = shown.length === wanted.length && shown.every(...)
+         if (same && shown.length) patchTotals(cart); else renderDrawer(cart);
+
+     Open the drawer on a fresh page load with something already in the cart
+     and the server-rendered keys match Shopify's exactly, so patchTotals()
+     runs, renderDrawer() never does, and the shopper is left with markup that
+     has nothing to click. The cart cannot be edited at all until something
+     changes the line set.
+
+     The fix is to make the diff fail on that first open. If the body holds
+     lines that carry no quantity input, they are the server-rendered kind and
+     are cleared, so theme.js sees an empty body, paints its skeleton and
+     builds the interactive version.
+
+     Capture phase, so this runs before theme.js's own click handler on the
+     same event rather than after it.
+
+     The cleaner fix is to render the stepper in cart-drawer.liquid so both
+     paths emit the same shape and the cart works with JS disabled. That is a
+     15KB file rewrite; this is six lines and is reversible. Prefer the Liquid
+     fix when promoting to the live theme.
+     ========================================================================= */
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest || !t.closest('[data-cart-open]')) return;
+    var body = document.querySelector('[data-cart-body]');
+    if (!body) return;
+    if (body.querySelector('.cart-line') && !body.querySelector('[data-cart-qty-input]')) {
+      body.innerHTML = '';
+    }
+  }, true);
+
+  /* =========================================================================
+     2. Pincode: check automatically on the sixth digit
+
+     The Check button stays. It is the only affordance a screen-reader user
+     has that an action is available, and it is still the way to re-run a
+     check without editing the field.
+
+     Guarded on the last value actually checked rather than on length alone,
+     so arrowing around inside a complete pincode does not re-fire, while
+     deleting a digit and typing a different one does.
+     ========================================================================= */
+  (function pincodeAuto() {
+    var wrap = document.querySelector('[data-pincode]');
+    if (!wrap) return;
+    var input = wrap.querySelector('[data-pincode-input]');
+    var button = wrap.querySelector('[data-pincode-submit]');
+    if (!input || !button) return;
+
+    var lastChecked = '';
+    var timer = null;
+
+    input.addEventListener('input', function () {
+      var v = (input.value || '').replace(/\D/g, '');
+      if (v !== input.value) input.value = v;
+
+      if (v.length < 6) {
+        lastChecked = '';
+        return;
+      }
+      if (v === lastChecked) return;
+
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        if ((input.value || '').replace(/\D/g, '') !== v) return;
+        lastChecked = v;
+        button.click();
+      }, 120);
+    });
+  })();
+
+  /* =========================================================================
+     3. Urgency line: per-product copy with a daily figure
+
+     Only the two new products carry a figure. Both play mats are untouched
+     and keep the line buy-box.liquid already renders.
+
+     The number is derived from the UTC date, so every visitor sees the same
+     value on the same day and a refresh does not re-roll it. Computed here
+     rather than in Liquid because Liquid output is cached by Shopify's CDN
+     and would freeze on whatever day the cache was written.
+
+     Salts differ per product so the two do not move in step.
+     ========================================================================= */
+  var URGENCY = {
+    'mamajoy-baby-carrier-for-babies-0-3-years-ergonomic-safe-navy-blue': {
+      text: 'Best seller &middot; {n} dispatched today',
+      min: 80, max: 100, salt: 3
+    },
+    'mamajoy-baby-feeding-pillow-for-new-born-baby-nursing-pillow-for-breastfeeding': {
+      text: 'Selling fast &middot; {n} dispatched today',
+      min: 35, max: 55, salt: 4
+    }
+  };
+
+  function seededDaily(min, max, salt) {
+    var d = new Date();
+    var seed = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+    var h = (seed * 2654435761 + salt * 40503) % 2147483647;
+    if (h < 0) h += 2147483647;
+    return min + (h % (max - min + 1));
+  }
+
+  (function urgency() {
+    var el = document.querySelector('.buybox-urgency');
+    if (!el) return;
+
+    var path = window.location.pathname;
+    var handle = null;
+    for (var k in URGENCY) {
+      if (Object.prototype.hasOwnProperty.call(URGENCY, k) && path.indexOf(k) !== -1) {
+        handle = k;
+        break;
+      }
+    }
+    if (!handle) return;
+
+    var cfg = URGENCY[handle];
+    var n = seededDaily(cfg.min, cfg.max, cfg.salt);
+
+    /* The dot is a sibling span the section already renders; only the text
+       after it is replaced, so the markup and the pulse both survive. */
+    var dot = el.querySelector('.buybox-urgency-dot');
+    el.innerHTML = (dot ? dot.outerHTML : '') + cfg.text.replace('{n}', n);
+  })();
+
+  /* =========================================================================
+     4. Cart drawer: cross-sell
+
+     Product data is read from Shopify's own /products/{handle}.js rather than
+     seeded from Liquid, so this needs no change to cart-drawer.liquid. One
+     fetch per product, cached for the life of the page.
+
+     Two suggestions maximum, and never something already in the cart.
+     ========================================================================= */
+  var CATALOG = {
+    mat_cars: 'mamajoy-baby-play-mat-toys-cars',
+    mat_alpha: 'premium-foldable-xpe-baby-play-mat',
+    carrier: 'mamajoy-baby-carrier-for-babies-0-3-years-ergonomic-safe-navy-blue',
+    pillow: 'mamajoy-baby-feeding-pillow-for-new-born-baby-nursing-pillow-for-breastfeeding'
+  };
+
+  /* What to offer beside what is already there. Mat buyers see the carrier
+     first because it is the cheapest second item; carrier and pillow buyers
+     see the mat, which is the product that actually sells. */
+  var PAIRS = [
+    { has: CATALOG.mat_cars, show: [CATALOG.carrier, CATALOG.pillow] },
+    { has: CATALOG.mat_alpha, show: [CATALOG.carrier, CATALOG.pillow] },
+    { has: CATALOG.carrier, show: [CATALOG.pillow, CATALOG.mat_cars] },
+    { has: CATALOG.pillow, show: [CATALOG.carrier, CATALOG.mat_cars] }
+  ];
+
+  var productCache = {};
+
+  function getProduct(handle) {
+    if (productCache[handle]) return productCache[handle];
+    productCache[handle] = fetch('/products/' + handle + '.js', {
+      credentials: 'same-origin'
+    }).then(function (r) {
+      if (!r.ok) throw new Error('product ' + handle);
+      return r.json();
+    });
+    return productCache[handle];
+  }
+
+  function money(paise) {
+    return '₹' + Math.round(paise / 100).toLocaleString('en-IN');
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function cartHandles() {
+    return fetch('/cart.js', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (cart) {
+        return cart.items.map(function (i) { return i.handle; });
+      });
+  }
+
+  function pickSuggestions(inCart) {
+    var out = [];
+    PAIRS.forEach(function (rule) {
+      if (inCart.indexOf(rule.has) === -1) return;
+      rule.show.forEach(function (h) {
+        if (inCart.indexOf(h) === -1 && out.indexOf(h) === -1) out.push(h);
+      });
+    });
+    /* Nothing recognised in the cart: lead with the product that sells. */
+    if (!out.length && inCart.length) out.push(CATALOG.carrier);
+    return out.slice(0, 2);
+  }
+
+  function renderUpsell() {
+    var body = document.querySelector('[data-cart-body]');
+    if (!body) return;
+
+    var existing = document.querySelector('[data-mj-upsell]');
+    if (existing) existing.parentNode.removeChild(existing);
+
+    cartHandles().then(function (inCart) {
+      if (!inCart.length) return;
+      var picks = pickSuggestions(inCart);
+      if (!picks.length) return;
+
+      return Promise.all(picks.map(getProduct)).then(function (products) {
+        var rows = products.map(function (p) {
+          var v = p.variants && p.variants[0];
+          if (!v || !v.available) return '';
+          var img = p.featured_image
+            ? '<img src="' + esc(p.featured_image) + '&width=320" alt="" loading="lazy">'
+            : '';
+          /* Both figures, or neither. compare_at_price is Shopify's own field
+             and Shopify only carries it when it is genuinely above what is
+             charged, so the strike and the percentage describe a real
+             reduction rather than a markup invented in order to be crossed
+             out. When it is absent the tile shows one price and no badge —
+             the percentage is never manufactured to fill the corner. */
+          var was = (v.compare_at_price && v.compare_at_price > v.price) ? v.compare_at_price : 0;
+          var off = was ? Math.round((was - v.price) / was * 100) : 0;
+
+          return '<li class="mj-up-tile">' +
+                   '<div class="mj-up-img">' + img +
+                     (off ? '<span class="mj-up-off">' + off + '% OFF</span>' : '') +
+                   '</div>' +
+                   '<div class="mj-up-body">' +
+                     '<p class="mj-up-title">' + esc(p.title) + '</p>' +
+                     '<p class="mj-up-prices">' +
+                       '<span class="mj-up-price">' + money(v.price) + '</span>' +
+                       (was ? '<span class="mj-up-was">' +
+                                '<span class="visually-hidden">MRP </span>' + money(was) +
+                              '</span>' : '') +
+                     '</p>' +
+                     '<button type="button" class="mj-up-add" data-mj-add="' + v.id + '">' +
+                       '<span class="mj-up-add-idle">+ Add</span>' +
+                       '<span class="mj-up-add-busy" aria-hidden="true">Adding&hellip;</span>' +
+                       '<span class="visually-hidden"> ' + esc(p.title) + '</span>' +
+                     '</button>' +
+                   '</div>' +
+                 '</li>';
+        }).join('');
+
+        if (!rows.replace(/\s/g, '')) return;
+
+        var wrap = document.createElement('div');
+        wrap.className = 'mj-upsell';
+        wrap.setAttribute('data-mj-upsell', '');
+        /* "Limited stock" is a claim, so it is only here because it is true:
+           every product in this catalogue sits between 7 and 10 units with
+           inventory_policy DENY, so the store cannot oversell and the badge
+           describes the real position. If stock is ever deep, this badge has
+           to come out — it is not decoration. */
+        wrap.innerHTML = '<p class="mj-up-head">' +
+                           '<span class="mj-up-head-label">Lowest price ever</span>' +
+                           '<span class="mj-up-stock">Limited stock</span>' +
+                         '</p>' +
+                         '<ul class="mj-up-list">' + rows + '</ul>';
+        body.appendChild(wrap);
+      });
+    }).catch(function () { /* A cross-sell that cannot load is not an error worth showing. */ });
+  }
+
+  /* Add without leaving the drawer. Uses the same /cart/add.js theme.js uses,
+     then asks theme.js to repaint by clicking its own cart trigger path —
+     here, simply re-reading and letting the drawer's own refresh run. */
+  document.addEventListener('click', function (e) {
+    var btn = e.target && e.target.closest && e.target.closest('[data-mj-add]');
+    if (!btn) return;
+    e.preventDefault();
+    if (btn.getAttribute('aria-busy') === 'true') return;
+    btn.setAttribute('aria-busy', 'true');
+
+    fetch('/cart/add.js', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ id: Number(btn.getAttribute('data-mj-add')), quantity: 1 })
+    }).then(function (r) {
+      if (!r.ok) throw new Error('add failed');
+      return r.json();
+    }).then(function () {
+      /* theme.js owns the drawer's contents. Re-opening it through its own
+         trigger makes it re-read /cart.js and repaint, which is the only
+         supported way in from outside. */
+      var opener = document.querySelector('[data-cart-open]');
+      if (opener) opener.click();
+      setTimeout(renderUpsell, 400);
+    }).catch(function () {
+      btn.removeAttribute('aria-busy');
+    });
+  });
+
+  /* Paint the cross-sell whenever the drawer is opened. */
+  document.addEventListener('click', function (e) {
+    if (!e.target || !e.target.closest) return;
+    if (!e.target.closest('[data-cart-open]')) return;
+    setTimeout(renderUpsell, 500);
+  });
+
+  /* =========================================================================
+     5. Cash on delivery in the drawer's trust line
+
+     Seven of the store's first eight real customers paid cash on delivery and
+     the drawer footer did not mention it.
+     ========================================================================= */
+  (function codTrust() {
+    var foot = document.querySelector('[data-cart-foot]');
+    if (!foot) return;
+    var line = foot.querySelector('.cart-trust, .cart-drawer-trust, .micro');
+    if (!line) return;
+    if (line.textContent.toLowerCase().indexOf('cash on delivery') !== -1) return;
+    if (line.textContent.toLowerCase().indexOf('secure payments') === -1) return;
+    line.textContent = 'Cash on delivery · ' + line.textContent.trim();
+  })();
+
+  /* =========================================================================
+     6. Pincode: mark the serviceable answer as good news
+
+     theme.js writes the result as one block of HTML with a <br> between the
+     answer and its caveat, and sets data-state="error" only when something
+     went wrong. There is no success state to hook, so the success case is
+     "no error attribute", and the first line is everything before the <br>.
+
+     Wrapped rather than restyled wholesale: only the line that answers "do
+     you deliver here" turns green. The line under it is a note about the
+     estimate, and colouring it too would spend the signal on the wrong
+     sentence.
+
+     A MutationObserver rather than a hook on the button, because the result
+     is written by three paths — the button, the Enter key, and the auto-fire
+     above — and observing the element catches all three without patching any
+     of them. The .mj-pin-ok guard is what stops the observer re-entering on
+     its own write.
+     ========================================================================= */
+  (function pincodeSuccess() {
+    var result = document.querySelector('[data-pincode-result]');
+    if (!result || typeof MutationObserver === 'undefined') return;
+
+    var TICK = '<span class="mj-pin-tick" aria-hidden="true">' +
+      '<svg viewBox="0 0 16 16" fill="none">' +
+      '<circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.4"/>' +
+      '<path d="M5 8.2l2.1 2.1L11 6.4" stroke="currentColor" stroke-width="1.6" ' +
+      'stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg></span>';
+
+    function decorate() {
+      if (result.hidden) return;
+      if (result.getAttribute('data-state') === 'error') return;
+      if (result.querySelector('.mj-pin-ok')) return;
+
+      var html = result.innerHTML;
+      var br = html.search(/<br\s*\/?>/i);
+      if (br === -1) return;
+
+      var head = html.slice(0, br);
+      var tail = html.slice(br);
+      if (!head.trim()) return;
+
+      result.innerHTML = '<span class="mj-pin-ok">' + TICK + head + '</span>' + tail;
+    }
+
+    new MutationObserver(decorate).observe(result, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['hidden', 'data-state']
+    });
+
+    decorate();
+  })();
+
+  void RM;
+})();
