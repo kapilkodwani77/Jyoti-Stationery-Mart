@@ -304,18 +304,44 @@
    floor. */
 .mj-up-img { position: relative; }
 
+/* The percentage sits beside the price rather than on the photograph. On the
+   photograph it competed with the product; beside the two figures it is read
+   as part of the same fact — this costs that much, down from that much, by
+   this much.
+
+   Green, not red: a saving is good news, and it is the same --ok already
+   carrying "You Save" in the footer, so the drawer states savings in one
+   colour throughout. 5.7:1 on --chalk. Outlined to match the stock badge
+   above, and because a second filled block in a tile this small would crowd
+   the price it is meant to support. */
 .mj-up-off {
+  color: var(--ok);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  padding: 1px 5px;
+  border: 1px solid currentColor;
+  border-radius: var(--r-sm, 6px);
+  /* A badge that wraps has failed at being a badge. */
+  white-space: nowrap;
+}
+
+/* "Best seller" is the claim the carrier's own PDP already makes, so the cart
+   repeats it rather than inventing a second one. Ink rather than a colour:
+   the two colours in this block are already spoken for — red for stock, green
+   for the saving — and a third would turn a cross-sell into a carnival. */
+.mj-up-flag {
   position: absolute;
   top: 6px;
   left: 6px;
-  background: var(--danger);
-  color: #fff;
-  font-size: 11px;
+  background: var(--ink);
+  color: var(--chalk);
+  font-size: 10px;
   font-weight: 600;
+  letter-spacing: .02em;
   line-height: 1;
   padding: 4px 6px;
   border-radius: var(--r-sm, 6px);
-  /* A badge that wraps has failed at being a badge. */
   white-space: nowrap;
 }
 
@@ -362,4 +388,69 @@
   padding: 2px 6px;
   border: 1px solid currentColor;
   border-radius: var(--r-sm, 6px);
+}
+
+/* ---- fitting the cross-sell above the fold --------------------------------
+   The drawer is a fixed-height column: head, a scrolling body, then the
+   footer. The cross-sell lives at the bottom of the body, so it is only
+   visible without scrolling if head + line + cross-sell + footer fit the
+   viewport. At 75vw none of them had been asked to give anything up.
+
+   Height is taken from chrome and from the photograph, not from the two
+   things a shopper acts on: the quantity stepper and the Add button both keep
+   the full 44px --tap minimum. That is the constraint that shaped everything
+   below — it is why the stepper and Remove still occupy two rows, since at
+   this width they cannot share one without shrinking a control. */
+
+/* A 1:1 photograph was the single tallest element in the drawer. 3:2 is still
+   a photograph worth looking at and returns a third of its height. */
+.mj-up-img { aspect-ratio: 3 / 2; }
+
+.mj-up-body {
+  padding: var(--s-3);
+  gap: 4px;
+}
+
+.mj-upsell {
+  margin-top: var(--s-4);
+  padding-top: var(--s-4);
+}
+
+.mj-up-head { margin-bottom: var(--s-3); }
+
+/* ---- drawer chrome --------------------------------------------------------
+   Narrowing the panel to 75vw without touching what is inside it left the
+   type and padding sized for a full-width sheet, which is what read as zoomed:
+   nothing grew, the frame around it shrank. These bring the chrome back into
+   proportion with the panel it now sits in.
+
+   Type only steps down where the element is furniture. The price, the total
+   and the button keep their weight, because those are what the shopper came
+   to read. */
+.cart-drawer-head {
+  padding: var(--s-4) var(--s-5);
+}
+
+.cart-drawer-head h2 { font-size: 17px; }
+
+.cart-drawer-body { padding: var(--s-4) var(--s-5); }
+
+.cart-drawer-foot {
+  padding: var(--s-4);
+  padding-bottom: calc(var(--s-4) + env(safe-area-inset-bottom));
+}
+
+/* Remove sat a full step below the stepper. Half a step still separates them
+   without reading as a new group. */
+.cart-line-remove { margin-top: calc(var(--s-1) * -1); }
+
+/* One line, as asked. Reaching that by pinning a size would either wrap on a
+   narrow phone or waste the width on a wide one, so the size tracks the
+   viewport between a 10px floor and the 12px it was: nowrap guarantees the
+   single line, and clamp() is what keeps that promise affordable at 320px.
+   The footer's inline padding comes in to buy the line the room it needs. */
+.cart-drawer-note {
+  font-size: clamp(10px, 2.9vw, 12px);
+  white-space: nowrap;
+  margin-top: var(--s-2);
 }

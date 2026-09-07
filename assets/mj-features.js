@@ -250,9 +250,15 @@
           var was = (v.compare_at_price && v.compare_at_price > v.price) ? v.compare_at_price : 0;
           var off = was ? Math.round((was - v.price) / was * 100) : 0;
 
+          /* The carrier's own buy box already calls it a best seller, so the
+             cart repeats that claim rather than minting a second one. Keyed on
+             the handle, so if the flag is ever wanted elsewhere it is one
+             entry here and not a rule spread across the file. */
+          var flag = p.handle === CATALOG.carrier ? 'Best seller' : '';
+
           return '<li class="mj-up-tile">' +
                    '<div class="mj-up-img">' + img +
-                     (off ? '<span class="mj-up-off">' + off + '% OFF</span>' : '') +
+                     (flag ? '<span class="mj-up-flag">' + flag + '</span>' : '') +
                    '</div>' +
                    '<div class="mj-up-body">' +
                      '<p class="mj-up-title">' + esc(p.title) + '</p>' +
@@ -261,6 +267,7 @@
                        (was ? '<span class="mj-up-was">' +
                                 '<span class="visually-hidden">MRP </span>' + money(was) +
                               '</span>' : '') +
+                       (off ? '<span class="mj-up-off">' + off + '% OFF</span>' : '') +
                      '</p>' +
                      '<button type="button" class="mj-up-add" data-mj-add="' + v.id + '">' +
                        '<span class="mj-up-add-idle">+ Add</span>' +
