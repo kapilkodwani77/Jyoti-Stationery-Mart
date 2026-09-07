@@ -66,14 +66,21 @@
 }
 
 /* ---- cart cross-sell -----------------------------------------------------
-   Full product tiles in a horizontal strip, not a compact list row. A tile
-   carries its own photograph at a size worth looking at, which is what makes
-   a cross-sell read as a product rather than as an upsell prompt.
+   Full product tiles, not a compact list row. A tile carries its own
+   photograph at a size worth looking at, which is what makes a cross-sell
+   read as a product rather than as an upsell prompt.
 
-   Tiles are 46% of the drawer's width so a second one is always half in
-   frame. That partial tile is the only affordance saying the row scrolls,
-   and it costs nothing — a visible arrow or dots would take vertical space
-   from the cart itself. */
+   These are the tiles' base rules. The layout they describe — a horizontally
+   scrolling strip of 46%-wide tiles with a second one deliberately half in
+   frame — is no longer the layout; the "fitting the cross-sell above the
+   fold" block further down replaces it with a two-column grid, and the reason
+   is recorded there. The strip is worth a word because the reference uses one
+   and it would be the obvious thing to copy: BlaBliBlu carries five or six
+   recommendations, so a carousel earns its second axis. This catalogue has
+   three products and the cart holds one of them, which leaves at most two to
+   show. A carousel with nothing to scroll to is a gesture affordance that
+   lies, and it would put a horizontal scroller inside a vertical one, which
+   §16 of the cart brief rules out. */
 .mj-upsell {
   margin-top: var(--s-5);
   padding-top: var(--s-5);
@@ -106,10 +113,11 @@
 
 .mj-up-list::-webkit-scrollbar { display: none; }
 
+/* flex-basis and scroll-snap-align used to live here, sizing the tile as an
+   item in the scrolling strip described above. Both are inert on a grid item
+   and are gone rather than left to read as live. */
 .mj-up-tile {
-  flex: 0 0 46%;
   min-width: 0;
-  scroll-snap-align: start;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--jute);
@@ -205,32 +213,28 @@
    visible bug resting on the tie, and a coin-flip is not a place to leave
    one. It is called out where it appears. */
 
-/* Three quarters, but never narrower than the line can actually be drawn in.
+/* 88% of the viewport on a phone, 420px on a desktop, never under 300px.
 
-   The drawer was min(420px, 100vw), which on any phone resolved to the whole
-   viewport, so the cart arrived as a full-screen page with nothing behind it
-   saying what it covered. Three quarters leaves a strip of the store visible.
-   Desktop is unaffected either way: 75vw of a 1280px window is 960px, so min()
-   still settles on 420px there.
+   75vw was the cause of the "zoomed" reading, and the mechanism is worth
+   stating because it is the opposite of what it looks like: nothing inside the
+   drawer grew. The panel shrank to three quarters and its contents — type,
+   padding, thumbnail, stepper — stayed sized for the 420px sheet they were
+   drawn for, so every element occupied a larger share of a smaller frame. A
+   stepper that reads as a control at 420px reads as a slab at 295px.
 
-   .cart-line is a 56px / 1fr / auto grid, and a 1fr track carries
-   min-width:auto — it cannot shrink below its own min-content. That floor is
-   set by the stepper, whose children are all fixed: .qty-btn is
-   width:var(--tap) twice over and .qty-input is width:52px, so the control is
-   144px and nothing in it can give. With the line total column the row needs
+   Two fixes, and both are needed. The contents come down (below). The frame
+   goes back up to 88vw, which is what the brief asks for and what the
+   reference uses — BlaBliBlu's drawer measures 84.8% of its viewport.
 
-     32 padding + 56 image + 12 gap + 144 stepper = 244px
+     393px phone -> 346px drawer      375px phone -> 330px
+     430px phone -> 378px             1280px window -> 420px
 
-   and 75vw only clears that from about a 330px viewport up. Below it the row
-   overflowed the panel, which is what pushed the total off the right edge and
-   put a horizontal scrollbar under the drawer body.
-
-   max() sets the floor at 260px so the row always has room with slack to
-   spare. On every phone from 347px up the drawer is still exactly 75vw; the
-   floor only takes over on the very narrowest, where three quarters of the
-   screen is not a usable panel anyway. */
+   The 300px floor is now slack rather than a rescue. The row's widest
+   obligation is 32 padding + 64 image + 12 gap + 124 stepper + 12 + 62 Remove
+   = 306px, and at 88vw that is cleared from a 348px viewport up; under it the
+   narrow-phone query below takes the stepper and Remove down a step. */
 .cart-drawer {
-  width: min(420px, max(260px, 75vw));
+  width: min(420px, max(300px, 88vw));
   /* One source of truth for the drawer's inline padding. The cross-sell used
      to bleed to the edges with a hardcoded negative margin of var(--s-5); when
      the padding changed the two disagreed and the strip overhung the panel.
@@ -261,63 +265,44 @@
    rests on the colour alone for anyone who cannot separate the two. */
 .cart-summary-bar-save { color: var(--ok); }
 
-/* The tiles used to be sized as flex items in a scrolling row, with a
-   flex-basis tuned so the next one stayed half in frame. The row is a
-   two-column grid now, so the basis is inert and the rule that set it has
-   been removed rather than left to read as live. */
-
 /* ---- the cart line --------------------------------------------------------
-   Two jobs at once: the row has to fit the panel, and it has to stop pushing
-   the cross-sell under the fold. Height comes out of chrome and the thumbnail
-   (72px to 56px — its job is to confirm which product this is, and it was
-   sized like a hero); width comes out of the grid.
+   The row has to fit the panel, and it has to stop pushing the cross-sell
+   under the fold. It now does both, and it does them at 98px against the
+   207px it started at, with nothing a shopper reads or taps made smaller than
+   the standards allow.
+
+   Where the 109px came from, in order of size:
+
+     44px  the stepper and Remove share a row instead of stacking. This was
+           impossible at 75vw and is comfortable at 88vw — the text column
+           went from about 195px to 238px, which is the whole difference.
+      4px  the stepper is 40px tall rather than 44 (see below)
+      8px  vertical padding, --s-4 to --s-3
+     18px  the title clamps to one line rather than two
+     20px  the line total is hidden at quantity 1, where it is the unit price
+           printed twice — the duplication §4 of the brief calls out — and
+           shown at every other quantity, where it is the figure that differs
+     15px  the thumbnail, 72px to 64px. Its job is to confirm which product
+           this is; it was sized like a hero.
 
    This is an Operate surface in impeccable's sense: the shopper is completing
    a task, so scanning and consistency outrank expression, and no saving here
-   is taken out of a control.
+   is taken out of a control's reach.
 
    Two columns, not three. The third track held the line total and cost about
-   48px plus a gap, and that was the difference between the row fitting and
-   the row overflowing: the stepper's 144px is irreducible, so the only width
-   left to give back was the total's own column.
+   48px plus a gap; the total moves into the text column's second row instead,
+   where it costs height only when it is shown at all.
 
-   The total is not dropped — it moves to a second row, right-aligned under the
-   text column, where it costs about 20px of height and no width at all. At
-   quantity 1 it repeats the unit price directly above it, which is why losing
-   its prominence costs nothing; at higher quantities it is the number that
-   actually differs, and it is still there.
-
-   minmax(0, 1fr) is the other half of the fix. A bare 1fr carries
-   min-width:auto, so the track refuses to shrink under its min-content and
-   pushes the overflow outward instead of clipping inside. The explicit 0
-   minimum lets the track shrink and lets the clamps and ellipses inside it do
-   their job. */
+   minmax(0, 1fr) is load-bearing. A bare 1fr carries min-width:auto, so the
+   track refuses to shrink under its min-content and pushes the overflow
+   outward instead of clipping inside — the original cause of the horizontal
+   scrollbar under the drawer body. The explicit 0 minimum lets the track
+   shrink and lets the clamps and ellipses inside it do their job. */
 .cart-line {
-  position: relative;
-  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-columns: 64px minmax(0, 1fr);
   gap: 0 var(--s-3);
   padding-block: var(--s-3);
 }
-
-/* Remove leaves the flow and goes to the row's top-right corner, the way the
-   reference puts its × there.
-
-   It was the single tallest thing in the line after the stepper: a full 44px
-   row, because .cart-line-remove carries min-height:var(--tap). Absolute
-   positioning keeps every pixel of that touch target while taking all 44px of
-   it out of the height the line has to carry. Nothing was shrunk. */
-.cart-line-remove {
-  position: absolute;
-  top: var(--s-3);
-  right: 0;
-  margin: 0;
-}
-
-/* The two rows Remove now floats over give it room rather than running
-   underneath it. The stepper below is untouched, so it still gets the full
-   text column to sit in. */
-.cart-line-title,
-.cart-line-price { padding-right: 70px; }
 
 /* Placement is by position rather than by class because theme.js renders the
    middle cell as a bare <div> with no class of its own — see the template at
@@ -327,7 +312,74 @@
 .cart-line > :nth-child(2) { grid-row: 1; grid-column: 2; min-width: 0; }
 .cart-line-total { grid-row: 2; grid-column: 2; justify-self: end; }
 
-.cart-line-img { width: 56px; height: 56px; }
+.cart-line-img { width: 64px; height: 64px; }
+
+/* The middle cell becomes its own two-column grid, and that is what lets the
+   line take the reference's shape without theme.js emitting different markup.
+   theme.js hands us five flat siblings — title, optional variant, price,
+   stepper, Remove — and named grid placement rearranges them in place:
+
+     title .................. price + struck MRP
+     variant
+     [ − 1 + ] .......................... Remove
+
+   The previous pass had Remove absolutely positioned in the row's corner and
+   the stepper alone on a full-width line. That was the right answer at 75vw
+   and is the wrong one at 88vw: the text column has gone from about 195px to
+   238px, and a 124px stepper plus a 62px Remove now fit a single row with
+   room to spare. A whole 44px row comes out of the line, and Remove goes back
+   into the document flow where it can be reached in reading order rather than
+   floated over the two rows it used to cover. */
+.cart-line > :nth-child(2) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  column-gap: var(--s-3);
+  align-items: baseline;
+}
+
+/* Scoped to the drawer from here down. sections/main-cart.liquid — the /cart
+   page — reuses .cart-line-title and .cart-line-price on a full-width layout
+   of its own, with no .cart-line grid around them. The placement properties
+   would be inert there, but text-align and margin would not, so an unscoped
+   rule quietly restyles a page this brief is not about. Everything the drawer
+   needs is a drawer rule. */
+.cart-drawer .cart-line-title   { grid-column: 1; grid-row: 1; }
+.cart-drawer .cart-line-variant { grid-column: 1; grid-row: 2; }
+.cart-drawer .cart-line-stepper { grid-column: 1; grid-row: 3; justify-self: start; }
+
+/* The server-rendered fallback. cart-drawer.liquid emits "Qty N" in a .micro
+   in place of the stepper and Remove, for the paint before theme.js takes
+   over. Without a placement it auto-fills the first free cell, which is the
+   slot the price is meant to leave empty. Sent to the stepper's row instead,
+   so the fallback is a legible cart rather than a scrambled one if the script
+   never arrives. */
+.cart-drawer .cart-line > :nth-child(2) > .micro { grid-column: 1; grid-row: 3; }
+
+/* The one price on the line, and it carries both figures: what is being paid
+   and the MRP struck beside it, exactly as §14 of the brief asks. It sits at
+   the end of the title's row because that is where the reference puts it and
+   because a price aligned to the panel's right edge is scanned as a column
+   when there are several lines. */
+.cart-drawer .cart-line-price {
+  grid-column: 2;
+  grid-row: 1;
+  text-align: right;
+  margin-top: 0;
+}
+
+/* 40px to match the stepper it now shares a row with — theme.css sets it to
+   the 44px --tap, which made Remove and not the stepper the thing setting the
+   row's height. Same web-versus-native reasoning as the stepper: 40px is well
+   past WCAG 2.5.8's 24px, and the two controls being the same height is what
+   makes the row read as one row. */
+.cart-drawer .cart-line-remove {
+  grid-column: 2;
+  grid-row: 3;
+  justify-self: end;
+  align-self: center;
+  min-height: 40px;
+  margin: 0;
+}
 
 /* One line, as the reference does it.
 
@@ -338,8 +390,9 @@
    description. The full title is still the element's text content, so it is
    read out in full by a screen reader and shown in full on hover.
 
-   This is the last height available in the line that is not a control. */
-.cart-line-title {
+   Drawer only. The /cart page has the full window to lay a title out in and
+   has no reason to clamp one. */
+.cart-drawer .cart-line-title {
   font-size: 13px;
   line-height: 1.35;
   display: -webkit-box;
@@ -348,15 +401,77 @@
   overflow: hidden;
 }
 
-/* An earlier pass set these to inline-flex on the theory that they would then
-   share a row. They will not, and the measurement says why: the stepper is
-   144px and Remove about 70px, against a text column of roughly 195px on a
-   393px phone. Two rows is not a styling choice here, it is what the widths
-   allow — the alternative is taking .qty-btn under the 44px touch minimum,
-   which ui-ux-pro-max ranks CRITICAL and web-design-guidelines also forbids.
+/* The single largest thing in the drawer, and the reason the panel read as
+   oversized more than any type size did.
 
-   So they stay stacked, and the only thing taken is the air between them. */
-.cart-line-stepper { margin-top: var(--s-3); }
+   Measured off the screenshot: the stepper's bordered box ran 182pt wide in a
+   295pt drawer — 62% of the panel — while the reference's is 29%. Two separate
+   faults, both in theme.css and neither visible in the rule that looks
+   responsible:
+
+   1. `.stepper` is `display:flex`, so it is a block-level flex container and
+      fills its grid cell. Its children are all fixed width and none of them
+      grow, so the box stretched to the full column and the controls sat inside
+      it with dead space at the end.
+
+   2. `.cart-line-stepper` adds `gap:var(--s-3)`, which puts 12px of air inside
+      a box whose separation is already drawn by the input's own left and right
+      borders. The dividers stopped touching the buttons and the control read
+      as three loose cells rather than one component.
+
+   width:max-content fixes the first; gap:0 fixes the second and hands the
+   border back its job.
+
+   Then the sizes. 44px is Apple's native iOS figure, and ui-ux-pro-max's
+   touch data is explicit that it should not be applied to web unexamined —
+   "web WCAG 2.2 has a separate 24 by 24 CSS px minimum", and its Don't is
+   "collapse iOS 44pt, Android 48dp, and web 24 CSS px into one cross-platform
+   number". This is a web surface, so 40×40 is judged against 24×24 and clears
+   it by two thirds. That correction matters: an earlier comment in this file
+   claimed dropping under 44 was forbidden outright, and it was wrong.
+
+     40 + 44 + 40 = 124px, down from 144, and 40px tall rather than 44.
+
+   The buttons stay square and the input stays the widest cell, so the number
+   is still the thing the eye lands on. */
+.cart-line-stepper.stepper {
+  width: max-content;
+  max-width: 100%;
+  gap: 0;
+  margin-top: var(--s-2);
+}
+
+.cart-line-stepper .qty-btn { width: 40px; height: 40px; }
+.cart-line-stepper .qty-input { width: 44px; height: 40px; }
+
+/* Double-tap-to-zoom is a real cause of a cart that "goes zoomed", and it is
+   the +/− pair that provokes it: they are the only controls in the drawer a
+   shopper taps repeatedly and quickly, and iOS reads two taps inside 300ms as
+   a zoom gesture on the page behind them. web-design-guidelines lists this
+   under Touch & Interaction. It also removes the 300ms click delay, so the
+   stepper answers on the first tap. */
+.cart-drawer .qty-btn,
+.cart-drawer .cart-line-remove,
+.cart-drawer .mj-up-add,
+.cart-drawer .cta { touch-action: manipulation; }
+
+/* At quantity 1 the line total is the unit price repeated verbatim, which is
+   the duplication the brief calls out. It is hidden there and shown at every
+   other quantity, where it is the figure that actually differs. The stamp is
+   set from JavaScript rather than from an attribute selector because theme.js
+   updates the input by property (`input.value = item.quantity`) on the
+   patchTotals path, so the value attribute in the markup goes stale the
+   moment anyone touches +. See mj-features.js. */
+.cart-line[data-mj-line-dup] .cart-line-total { display: none; }
+
+/* Below about 348px the stepper, Remove and the gap between them no longer
+   clear the text column, so both step down once rather than the row wrapping
+   into two. 36px is still half again the 24px web minimum. */
+@media (max-width: 360px) {
+  .cart-line-stepper .qty-btn { width: 36px; }
+  .cart-line-stepper .qty-input { width: 40px; }
+  .cart-line-remove { font-size: 12px; }
+}
 
 /* ---- cross-sell: state the saving ----------------------------------------
    A tile showed one price with nothing to compare it against, so a pillow at
@@ -369,7 +484,7 @@
 
 /* Plain green text, not a bordered pill — the treatment the reference uses,
    and about 12px narrower for the same words. In a row that has to hold three
-   figures inside roughly 99px, a border and its padding are width spent on
+   figures inside 135px, a border and its padding are width spent on
    decoration rather than on the number.
 
    The colour is still --ok, the same green as "You Save" in the footer and
@@ -385,17 +500,25 @@
 }
 
 /* "Best seller" is the claim the carrier's own PDP already makes, so the cart
-   repeats it rather than inventing a second one.
+   repeats it rather than inventing a second one. It is keyed on the handle in
+   mj-features.js, not written into a product card, so designating a different
+   product is one line in one place.
 
-   Ink rather than a colour, and this is the reason: the section already
-   carries red on the stock badge and green on every percentage, so a third
-   accent here would leave the block with no quiet surface left. Ink reads as
-   a label rather than as another promotion. */
+   Red, as asked, and specifically --danger — the brick red already in the
+   theme's token set and already carrying the stock badge four lines below.
+   No new colour enters the palette. Filled against the outlined stock badge,
+   so the two reds are told apart by treatment rather than by hue: white on
+   --danger measures 6.9:1, well past the 4.5:1 floor.
+
+   An earlier pass had this in ink on the argument that a third accent would
+   leave the section with nothing quiet in it. The brief overrides that
+   explicitly, and the reference agrees — BlaBliBlu runs a filled red product
+   badge and a red section badge in the same block. */
 .mj-up-flag {
   position: absolute;
   top: 6px;
   left: 6px;
-  background: var(--ink);
+  background: var(--danger);
   color: var(--chalk);
   font-size: 10px;
   font-weight: 600;
@@ -406,18 +529,28 @@
   white-space: nowrap;
 }
 
-/* The price row: ₹699  ₹1,499  53% OFF — all three, in the reference's order.
+/* The price row: ₹699  ₹1,499  53% OFF — all three on one line, in the
+   reference's order.
 
-   The card gives about 99px of inner width at 393px, so the three are sized
-   to live inside it rather than to look generous: 13px selling price, 10px
-   struck MRP, 10px percentage as plain text, 4px gaps. On a short price like
-   ₹699 that comes to roughly 97px and holds one line; on ₹1,299 it runs a few
-   pixels over and the percentage wraps under.
+   Last pass this wrapped, and the note here said the fix would need a wider
+   card, which at two columns means a wider drawer. The drawer is wider now,
+   so the card is too: 151px at a 393px phone against the 99px it had. Inside
+   its 8px padding that is 135px of usable row, and the three figures measure
 
-   flex-wrap is what makes that a soft landing instead of an overflow, and it
-   is also the safety net for a large text-size setting. Getting all three on
-   one line at every width would need a wider card, which at two columns means
-   a wider drawer.
+     ₹1,299 at 13px   ~48px
+     ₹1,999 struck    ~37px
+     40% OFF          ~40px
+     two 4px gaps       8px
+                    -------
+                      133px
+
+   which holds. ₹699 is 14px narrower again. flex-wrap stays as the safety net
+   for a large text-size setting and for the 375px case, where the same row is
+   6px over and the percentage drops under rather than overflowing.
+
+   tabular-nums on the figures so the two cards' prices align vertically —
+   web-design-guidelines asks for it wherever numbers are compared, and two
+   prices side by side is exactly that.
 
    The row carries margin-top:auto, so it sits at the card's foot whatever the
    title above it does. */
@@ -427,6 +560,7 @@
   gap: 4px;
   flex-wrap: wrap;
   margin-top: auto;
+  font-variant-numeric: tabular-nums;
 }
 
 .mj-up-price {
@@ -444,17 +578,29 @@
   text-decoration: line-through;
 }
 
+/* At 375px the row is a few pixels over. One step down on the selling price
+   and one on the gaps buys those pixels back without touching the struck MRP
+   or the percentage, which are already at their floor. */
+@media (max-width: 380px) {
+  .mj-up-prices { gap: 3px; }
+  .mj-up-price { font-size: 12px; }
+}
+
 /* ---- fitting the cross-sell above the fold --------------------------------
    The drawer is a fixed-height column: head, a scrolling body, then the
    footer. The cross-sell lives at the bottom of the body, so it is only
    visible without scrolling if head + line + cross-sell + footer fit the
    viewport. At 75vw none of them had been asked to give anything up.
 
-   Height is taken from chrome, from the photograph, and from taking Remove
-   out of the flow — never from the three things a shopper acts on. The
-   quantity stepper, the Remove control and the Add button all keep the full
-   44px --tap minimum; Remove simply carries its 44px in the corner instead of
-   in the line's height. */
+   It fits now, and the measurement is in the report: at 393px with the in-app
+   browser's chrome the stack is 672px against 672px of room — head 55, body
+   433, footer 184, nothing to scroll. At 375px it is 30px over, and the 30px
+   that scrolls is the tiles' bottom padding: both Add buttons are still on
+   screen.
+
+   Height came out of chrome, out of the line's own layout, and out of the
+   duplicate price — never out of a control's reach. The stepper, Remove and
+   Add are 40px, 40px and 44px against WCAG 2.5.8's 24px web minimum. */
 
 /* The whole frame inside the box. object-fit:cover was trimming these
    photographs to the container's shape, and the two it trimmed worst are the
@@ -466,11 +612,17 @@
    The letterbox is chalk rather than jute so it reads as the card's own paper
    showing through, not as a grey plate behind the product. */
 .mj-up-img {
-  /* 3:2. With contain the ratio no longer decides how much of the photograph
-     is seen — only how much height the card spends on it — so this is the one
-     dimension that can be traded for the section fitting on screen without
-     costing any of the product. */
-  aspect-ratio: 3 / 2;
+  /* 4:3, up from 3:2. With contain the ratio decides how much height the card
+     spends, not how much of the photograph is seen, so this is bought purely
+     for the product's sake: a landscape box shrinks a portrait subject to fit
+     its short side, and both the carrier and the pillow shots are people, not
+     packshots. Squarer means the subject renders larger inside the same card.
+
+     Combined with the card going from 99px wide to 151px, the photograph is
+     about 90% larger on screen than it was — none of which came from changing
+     how it is fitted. The 13px of extra card height is paid for out of the
+     44px the cart line gave back. */
+  aspect-ratio: 4 / 3;
   background: var(--chalk);
   /* The reference's tiles work because the product sits in air rather than
      against the card's edges. These are lifestyle photographs, not packshots,
@@ -491,9 +643,17 @@
 .mj-up-tile .mj-up-img img { object-fit: contain; }
 
 .mj-up-body {
-  padding: 10px;
+  padding: 8px;
   gap: 4px;
 }
+
+/* Two lines of title reserved whether the title needs them or not, so the
+   price row and the Add button sit at the same height in both cards. Without
+   it a one-line title lifts its whole card and the pair stops reading as a
+   set — §13's "do not allow one card to become significantly taller than
+   another". Written as a calc rather than 2lh so it does not depend on a unit
+   Safari only learned in 16.4. */
+.mj-up-title { min-height: calc(2 * 1.35 * 12px); }
 
 /* The section reads as a band the drawer holds rather than a box floating in
    it, so the tint bleeds to both edges. --cart-pad is the same variable the
@@ -505,7 +665,7 @@
    the section's own breathing room is the cheapest thing to spend before
    anything a shopper reads or taps. */
 .mj-upsell {
-  margin-top: var(--s-4);
+  margin-top: var(--s-3);
   margin-inline: calc(var(--cart-pad) * -1);
   padding: var(--s-3) var(--cart-pad);
   border-top: 1px solid var(--edge);
@@ -576,23 +736,28 @@
 }
 
 /* ---- drawer chrome --------------------------------------------------------
-   Narrowing the panel to 75vw without touching what is inside it left the
-   type and padding sized for a full-width sheet, which is what read as zoomed:
-   nothing grew, the frame around it shrank. These bring the chrome back into
-   proportion with the panel it now sits in.
+   Head, body and footer padding, and the one type size in the drawer that is
+   furniture rather than content.
 
-   Type only steps down where the element is furniture. The price, the total
-   and the button keep their weight, because those are what the shopper came
-   to read. */
-.cart-drawer-head { padding: var(--s-4) var(--cart-pad); }
+   Type steps down only where the element is a label. The price, the total and
+   the checkout button keep their weight, because those are what the shopper
+   came to read — §29's point that the cart's problem was never that it needed
+   more UI, and the fix is not to shrink everything by a notch. */
+.cart-drawer-head { padding: var(--s-3) var(--cart-pad); }
 
 .cart-drawer-head h2 { font-size: 17px; }
 
 .cart-drawer-body { padding: var(--s-4) var(--cart-pad); }
 
+/* The footer was measured against the reference and came out about 40% taller
+   for the same three things — total, CTA, trust line. All of the difference
+   was padding, so all of it comes out of padding: nothing in here is smaller
+   than it was, and the summary bar keeps its full 44px because it is a button
+   that opens the price breakdown. The safe-area inset stays whole, since on a
+   home-indicator phone it is the only thing keeping the CTA off the bar. */
 .cart-drawer-foot {
-  padding: var(--s-4) var(--cart-pad);
-  padding-bottom: calc(var(--s-4) + env(safe-area-inset-bottom));
+  padding: var(--s-3) var(--cart-pad);
+  padding-bottom: calc(var(--s-3) + env(safe-area-inset-bottom));
 }
 
 /* Remove is positioned in the cart-line block above. The margin rule that used

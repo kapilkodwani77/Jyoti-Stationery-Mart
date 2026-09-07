@@ -343,9 +343,20 @@
                          '<ul class="mj-up-list">' + rows + '</ul>';
 
         /* Removal immediately before the append, not at the top of the
-           function — see the note on upsellRun. */
-        var existing = document.querySelector('[data-mj-upsell]');
-        if (existing) existing.parentNode.removeChild(existing);
+           function — see the note on upsellRun.
+
+           querySelectorAll, not querySelector. The run token means only one
+           render can reach this line, so in the normal case there is exactly
+           one block to clear and the loop runs once. The reason it is a loop
+           is the abnormal case: if a block ever did get past the token — a
+           future caller, a path not thought of here — singular removal would
+           clear one and append a third, and the section would grow by one
+           every time the drawer opened. Clearing all of them makes this
+           self-correcting instead of self-compounding. */
+        var existing = document.querySelectorAll('[data-mj-upsell]');
+        for (var i = 0; i < existing.length; i++) {
+          existing[i].parentNode.removeChild(existing[i]);
+        }
 
         body.appendChild(wrap);
       });
@@ -495,6 +506,60 @@
     });
 
     decorate();
+  })();
+
+  /* =========================================================================
+     7. Cart line: suppress the line total when it repeats the unit price
+
+     theme.js renders both figures on every line — the unit price with its
+     struck MRP, and the line total. At quantity 1 they are the same number
+     printed twice, which is the duplication the cart brief calls out. At any
+     other quantity the total is the figure that actually differs and has to
+     stay.
+
+     CSS cannot decide this on its own. `[data-cart-qty-input][value="1"]`
+     looks like it would, but theme.js's patchTotals path updates the field
+     with `input.value = item.quantity` — the property, not the attribute — so
+     the markup keeps saying value="1" after the shopper presses +. An
+     attribute selector would read the state the cart had two changes ago.
+
+     So the quantity is read from the live property and stamped on the row,
+     and the stylesheet keys off the stamp.
+
+     A MutationObserver rather than handlers on the stepper, for the same
+     reason the pincode uses one: the drawer is repainted by several paths —
+     the full renderDrawer, the patchTotals diff, a removal, the drawer's own
+     first open — and observing the body catches all of them without patching
+     any. patchTotals writes .cart-line-price and .cart-line-total before it
+     writes input.value, but the callback is a microtask after the whole
+     function returns, so the value read here is the settled one.
+
+     childList and characterData only. The stamp is an attribute, attributes
+     are not observed, and the observer therefore cannot see its own writes.
+     ========================================================================= */
+  (function lineTotalDedupe() {
+    var body = document.querySelector('[data-cart-body]');
+    if (!body || typeof MutationObserver === 'undefined') return;
+
+    function stamp() {
+      var lines = body.querySelectorAll('.cart-line');
+      for (var i = 0; i < lines.length; i++) {
+        var input = lines[i].querySelector('[data-cart-qty-input]');
+        /* No input means the server-rendered line, which prints "Qty N" and
+           no total at all, so there is nothing to suppress. */
+        var dup = !!input && String(input.value).trim() === '1';
+        if (dup) lines[i].setAttribute('data-mj-line-dup', '');
+        else lines[i].removeAttribute('data-mj-line-dup');
+      }
+    }
+
+    new MutationObserver(stamp).observe(body, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+
+    stamp();
   })();
 
   void RM;
