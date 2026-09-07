@@ -13,6 +13,7 @@ session, local or remote. That is the reason these live in the repo.
 |---|---|---|---|
 | `banner-design`, `brand`, `design`, `design-system`, `slides`, `ui-styling`, `ui-ux-pro-max` | [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | `4aad058` | MIT |
 | `impeccable` (engine v0.1.2) | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) | `720628f` | Apache 2.0 |
+| `web-design-guidelines` | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) | `063bee9` | MIT (declared in that repo's README; it ships no LICENSE file) |
 | `frontend-design` | [anthropics/claude-code](https://github.com/anthropics/claude-code) `plugins/frontend-design` | — | see `frontend-design/LICENSE.txt` |
 
 Licence texts are kept alongside the skills they cover: `ui-ux-pro-max/LICENSE` (MIT,
@@ -30,6 +31,23 @@ Both upstream repos ship more than the skill directories. These parts were left 
 - **`impeccable`'s `.claude/agents/*.md`** — four subagent definitions
   (`asset-producer`, `documenter`, `finish-reviewer`, `manual-edit-applier`). Not
   installed; they add new subagent types.
+
+## Note on web-design-guidelines
+
+Upstream, this skill is a 40-line wrapper carrying no rules of its own. It
+fetches them at review time from:
+
+    https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md
+
+That host answered 200 when the skill was installed, but `skills.sh` is
+already blocked from this container, so the same can happen here — and the
+failure would be silent, leaving a review with no rules to check against.
+
+So `reference/command.md` holds a pinned copy of that file (7760 bytes,
+md5 `c65ffa0c6d0c5f20ba37f6b66c078b39`, 103 rules), and one paragraph was
+added to `SKILL.md` pointing at it as a fallback. That paragraph is the only
+divergence from upstream; the rest of the file is verbatim. The live fetch is
+still preferred, since the pinned copy is a snapshot and will age.
 
 ## Note on the impeccable engine
 

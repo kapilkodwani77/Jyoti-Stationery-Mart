@@ -19,6 +19,7 @@ the same as not using it.
 |---|---|
 | `ui-ux-pro-max` | Any UI decision. Has a searchable database — run its `scripts/search.py`; if a query returns 0 results, say so rather than inventing an answer. |
 | `impeccable` | Design critique, audit, polish of an existing interface |
+| `web-design-guidelines` | Checklist review of UI code — accessibility, semantics, forms. 103 rules, fetched live with a pinned fallback in its `reference/`. |
 | `frontend-design` | Visual direction, typography, avoiding templated defaults |
 | `ui-styling`, `design-system`, `brand` | Tokens, component specs, brand consistency |
 | `banner-design`, `slides` | Creative assets, presentations |
