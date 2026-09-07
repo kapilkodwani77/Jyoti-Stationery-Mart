@@ -200,16 +200,42 @@
    layout/theme.liquid ever changes, these stop applying rather than half
    applying, which is the failure that can actually be seen and fixed. */
 
-/* The drawer was min(420px, 100vw). On any phone narrower than 420px that
-   resolves to the full viewport, so the cart arrived as a full-screen page
-   rather than a panel over the shop, and nothing behind it said what it was
-   covering. Three quarters leaves a strip of the store visible, which is what
-   makes it read as dismissable.
+/* Three quarters, but never narrower than the line can actually be drawn in.
 
-   Desktop is untouched by design: 75vw of a 1280px window is 960px, so min()
-   still settles on 420px there. The change only bites below a 560px viewport,
-   which is the width at which 75vw and 420px cross. */
-.cart-drawer { width: min(420px, 75vw); }
+   The drawer was min(420px, 100vw), which on any phone resolved to the whole
+   viewport, so the cart arrived as a full-screen page with nothing behind it
+   saying what it covered. Three quarters leaves a strip of the store visible.
+   Desktop is unaffected either way: 75vw of a 1280px window is 960px, so min()
+   still settles on 420px there.
+
+   .cart-line is a 56px / 1fr / auto grid, and a 1fr track carries
+   min-width:auto — it cannot shrink below its own min-content. That floor is
+   set by the stepper, whose children are all fixed: .qty-btn is
+   width:var(--tap) twice over and .qty-input is width:52px, so the control is
+   144px and nothing in it can give. With the line total column the row needs
+
+     32 padding + 56 image + 12 gap + 144 stepper = 244px
+
+   and 75vw only clears that from about a 330px viewport up. Below it the row
+   overflowed the panel, which is what pushed the total off the right edge and
+   put a horizontal scrollbar under the drawer body.
+
+   max() sets the floor at 260px so the row always has room with slack to
+   spare. On every phone from 347px up the drawer is still exactly 75vw; the
+   floor only takes over on the very narrowest, where three quarters of the
+   screen is not a usable panel anyway. */
+.cart-drawer {
+  width: min(420px, max(260px, 75vw));
+  /* One source of truth for the drawer's inline padding. The cross-sell used
+     to bleed to the edges with a hardcoded negative margin of var(--s-5); when
+     the padding changed the two disagreed and the strip overhung the panel.
+     Both now read this. */
+  --cart-pad: var(--s-5);
+}
+
+@media (max-width: 400px) {
+  .cart-drawer { --cart-pad: var(--s-4); }
+}
 
 /* The line thumbnail is a fixed 72px square and the image inside carries
    .img-cover, so a portrait product photograph was centre-cropped to fill it.
@@ -230,35 +256,50 @@
    rests on the colour alone for anyone who cannot separate the two. */
 .cart-summary-bar-save { color: var(--ok); }
 
-/* At 46% of a 420px drawer a tile is about 180px and the next one sits half in
-   frame — the affordance that says the row scrolls. At 46% of a 75vw drawer on
-   a 390px phone it collapses to about 118px, too narrow to carry a square
-   photograph, a two-line title, a price and a full-width button without the
-   button wrapping.
+/* The tiles used to be sized as flex items in a scrolling row, with a
+   flex-basis tuned so the next one stayed half in frame. The row is a
+   two-column grid now, so the basis is inert and the rule that set it has
+   been removed rather than left to read as live. */
 
-   Widening the basis below the crossover point restores a legible tile and
-   still leaves the next one peeking, so the scroll cue survives. */
-@media (max-width: 560px) {
-  .mj-up-tile { flex-basis: 58%; }
-}
-
-/* ---- compact cart line ----------------------------------------------------
-   The middle column stacked four rows — title, price, stepper, then Remove on
-   a line of its own — and a single line ran tall enough to push the cross-sell
-   under the fold on a phone. Everything below removes height without removing
-   a control and without shrinking a tap target.
+/* ---- the cart line --------------------------------------------------------
+   Two jobs at once: the row has to fit the panel, and it has to stop pushing
+   the cross-sell under the fold. Height comes out of chrome and the thumbnail
+   (72px to 56px — its job is to confirm which product this is, and it was
+   sized like a hero); width comes out of the grid.
 
    This is an Operate surface in impeccable's sense: the shopper is completing
-   a task, so scanning and consistency outrank expression. Nothing here is
-   decorative. */
+   a task, so scanning and consistency outrank expression, and no saving here
+   is taken out of a control.
 
-/* 72 to 56. The thumbnail's job is to confirm which product this is. It was
-   sized like a hero and was not one. */
+   Two columns, not three. The third track held the line total and cost about
+   48px plus a gap, and that was the difference between the row fitting and
+   the row overflowing: the stepper's 144px is irreducible, so the only width
+   left to give back was the total's own column.
+
+   The total is not dropped — it moves to a second row, right-aligned under the
+   text column, where it costs about 20px of height and no width at all. At
+   quantity 1 it repeats the unit price directly above it, which is why losing
+   its prominence costs nothing; at higher quantities it is the number that
+   actually differs, and it is still there.
+
+   minmax(0, 1fr) is the other half of the fix. A bare 1fr carries
+   min-width:auto, so the track refuses to shrink under its min-content and
+   pushes the overflow outward instead of clipping inside. The explicit 0
+   minimum lets the track shrink and lets the clamps and ellipses inside it do
+   their job. */
 .cart-line {
-  grid-template-columns: 56px 1fr auto;
-  gap: var(--s-4);
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 0 var(--s-3);
   padding-block: var(--s-4);
 }
+
+/* Placement is by position rather than by class because theme.js renders the
+   middle cell as a bare <div> with no class of its own — see the template at
+   assets/theme.js. Both the server-rendered and the JS-rendered line emit the
+   same three children in the same order, so the same rules fit both. */
+.cart-line > :nth-child(1) { grid-row: 1 / span 2; grid-column: 1; }
+.cart-line > :nth-child(2) { grid-row: 1; grid-column: 2; min-width: 0; }
+.cart-line-total { grid-row: 2; grid-column: 2; justify-self: end; }
 
 .cart-line-img { width: 56px; height: 56px; }
 
@@ -274,34 +315,23 @@
   overflow: hidden;
 }
 
-/* The stepper was display:flex, which is block-level, so Remove was pushed
-   onto a fourth row. inline-flex puts the two on one line and reclaims that
-   row outright.
+/* An earlier pass set these to inline-flex on the theory that they would then
+   share a row. They will not, and the measurement says why: the stepper is
+   144px and Remove about 70px, against a text column of roughly 195px on a
+   393px phone. Two rows is not a styling choice here, it is what the widths
+   allow — the alternative is taking .qty-btn under the 44px touch minimum,
+   which ui-ux-pro-max ranks CRITICAL and web-design-guidelines also forbids.
 
-   Both keep the --tap minimum they already carried, so the touch targets are
-   the size they always were — only the stacking changed. That matters: this
-   is the one saving here that could have been taken by shrinking a control
-   instead, and it was not. */
-.cart-line-stepper {
-  display: inline-flex;
-  margin-top: var(--s-3);
-  vertical-align: middle;
-}
-
-.cart-line-remove {
-  margin-top: 0;
-  margin-left: var(--s-4);
-  vertical-align: middle;
-}
+   So they stay stacked, and the only thing taken is the air between them. */
+.cart-line-stepper { margin-top: var(--s-3); }
 
 /* ---- cross-sell: state the saving ----------------------------------------
    A tile showed one price with nothing to compare it against, so a pillow at
-   53% off read exactly like a full-price one. Both figures now appear, and
-   the percentage sits on the photograph where the eye already is.
+   53% off read exactly like a full-price one. Both figures now appear, with
+   the percentage beside them.
 
-   --danger is the theme's existing brick red: 6.06:1 on --chalk, 6.91:1 under
-   white. No new colour enters the palette and both readings clear the 4.5:1
-   floor. */
+   The photograph is still a positioning context, but only for the "Best
+   seller" flag below — the discount badge has moved off it. */
 .mj-up-img { position: relative; }
 
 /* The percentage sits beside the price rather than on the photograph. On the
@@ -418,6 +448,28 @@
 
 .mj-up-head { margin-bottom: var(--s-3); }
 
+/* A horizontal scroll strip with a deliberately half-visible second tile is a
+   reasonable pattern, but it was the wrong one here: with the drawer already
+   overflowing, a tile clipped by the panel edge is indistinguishable from a
+   tile clipped by a bug, and it reads as broken rather than as scrollable.
+
+   Two equal columns instead. Both products are fully visible, nothing is cut,
+   and the strip stops being a second axis the shopper has to discover. The
+   bleed goes with it — with no scrolling there is nothing to bleed off the
+   edge, so the negative margin that had to track the body padding is gone and
+   cannot disagree with it again.
+
+   minmax(0, 1fr) for the same reason as the cart line: an implicit auto
+   minimum would let a long title hold the column open past its share. */
+.mj-up-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin-inline: 0;
+  padding: 0;
+  overflow: visible;
+}
+
 /* ---- drawer chrome --------------------------------------------------------
    Narrowing the panel to 75vw without touching what is inside it left the
    type and padding sized for a full-width sheet, which is what read as zoomed:
@@ -427,16 +479,14 @@
    Type only steps down where the element is furniture. The price, the total
    and the button keep their weight, because those are what the shopper came
    to read. */
-.cart-drawer-head {
-  padding: var(--s-4) var(--s-5);
-}
+.cart-drawer-head { padding: var(--s-4) var(--cart-pad); }
 
 .cart-drawer-head h2 { font-size: 17px; }
 
-.cart-drawer-body { padding: var(--s-4) var(--s-5); }
+.cart-drawer-body { padding: var(--s-4) var(--cart-pad); }
 
 .cart-drawer-foot {
-  padding: var(--s-4);
+  padding: var(--s-4) var(--cart-pad);
   padding-bottom: calc(var(--s-4) + env(safe-area-inset-bottom));
 }
 

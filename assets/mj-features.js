@@ -328,12 +328,48 @@
     });
   });
 
-  /* Paint the cross-sell whenever the drawer is opened. */
+  /* Paint the cross-sell whenever the drawer is opened.
+
+     The delay used to be 500ms, chosen to stay clear of theme.js repainting
+     the drawer body. It was doing its job and it was also the bug: the drawer
+     opened onto an empty panel and the cross-sell dropped in most of a second
+     later, which is what made the section look buried far down the cart
+     rather than late.
+
+     The delay only ever guarded a race, so it is now short enough not to be
+     seen, and it runs twice. renderUpsell removes any block it previously
+     drew before drawing again, so the second call is idempotent — it costs
+     one cheap DOM pass and wins if theme.js happened to repaint over the
+     first. */
   document.addEventListener('click', function (e) {
     if (!e.target || !e.target.closest) return;
     if (!e.target.closest('[data-cart-open]')) return;
-    setTimeout(renderUpsell, 500);
+    setTimeout(renderUpsell, 150);
+    setTimeout(renderUpsell, 600);
   });
+
+  /* The other half of that delay was the network: /cart.js and two
+     /products/{handle}.js had to come back before anything could paint, and on
+     a phone that is most of the wait. Warming the product cache while the page
+     is idle turns the first drawer open into a render instead of a round trip;
+     productCache keeps them for the life of the page, so it happens once.
+
+     Idle only, and never on a metered or slow connection — a cross-sell is not
+     worth competing with the page's own loading, and four JSON documents on a
+     2G connection is a cost the shopper did not ask for. */
+  (function warmProductCache() {
+    var c = navigator.connection;
+    if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ''))) return;
+
+    var warm = function () {
+      Object.keys(CATALOG).forEach(function (k) {
+        getProduct(CATALOG[k]).catch(function () { delete productCache[CATALOG[k]]; });
+      });
+    };
+
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(warm, { timeout: 5000 });
+    else setTimeout(warm, 3000);
+  })();
 
   /* =========================================================================
      5. Cash on delivery in the drawer's trust line
