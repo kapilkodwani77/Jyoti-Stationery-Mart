@@ -194,11 +194,16 @@
 }
 
 /* ---- cart drawer refinements ---------------------------------------------
-   This file is linked after theme.css, so everything below overrides the base
-   rules on source order at equal specificity. No selector here is inflated to
-   out-rank theme.css, and none uses !important — if the link order in
-   layout/theme.liquid ever changes, these stop applying rather than half
-   applying, which is the failure that can actually be seen and fixed. */
+   This file is linked after theme.css, so nearly everything below overrides
+   the base rules on source order at equal specificity, and nothing uses
+   !important. If the link order in layout/theme.liquid ever changes, these
+   stop applying rather than half applying — a failure that can be seen and
+   fixed.
+
+   One selector is deliberately inflated: .mj-up-tile .mj-up-img img, which
+   out-ranks the base object-fit rather than tying with it. That one had a
+   visible bug resting on the tie, and a coin-flip is not a place to leave
+   one. It is called out where it appears. */
 
 /* Three quarters, but never narrower than the line can actually be drawn in.
 
@@ -288,10 +293,31 @@
    minimum lets the track shrink and lets the clamps and ellipses inside it do
    their job. */
 .cart-line {
+  position: relative;
   grid-template-columns: 56px minmax(0, 1fr);
   gap: 0 var(--s-3);
   padding-block: var(--s-4);
 }
+
+/* Remove leaves the flow and goes to the row's top-right corner, the way the
+   reference puts its × there.
+
+   It was the single tallest thing in the line after the stepper: a full 44px
+   row, because .cart-line-remove carries min-height:var(--tap). Absolute
+   positioning keeps every pixel of that touch target while taking all 44px of
+   it out of the height the line has to carry. Nothing was shrunk. */
+.cart-line-remove {
+  position: absolute;
+  top: var(--s-3);
+  right: 0;
+  margin: 0;
+}
+
+/* The two rows Remove now floats over give it room rather than running
+   underneath it. The stepper below is untouched, so it still gets the full
+   text column to sit in. */
+.cart-line-title,
+.cart-line-price { padding-right: 70px; }
 
 /* Placement is by position rather than by class because theme.js renders the
    middle cell as a bare <div> with no class of its own — see the template at
@@ -327,11 +353,11 @@
 
 /* ---- cross-sell: state the saving ----------------------------------------
    A tile showed one price with nothing to compare it against, so a pillow at
-   53% off read exactly like a full-price one. Both figures now appear, with
-   the percentage beside them.
+   53% off read exactly like a full-price one. The percentage now sits beside
+   the price and says it in the space one figure takes.
 
-   The photograph is still a positioning context, but only for the "Best
-   seller" flag below — the discount badge has moved off it. */
+   The photograph is a positioning context for the "Best seller" flag only —
+   the discount badge is in the price row, not on the picture. */
 .mj-up-img { position: relative; }
 
 /* The percentage sits beside the price rather than on the photograph. On the
@@ -378,23 +404,18 @@
   white-space: nowrap;
 }
 
-/* The price row: ₹699  53% OFF  ₹1,499.
+/* The price row: ₹699  53% OFF. Two figures, one line, on every width.
 
-   All three cannot share one line on a phone, and the measurement is not
-   close. At 393px the card gives about 99px of inner width, while the selling
-   price runs about 40px, the badge 49px and the was-price 36px — roughly
-   135px for the three. Two columns in a 75vw drawer is simply not that wide;
-   only desktop, at a 180px card, fits them on one line.
+   Three did not fit and the measurement was not close — about 135px of
+   content against roughly 99px of card at 393px — so the row wrapped on every
+   phone and the badge sat alone on a second line. The was-price is no longer
+   rendered here (see mj-features.js); the percentage carries what it said.
 
-   So one of them wraps, and the DOM order in mj-features.js decides which.
-   The badge stays with the price it qualifies and the was-price is what
-   drops, because it is the least load-bearing of the three: it says what you
-   are not paying. Sizes are trimmed to push that break as late as possible
-   rather than to pretend it does not happen.
+   flex-wrap stays as the safety net for a long currency string or a large
+   text-size setting, not as the normal case it used to be.
 
-   The row is what carries margin-top:auto, so the group sits at the card's
-   foot and the wrap costs the card one short line rather than a whole new
-   block. */
+   The row carries margin-top:auto, so the pair sits at the card's foot
+   whatever the title above it does. */
 .mj-up-prices {
   display: flex;
   align-items: baseline;
@@ -406,12 +427,6 @@
 .mj-up-price {
   margin-top: 0;
   font-size: 14px;
-}
-
-.mj-up-was {
-  font-size: 11px;
-  color: var(--ink-2);
-  text-decoration: line-through;
 }
 
 /* The heading used to be a flex row carrying a "Limited stock" badge, with
@@ -426,13 +441,13 @@
    visible without scrolling if head + line + cross-sell + footer fit the
    viewport. At 75vw none of them had been asked to give anything up.
 
-   Height is taken from chrome and from the photograph, not from the two
-   things a shopper acts on: the quantity stepper and the Add button both keep
-   the full 44px --tap minimum. That is the constraint that shaped everything
-   below — it is why the stepper and Remove still occupy two rows, since at
-   this width they cannot share one without shrinking a control. */
+   Height is taken from chrome, from the photograph, and from taking Remove
+   out of the flow — never from the three things a shopper acts on. The
+   quantity stepper, the Remove control and the Add button all keep the full
+   44px --tap minimum; Remove simply carries its 44px in the corner instead of
+   in the line's height. */
 
-/* 4:3 with the whole frame inside it. object-fit:cover was trimming these
+/* The whole frame inside the box. object-fit:cover was trimming these
    photographs to the container's shape, and the two it trimmed worst are the
    two that matter: the pillow is wide and lost its ends, the mat is a floor
    shot and lost the floor. contain fits the picture instead of the box, so a
@@ -442,25 +457,48 @@
    The letterbox is chalk rather than jute so it reads as the card's own paper
    showing through, not as a grey plate behind the product. */
 .mj-up-img {
-  aspect-ratio: 4 / 3;
+  /* 3:2. With contain the ratio no longer decides how much of the photograph
+     is seen — only how much height the card spends on it — so this is the one
+     dimension that can be traded for the section fitting on screen without
+     costing any of the product. */
+  aspect-ratio: 3 / 2;
   background: var(--chalk);
+  /* The reference's tiles work because the product sits in air rather than
+     against the card's edges. These are lifestyle photographs, not packshots,
+     so they need that room even more. */
+  padding: var(--s-2);
 }
 
-.mj-up-img img { object-fit: contain; }
+/* Two classes and an element, deliberately.
+
+   The base rule is `.mj-up-img img { object-fit: cover }` — identical
+   specificity to a plain override, which means the two were decided purely on
+   source order. That is a coin-flip to leave a visible bug resting on, and it
+   was still cropping in practice. Out-ranking it outright settles it.
+
+   contain, not cover: cover trims the photograph to the box's shape, which on
+   a lifestyle shot takes the top of somebody's head off. contain fits the
+   picture inside the box and lets the card's own chalk show around it. */
+.mj-up-tile .mj-up-img img { object-fit: contain; }
 
 .mj-up-body {
-  padding: var(--s-3);
+  padding: 10px;
   gap: 4px;
 }
 
 /* The section reads as a band the drawer holds rather than a box floating in
    it, so the tint bleeds to both edges. --cart-pad is the same variable the
    body padding uses; the two cannot drift apart the way the old hardcoded
-   negative margin did. */
+   negative margin did.
+
+   Padding is one step down from the obvious --s-4. The drawer is a fixed
+   column and every block in it is competing for the same viewport height, so
+   the section's own breathing room is the cheapest thing to spend before
+   anything a shopper reads or taps. */
 .mj-upsell {
-  margin-top: var(--s-5);
+  margin-top: var(--s-4);
   margin-inline: calc(var(--cart-pad) * -1);
-  padding: var(--s-4) var(--cart-pad);
+  padding: var(--s-3) var(--cart-pad);
   border-top: 1px solid var(--edge);
   /* MamaJoy's own --indigo at 6%, not a new blue. Over --chalk that resolves
      to about #E5E6E4, where --ink reads 14.5:1, --ink-2 5.2:1 and --ok 5.0:1.
@@ -478,7 +516,7 @@
    for that; the badge is gone, so the row is too. */
 .mj-up-head {
   display: block;
-  margin-bottom: var(--s-3);
+  margin-bottom: var(--s-2);
   color: var(--ink-2);
 }
 
@@ -524,9 +562,9 @@
   padding-bottom: calc(var(--s-4) + env(safe-area-inset-bottom));
 }
 
-/* Remove sat a full step below the stepper. Half a step still separates them
-   without reading as a new group. */
-.cart-line-remove { margin-top: calc(var(--s-1) * -1); }
+/* Remove is positioned in the cart-line block above. The margin rule that used
+   to live here is gone with it — it sat later in the file than the new
+   `margin: 0` and would have quietly won. */
 
 /* One line, as asked. Reaching that by pinning a size would either wrap on a
    narrow phone or waste the width on a wide one, so the size tracks the

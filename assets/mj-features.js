@@ -284,24 +284,23 @@
                    '</div>' +
                    '<div class="mj-up-body">' +
                      '<p class="mj-up-title">' + esc(p.title) + '</p>' +
-                     /* Order is price, percentage, then was-price, and the
-                        order is the whole point. At two columns in a 75vw
-                        drawer the three do not fit one line on a phone — the
-                        selling price runs about 40px, the was-price 36px and
-                        the badge 49px against roughly 99px of card — so one
-                        of them wraps, and DOM order decides which.
+                     /* Price and percentage only — the was-price is not
+                        rendered in the tile.
 
-                        The badge stays next to the price it qualifies, and
-                        the was-price is what drops, because it is the least
-                        load-bearing of the three: it says what you are not
-                        paying. Reading "₹699  53% OFF" then "₹1,499" keeps
-                        the discount attached to the number it modifies. */
+                        Three figures need about 135px and the card gives
+                        about 99px, so the row wrapped to two lines on every
+                        phone, costing ~18px on each tile and putting the
+                        badge on a line of its own. Two figures fit one line
+                        with room to spare, and "53% OFF" already carries what
+                        the struck figure was there to say.
+
+                        The cart line above still shows both figures, where
+                        the full width makes it free. This is the tile giving
+                        up its least load-bearing element so the section can
+                        be seen without scrolling. */
                      '<p class="mj-up-prices">' +
                        '<span class="mj-up-price">' + money(v.price) + '</span>' +
                        (off ? '<span class="mj-up-off">' + off + '% OFF</span>' : '') +
-                       (was ? '<span class="mj-up-was">' +
-                                '<span class="visually-hidden">MRP </span>' + money(was) +
-                              '</span>' : '') +
                      '</p>' +
                      '<button type="button" class="mj-up-add" data-mj-add="' + v.id + '">' +
                        '<span class="mj-up-add-idle">+ Add</span>' +
