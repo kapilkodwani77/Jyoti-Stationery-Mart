@@ -168,14 +168,22 @@
     pillow: 'mamajoy-baby-feeding-pillow-for-new-born-baby-nursing-pillow-for-breastfeeding'
   };
 
-  /* What to offer beside what is already there. Mat buyers see the carrier
-     first because it is the cheapest second item; carrier and pillow buyers
-     see the mat, which is the product that actually sells. */
-  var PAIRS = [
-    { has: CATALOG.mat_cars, show: [CATALOG.carrier, CATALOG.pillow] },
-    { has: CATALOG.mat_alpha, show: [CATALOG.carrier, CATALOG.pillow] },
-    { has: CATALOG.carrier, show: [CATALOG.pillow, CATALOG.mat_cars] },
-    { has: CATALOG.pillow, show: [CATALOG.carrier, CATALOG.mat_cars] }
+  /* One order of preference rather than a rule per cart combination.
+
+     The previous table paired each product with its own two suggestions,
+     which read as contextual but in a three-product catalogue only ever
+     produced "everything except what is already in the cart" in a slightly
+     different order. A flat priority says the same thing and says it once.
+
+     Carrier first because it is the designated best seller, then the pillow,
+     then the mats. The second mat sits last so it only ever appears when a
+     shopper already holds the other three — one mat is not a recommendation
+     to somebody holding the other. */
+  var PRIORITY = [
+    CATALOG.carrier,
+    CATALOG.pillow,
+    CATALOG.mat_cars,
+    CATALOG.mat_alpha
   ];
 
   var productCache = {};
@@ -209,25 +217,39 @@
       });
   }
 
+  /* Everything not already in the cart, in priority order, capped at two.
+
+     Two because the row is a two-column grid and a third tile would sit alone
+     on a second row — at these widths that is a worse card, not an extra
+     recommendation. With three products in the catalogue, a cart holding one
+     leaves exactly two, so the cap is rarely the thing doing the work.
+
+     No special case for an unrecognised cart any more: a handle this file does
+     not know simply matches nothing, and the filter then offers the whole
+     priority list, which is the right answer rather than a fallback. */
   function pickSuggestions(inCart) {
-    var out = [];
-    PAIRS.forEach(function (rule) {
-      if (inCart.indexOf(rule.has) === -1) return;
-      rule.show.forEach(function (h) {
-        if (inCart.indexOf(h) === -1 && out.indexOf(h) === -1) out.push(h);
-      });
-    });
-    /* Nothing recognised in the cart: lead with the product that sells. */
-    if (!out.length && inCart.length) out.push(CATALOG.carrier);
-    return out.slice(0, 2);
+    return PRIORITY.filter(function (h) {
+      return inCart.indexOf(h) === -1;
+    }).slice(0, 2);
   }
+
+  /* Monotonic token. Two opens, or the pair of timers below, can have renders
+     in flight at once; the newest is the only one whose result is still true,
+     so every older one drops its result on the floor when it lands.
+
+     This exists because removing the previous block at the top of the function
+     did not work, and the way it failed is worth keeping written down: the
+     removal was synchronous but the append was three fetches later. Both runs
+     looked, both found nothing to remove, both fetched, both appended — and
+     the cart showed the cross-sell twice. A check and the write it guards have
+     to be adjacent, so the removal has moved down beside the appendChild. */
+  var upsellRun = 0;
 
   function renderUpsell() {
     var body = document.querySelector('[data-cart-body]');
     if (!body) return;
 
-    var existing = document.querySelector('[data-mj-upsell]');
-    if (existing) existing.parentNode.removeChild(existing);
+    var run = ++upsellRun;
 
     cartHandles().then(function (inCart) {
       if (!inCart.length) return;
@@ -262,12 +284,24 @@
                    '</div>' +
                    '<div class="mj-up-body">' +
                      '<p class="mj-up-title">' + esc(p.title) + '</p>' +
+                     /* Order is price, percentage, then was-price, and the
+                        order is the whole point. At two columns in a 75vw
+                        drawer the three do not fit one line on a phone — the
+                        selling price runs about 40px, the was-price 36px and
+                        the badge 49px against roughly 99px of card — so one
+                        of them wraps, and DOM order decides which.
+
+                        The badge stays next to the price it qualifies, and
+                        the was-price is what drops, because it is the least
+                        load-bearing of the three: it says what you are not
+                        paying. Reading "₹699  53% OFF" then "₹1,499" keeps
+                        the discount attached to the number it modifies. */
                      '<p class="mj-up-prices">' +
                        '<span class="mj-up-price">' + money(v.price) + '</span>' +
+                       (off ? '<span class="mj-up-off">' + off + '% OFF</span>' : '') +
                        (was ? '<span class="mj-up-was">' +
                                 '<span class="visually-hidden">MRP </span>' + money(was) +
                               '</span>' : '') +
-                       (off ? '<span class="mj-up-off">' + off + '% OFF</span>' : '') +
                      '</p>' +
                      '<button type="button" class="mj-up-add" data-mj-add="' + v.id + '">' +
                        '<span class="mj-up-add-idle">+ Add</span>' +
@@ -280,19 +314,33 @@
 
         if (!rows.replace(/\s/g, '')) return;
 
+        /* A newer render started while this one was fetching, so this result
+           is already stale. Dropping it here rather than appending it is what
+           makes the function safe to call twice. */
+        if (run !== upsellRun) return;
+
         var wrap = document.createElement('div');
         wrap.className = 'mj-upsell';
         wrap.setAttribute('data-mj-upsell', '');
-        /* "Limited stock" is a claim, so it is only here because it is true:
-           every product in this catalogue sits between 7 and 10 units with
-           inventory_policy DENY, so the store cannot oversell and the badge
-           describes the real position. If stock is ever deep, this badge has
-           to come out — it is not decoration. */
-        wrap.innerHTML = '<p class="mj-up-head">' +
-                           '<span class="mj-up-head-label">Lowest price ever</span>' +
-                           '<span class="mj-up-stock">Limited stock</span>' +
-                         '</p>' +
+
+        /* "Lowest price ever" is a claim about price history that nothing in
+           the store can substantiate, so it is gone. What replaces it says
+           only what the section is.
+
+           The stock badge went with it. It was true — every product sits
+           between 7 and 10 units with inventory_policy DENY — but it was true
+           of the shop rather than of this section, and a scarcity note on a
+           block headed "Recommended for you" is urgency looking for somewhere
+           to live. The one merchandising claim left is "Best seller" on the
+           carrier tile, which the carrier's own buy box already makes. */
+        wrap.innerHTML = '<p class="mj-up-head">Recommended for you</p>' +
                          '<ul class="mj-up-list">' + rows + '</ul>';
+
+        /* Removal immediately before the append, not at the top of the
+           function — see the note on upsellRun. */
+        var existing = document.querySelector('[data-mj-upsell]');
+        if (existing) existing.parentNode.removeChild(existing);
+
         body.appendChild(wrap);
       });
     }).catch(function () { /* A cross-sell that cannot load is not an error worth showing. */ });

@@ -335,31 +335,34 @@
 .mj-up-img { position: relative; }
 
 /* The percentage sits beside the price rather than on the photograph. On the
-   photograph it competed with the product; beside the two figures it is read
-   as part of the same fact — this costs that much, down from that much, by
-   this much.
+   photograph it competed with the product; next to the number it qualifies it
+   is read as part of the same fact.
 
    Green, not red: a saving is good news, and it is the same --ok already
    carrying "You Save" in the footer, so the drawer states savings in one
-   colour throughout. 5.7:1 on --chalk. Outlined to match the stock badge
-   above, and because a second filled block in a tile this small would crowd
-   the price it is meant to support. */
+   colour throughout. 5.0:1 against the tinted panel it now sits on, past the
+   4.5:1 floor. Outlined rather than filled because a solid block in a card
+   this small would crowd the price it is meant to support. */
 .mj-up-off {
   color: var(--ok);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   line-height: 1.3;
-  padding: 1px 5px;
+  padding: 1px 4px;
   border: 1px solid currentColor;
   border-radius: var(--r-sm, 6px);
-  /* A badge that wraps has failed at being a badge. */
+  /* A badge that wraps internally has failed at being a badge. The row it
+     sits in may wrap; the badge itself never breaks across lines. */
   white-space: nowrap;
 }
 
 /* "Best seller" is the claim the carrier's own PDP already makes, so the cart
-   repeats it rather than inventing a second one. Ink rather than a colour:
-   the two colours in this block are already spoken for — red for stock, green
-   for the saving — and a third would turn a cross-sell into a carnival. */
+   repeats it rather than inventing a second one. It is now the only
+   merchandising claim in the section.
+
+   Ink rather than a colour: green is already spoken for by the saving, and a
+   second accent on a card this small would make a recommendation look like a
+   promotion. */
 .mj-up-flag {
   position: absolute;
   top: 6px;
@@ -375,50 +378,47 @@
   white-space: nowrap;
 }
 
-/* The row, not the figure, is what gets pushed to the bottom of the tile now. */
+/* The price row: ₹699  53% OFF  ₹1,499.
+
+   All three cannot share one line on a phone, and the measurement is not
+   close. At 393px the card gives about 99px of inner width, while the selling
+   price runs about 40px, the badge 49px and the was-price 36px — roughly
+   135px for the three. Two columns in a 75vw drawer is simply not that wide;
+   only desktop, at a 180px card, fits them on one line.
+
+   So one of them wraps, and the DOM order in mj-features.js decides which.
+   The badge stays with the price it qualifies and the was-price is what
+   drops, because it is the least load-bearing of the three: it says what you
+   are not paying. Sizes are trimmed to push that break as late as possible
+   rather than to pretend it does not happen.
+
+   The row is what carries margin-top:auto, so the group sits at the card's
+   foot and the wrap costs the card one short line rather than a whole new
+   block. */
 .mj-up-prices {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 5px;
   flex-wrap: wrap;
   margin-top: auto;
 }
 
-.mj-up-price { margin-top: 0; }
+.mj-up-price {
+  margin-top: 0;
+  font-size: 14px;
+}
 
 .mj-up-was {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ink-2);
   text-decoration: line-through;
 }
 
-/* ---- cross-sell heading ---------------------------------------------------
-   Heading and badge share one row. The heading is the part allowed to shrink;
-   the badge never wraps. That is the pattern ui-ux-pro-max's badge guidance
-   asks for — nowrap on the compact label, min-width:0 on the flexible one.
-
-   Outlined rather than filled: the filled red already belongs to the discount
-   badge on the photograph below, and two solid reds in one block would make
-   the panel shout in a register this brand does not use. */
-.mj-up-head {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-}
-
-.mj-up-head-label { min-width: 0; }
-
-.mj-up-stock {
-  white-space: nowrap;
-  color: var(--danger);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .02em;
-  line-height: 1.3;
-  padding: 2px 6px;
-  border: 1px solid currentColor;
-  border-radius: var(--r-sm, 6px);
-}
+/* The heading used to be a flex row carrying a "Limited stock" badge, with
+   .mj-up-head-label as the shrinkable half. Both are gone with the badge —
+   the claim was true of the shop but not of a block headed "Recommended for
+   you", and rules for markup that is no longer emitted are worse than no
+   rules at all. */
 
 /* ---- fitting the cross-sell above the fold --------------------------------
    The drawer is a fixed-height column: head, a scrolling body, then the
@@ -432,21 +432,55 @@
    below — it is why the stepper and Remove still occupy two rows, since at
    this width they cannot share one without shrinking a control. */
 
-/* A 1:1 photograph was the single tallest element in the drawer. 3:2 is still
-   a photograph worth looking at and returns a third of its height. */
-.mj-up-img { aspect-ratio: 3 / 2; }
+/* 4:3 with the whole frame inside it. object-fit:cover was trimming these
+   photographs to the container's shape, and the two it trimmed worst are the
+   two that matter: the pillow is wide and lost its ends, the mat is a floor
+   shot and lost the floor. contain fits the picture instead of the box, so a
+   portrait and a landscape source both arrive whole and the card height stays
+   the same either way.
+
+   The letterbox is chalk rather than jute so it reads as the card's own paper
+   showing through, not as a grey plate behind the product. */
+.mj-up-img {
+  aspect-ratio: 4 / 3;
+  background: var(--chalk);
+}
+
+.mj-up-img img { object-fit: contain; }
 
 .mj-up-body {
   padding: var(--s-3);
   gap: 4px;
 }
 
+/* The section reads as a band the drawer holds rather than a box floating in
+   it, so the tint bleeds to both edges. --cart-pad is the same variable the
+   body padding uses; the two cannot drift apart the way the old hardcoded
+   negative margin did. */
 .mj-upsell {
-  margin-top: var(--s-4);
-  padding-top: var(--s-4);
+  margin-top: var(--s-5);
+  margin-inline: calc(var(--cart-pad) * -1);
+  padding: var(--s-4) var(--cart-pad);
+  border-top: 1px solid var(--edge);
+  /* MamaJoy's own --indigo at 6%, not a new blue. Over --chalk that resolves
+     to about #E5E6E4, where --ink reads 14.5:1, --ink-2 5.2:1 and --ok 5.0:1.
+     Every one clears the 4.5:1 floor, so nothing inside the section had to be
+     restyled to survive the tint — which is the test of whether a background
+     belongs in a system or is being imposed on it.
+
+     The flat value first for browsers without color-mix; they get the same
+     colour, just not derived. */
+  background: #E5E6E4;
+  background: color-mix(in srgb, var(--indigo) 6%, var(--chalk));
 }
 
-.mj-up-head { margin-bottom: var(--s-3); }
+/* Plain text again. It carried a badge beside it and needed to be a flex row
+   for that; the badge is gone, so the row is too. */
+.mj-up-head {
+  display: block;
+  margin-bottom: var(--s-3);
+  color: var(--ink-2);
+}
 
 /* A horizontal scroll strip with a deliberately half-visible second tile is a
    reasonable pattern, but it was the wrong one here: with the drawer already
