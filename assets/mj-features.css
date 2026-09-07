@@ -296,7 +296,7 @@
   position: relative;
   grid-template-columns: 56px minmax(0, 1fr);
   gap: 0 var(--s-3);
-  padding-block: var(--s-4);
+  padding-block: var(--s-3);
 }
 
 /* Remove leaves the flow and goes to the row's top-right corner, the way the
@@ -329,14 +329,21 @@
 
 .cart-line-img { width: 56px; height: 56px; }
 
-/* Two lines then an ellipsis. These titles run past 70 characters, so the
-   third line carried no information the first two had not already given —
-   it was pure height. */
+/* One line, as the reference does it.
+
+   Two lines cost about 18px on every cart, and the second line of a MamaJoy
+   title is almost always the variant tail — "– Toys & Cars", "0–3 Years |
+   Ergonomic". The shopper is looking at the product's own photograph 12px to
+   the left and just chose it, so the row's job is confirmation, not
+   description. The full title is still the element's text content, so it is
+   read out in full by a screen reader and shown in full on hover.
+
+   This is the last height available in the line that is not a control. */
 .cart-line-title {
   font-size: 13px;
   line-height: 1.35;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -353,42 +360,37 @@
 
 /* ---- cross-sell: state the saving ----------------------------------------
    A tile showed one price with nothing to compare it against, so a pillow at
-   53% off read exactly like a full-price one. The percentage now sits beside
-   the price and says it in the space one figure takes.
+   53% off read exactly like a full-price one. Selling price, struck MRP and
+   percentage now sit together in one row.
 
    The photograph is a positioning context for the "Best seller" flag only —
-   the discount badge is in the price row, not on the picture. */
+   nothing to do with the price. */
 .mj-up-img { position: relative; }
 
-/* The percentage sits beside the price rather than on the photograph. On the
-   photograph it competed with the product; next to the number it qualifies it
-   is read as part of the same fact.
+/* Plain green text, not a bordered pill — the treatment the reference uses,
+   and about 12px narrower for the same words. In a row that has to hold three
+   figures inside roughly 99px, a border and its padding are width spent on
+   decoration rather than on the number.
 
-   Green, not red: a saving is good news, and it is the same --ok already
-   carrying "You Save" in the footer, so the drawer states savings in one
-   colour throughout. 5.0:1 against the tinted panel it now sits on, past the
-   4.5:1 floor. Outlined rather than filled because a solid block in a card
-   this small would crowd the price it is meant to support. */
+   The colour is still --ok, the same green as "You Save" in the footer and
+   the pincode confirmation, so a saving reads one way throughout the drawer.
+   5.0:1 on the tinted panel. */
 .mj-up-off {
   color: var(--ok);
   font-size: 10px;
   font-weight: 600;
   line-height: 1.3;
-  padding: 1px 4px;
-  border: 1px solid currentColor;
-  border-radius: var(--r-sm, 6px);
-  /* A badge that wraps internally has failed at being a badge. The row it
-     sits in may wrap; the badge itself never breaks across lines. */
+  /* The row may wrap; the percentage itself never breaks across lines. */
   white-space: nowrap;
 }
 
 /* "Best seller" is the claim the carrier's own PDP already makes, so the cart
-   repeats it rather than inventing a second one. It is now the only
-   merchandising claim in the section.
+   repeats it rather than inventing a second one.
 
-   Ink rather than a colour: green is already spoken for by the saving, and a
-   second accent on a card this small would make a recommendation look like a
-   promotion. */
+   Ink rather than a colour, and this is the reason: the section already
+   carries red on the stock badge and green on every percentage, so a third
+   accent here would leave the block with no quiet surface left. Ink reads as
+   a label rather than as another promotion. */
 .mj-up-flag {
   position: absolute;
   top: 6px;
@@ -404,36 +406,43 @@
   white-space: nowrap;
 }
 
-/* The price row: ₹699  53% OFF. Two figures, one line, on every width.
+/* The price row: ₹699  ₹1,499  53% OFF — all three, in the reference's order.
 
-   Three did not fit and the measurement was not close — about 135px of
-   content against roughly 99px of card at 393px — so the row wrapped on every
-   phone and the badge sat alone on a second line. The was-price is no longer
-   rendered here (see mj-features.js); the percentage carries what it said.
+   The card gives about 99px of inner width at 393px, so the three are sized
+   to live inside it rather than to look generous: 13px selling price, 10px
+   struck MRP, 10px percentage as plain text, 4px gaps. On a short price like
+   ₹699 that comes to roughly 97px and holds one line; on ₹1,299 it runs a few
+   pixels over and the percentage wraps under.
 
-   flex-wrap stays as the safety net for a long currency string or a large
-   text-size setting, not as the normal case it used to be.
+   flex-wrap is what makes that a soft landing instead of an overflow, and it
+   is also the safety net for a large text-size setting. Getting all three on
+   one line at every width would need a wider card, which at two columns means
+   a wider drawer.
 
-   The row carries margin-top:auto, so the pair sits at the card's foot
-   whatever the title above it does. */
+   The row carries margin-top:auto, so it sits at the card's foot whatever the
+   title above it does. */
 .mj-up-prices {
   display: flex;
   align-items: baseline;
-  gap: 5px;
+  gap: 4px;
   flex-wrap: wrap;
   margin-top: auto;
 }
 
 .mj-up-price {
   margin-top: 0;
-  font-size: 14px;
+  font-size: 13px;
 }
 
-/* The heading used to be a flex row carrying a "Limited stock" badge, with
-   .mj-up-head-label as the shrinkable half. Both are gone with the badge —
-   the claim was true of the shop but not of a block headed "Recommended for
-   you", and rules for markup that is no longer emitted are worse than no
-   rules at all. */
+/* The struck MRP. Muted and a step down from the selling price, so the pair
+   reads as one fact with an obvious subject rather than as two prices
+   competing. 10px because this row has three things in it and the width to
+   fit them is not generous. */
+.mj-up-was {
+  font-size: 10px;
+  color: var(--ink-2);
+  text-decoration: line-through;
+}
 
 /* ---- fitting the cross-sell above the fold --------------------------------
    The drawer is a fixed-height column: head, a scrolling body, then the
@@ -512,12 +521,36 @@
   background: color-mix(in srgb, var(--indigo) 6%, var(--chalk));
 }
 
-/* Plain text again. It carried a badge beside it and needed to be a flex row
-   for that; the badge is gone, so the row is too. */
+/* Heading and stock badge share one row: the heading is the half allowed to
+   shrink, the badge never wraps. That is the pattern ui-ux-pro-max's badge
+   guidance asks for — nowrap on the compact label, min-width:0 on the
+   flexible one.
+
+   The badge is outlined rather than filled. The percentage in each tile below
+   is already a flat colour, and a solid red block above a row of them would
+   make the section shout in a register this brand does not use. */
 .mj-up-head {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
   margin-bottom: var(--s-2);
   color: var(--ink-2);
+}
+
+.mj-up-head-label { min-width: 0; }
+
+/* --danger, the theme's existing brick red: 5.5:1 on the tinted panel, past
+   the 4.5:1 floor. No new colour. */
+.mj-up-stock {
+  white-space: nowrap;
+  color: var(--danger);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  line-height: 1.3;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  border-radius: var(--r-sm, 6px);
 }
 
 /* A horizontal scroll strip with a deliberately half-visible second tile is a

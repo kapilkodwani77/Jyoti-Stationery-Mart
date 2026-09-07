@@ -284,22 +284,22 @@
                    '</div>' +
                    '<div class="mj-up-body">' +
                      '<p class="mj-up-title">' + esc(p.title) + '</p>' +
-                     /* Price and percentage only — the was-price is not
-                        rendered in the tile.
+                     /* Price, struck MRP, then the percentage — the order in
+                        the reference. All three are rendered; the percentage
+                        is plain green text rather than a bordered pill, which
+                        is both what the reference does and about 12px
+                        narrower, so the row fits one line more often.
 
-                        Three figures need about 135px and the card gives
-                        about 99px, so the row wrapped to two lines on every
-                        phone, costing ~18px on each tile and putting the
-                        badge on a line of its own. Two figures fit one line
-                        with room to spare, and "53% OFF" already carries what
-                        the struck figure was there to say.
-
-                        The cart line above still shows both figures, where
-                        the full width makes it free. This is the tile giving
-                        up its least load-bearing element so the section can
-                        be seen without scrolling. */
+                        Every figure is Shopify's own: compare_at_price is
+                        only carried when it genuinely exceeds the selling
+                        price, so the strike and the percentage describe a
+                        real reduction. No compare-at, no strike and no
+                        badge. */
                      '<p class="mj-up-prices">' +
                        '<span class="mj-up-price">' + money(v.price) + '</span>' +
+                       (was ? '<span class="mj-up-was">' +
+                                '<span class="visually-hidden">MRP </span>' + money(was) +
+                              '</span>' : '') +
                        (off ? '<span class="mj-up-off">' + off + '% OFF</span>' : '') +
                      '</p>' +
                      '<button type="button" class="mj-up-add" data-mj-add="' + v.id + '">' +
@@ -322,17 +322,24 @@
         wrap.className = 'mj-upsell';
         wrap.setAttribute('data-mj-upsell', '');
 
-        /* "Lowest price ever" is a claim about price history that nothing in
-           the store can substantiate, so it is gone. What replaces it says
-           only what the section is.
+        /* Two claims, on the owner's instruction, and they stand on different
+           footings — worth recording which is which.
 
-           The stock badge went with it. It was true — every product sits
-           between 7 and 10 units with inventory_policy DENY — but it was true
-           of the shop rather than of this section, and a scarcity note on a
-           block headed "Recommended for you" is urgency looking for somewhere
-           to live. The one merchandising claim left is "Best seller" on the
-           carrier tile, which the carrier's own buy box already makes. */
-        wrap.innerHTML = '<p class="mj-up-head">Recommended for you</p>' +
+           "Limited stock" is verified. Every product in this catalogue sits
+           between 7 and 10 units with inventory_policy DENY, checked against
+           the Admin API, so the store cannot oversell and the badge describes
+           the real position. If stock ever runs deep this has to come out; it
+           is a fact, not decoration.
+
+           "Lowest price ever" is a claim about price history, which no API
+           here exposes and which only the merchant can confirm. It is theirs
+           to assert about their own pricing, and they have. If these products
+           have ever sold below the current price it is false and must
+           change. */
+        wrap.innerHTML = '<p class="mj-up-head">' +
+                           '<span class="mj-up-head-label">Lowest price ever</span>' +
+                           '<span class="mj-up-stock">Limited stock</span>' +
+                         '</p>' +
                          '<ul class="mj-up-list">' + rows + '</ul>';
 
         /* Removal immediately before the append, not at the top of the
