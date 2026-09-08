@@ -571,20 +571,26 @@
    solid fill needs none of the help an opaque pill on a light photograph
    needed, which is also why the hairline is gone.
 
-   Top-right, tucked to an 8px inset. The three products are centred studio
-   shots, so the corner is background rather than subject — but this is a
-   per-photograph judgement rather than something the layout guarantees, and
-   the carrier shot is the one to watch, because the baby's raised hand is the
-   nearest thing to that corner. Making the badge smaller is what buys the
-   clearance: 80x15px now against the 93x21 it started at, which is 45% less
-   of the photograph covered.
+   Top-right, at a --s-1 inset on the right and --s-2 on the top. Asymmetric
+   deliberately: pushed hard into the right edge, held off the top by enough
+   that the 16px corner radius does not crop it. The badge's own top-right
+   point sits 14.4px from the centre of that corner arc against its 16px
+   radius, so it clears — tight, and worth re-checking if either the radius or
+   the inset moves.
+
+   The three products are centred studio shots, so the corner is background
+   rather than subject — but this is a per-photograph judgement rather than
+   something the layout guarantees, and the carrier shot is the one to watch,
+   because the baby's raised hand is the nearest thing to that corner. Making
+   the badge smaller is what buys the clearance: 71x12px now against the
+   93x21 it started at, which is 56% less of the photograph covered.
 
    If a photograph with a subject in that corner is ever added, this needs
    revisiting. */
 .mj-up-flag {
   position: absolute;
   top: var(--s-2);
-  right: var(--s-2);
+  right: var(--s-1);
   left: auto;
   z-index: 3;
   background: var(--danger);
@@ -592,33 +598,38 @@
   /* No border. The hairline existed to give an opaque chalk pill an edge
      against a white studio background; a solid brick fill is its own edge. */
   border: 0;
-  /* 9px and weight 600, against the 10px/500 it carried and .pc-badge's
-     11px/500. "BEST SELLER" is eleven characters where the grid badge's
-     "SAVE 40%" is eight, so matching the grid's size is what made this one
-     wide rather than what made it consistent. The weight goes up as the size
-     comes down: reversed out of a solid fill, 600 is what keeps 9px legible,
-     and it is the same 600 the section's other small labels use.
+  /* 8px and weight 600, against .pc-badge's 11px/500. "BEST SELLER" is
+     eleven characters where the grid badge's "SAVE 40%" is eight, so matching
+     the grid's size is what made this one wide rather than what made it
+     consistent. The weight goes up as the size comes down: reversed out of a
+     solid fill, 600 is what keeps 8px legible, and it is the same 600 the
+     section's other small labels use.
 
-     Widths across the three passes, in a 149px image box:
+     Widths across the four passes, in a 149px image box:
 
        93 x 21   11px / .05em / --s-3 padding    62% of the card
        88 x 21   10px / .05em / --s-2 padding    59%
        80 x 15    9px / .04em / 3px 7px          53%
+       71 x 12    8px / .04em / 2px 6px          47%
 
      Measured at a 390px phone; the percentage falls at wider viewports and
-     rises to 62% at 320px, where the card itself is 128px.
+     rises at 320px, where the card itself is only 128px.
 
-     Small enough to sit in the corner and clear the subject, large enough to
-     read — which is the whole brief for this badge. */
-  font-size: 9px;
+     8px is the floor. Uppercase at 600 reversed out of a solid fill is still
+     legible there — caps have no descenders and no x-height problem to lose —
+     but a step under it and the tracking stops being able to hold the letters
+     apart. Small enough to sit in the corner and clear the subject, large
+     enough to read, which is the whole brief for this badge. */
+  font-size: 8px;
   font-weight: 600;
   letter-spacing: .04em;
   text-transform: uppercase;
   line-height: 1;
-  /* Raw px rather than --s steps, matching .mj-up-stock's own 2px 6px two
-     rules down: at this size the 4px scale step is a quarter of the badge's
-     height, so the scale stops being the right instrument. */
-  padding: 3px 7px;
+  /* Raw px rather than --s steps, and now exactly .mj-up-stock's own 2px 6px
+     two rules down — at this size the 4px scale step is a third of the
+     badge's height, so the scale stops being the right instrument, and the
+     section's two small labels may as well be padded identically. */
+  padding: 2px 6px;
   border-radius: 100px;
   white-space: nowrap;
 }
