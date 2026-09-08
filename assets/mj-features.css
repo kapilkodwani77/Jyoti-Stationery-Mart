@@ -113,17 +113,27 @@
 
 .mj-up-list::-webkit-scrollbar { display: none; }
 
-/* flex-basis and scroll-snap-align used to live here, sizing the tile as an
-   item in the scrolling strip described above. Both are inert on a grid item
-   and are gone rather than left to read as live. */
+/* The tile is a bare column, exactly as .pc is in
+   assets/component-product-card.css. No border, no radius, no fill.
+
+   It used to be a bordered, filled card with the photograph boxed inside it,
+   which is the pattern that made the cross-sell look like a widget bolted on
+   rather than part of the store. The site's own grid does the opposite: the
+   photograph is the object and carries the rounding and the hairline, and the
+   text sits under it on the page's own ground starting at the photograph's
+   left edge. Copying that costs nothing and removes three decorations.
+
+   It also hands back 18px of row width per card — the 8px of inner padding on
+   each side plus the border — which is most of what the three-figure price row
+   needed to hold one line.
+
+   flex-basis and scroll-snap-align used to live here too, sizing the tile as
+   an item in the scrolling strip described above. Both are inert on a grid
+   item and are gone rather than left to read as live. */
 .mj-up-tile {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--jute);
-  border-radius: var(--r-md, 8px);
-  overflow: hidden;
-  background: var(--chalk);
 }
 
 .mj-up-img {
@@ -166,40 +176,21 @@
   margin-top: auto;
 }
 
-/* The theme's minimum tap target, held here too. */
-.mj-up-add {
-  min-height: var(--tap);
-  width: 100%;
-  padding-inline: var(--s-3);
-  border: 1px solid var(--ink);
-  border-radius: var(--r-sm, 6px);
-  background: transparent;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
-}
+/* Everything this button looks like now comes from .cta-outline in theme.css,
+   the same class the product grid's own Add to cart carries — border, indigo,
+   radius, the hover gated behind (hover:hover), the press scale, and the
+   .btn-label / .btn-pending swap keyed off aria-busy. mj-features.js renders
+   the class, so this file styles none of it.
 
-.mj-up-add:hover {
-  background: var(--ink);
-  color: var(--chalk);
-}
+   This block used to duplicate all of that in ink instead of indigo, with its
+   own radius and its own ungated hover, which is how the cross-sell ended up
+   with a button the store does not otherwise have. It only sets what is
+   structural; the size override is with the other card rules below.
 
-.mj-up-add:active {
-  transform: scale(.97);
-}
-
-/* Same pending pattern the buy box uses: both labels ship, CSS shows one,
-   keyed off the aria-busy the handler sets. No spinner. */
-.mj-up-add-busy { display: none; }
-.mj-up-add[aria-busy="true"] .mj-up-add-idle { display: none; }
-.mj-up-add[aria-busy="true"] .mj-up-add-busy { display: inline; }
-
-@media (prefers-reduced-motion: reduce) {
-  .mj-up-add { transition: none; }
-  .mj-up-add:active { transform: none; }
-}
+   Note that a visual declaration here would beat .cta-outline outright — both
+   are single-class selectors and this file loads second — so the reuse
+   depends on this block staying empty of appearance. */
+.mj-up-add { width: 100%; cursor: pointer; }
 
 /* ---- cart drawer refinements ---------------------------------------------
    This file is linked after theme.css, so nearly everything below overrides
@@ -229,10 +220,10 @@
      393px phone -> 346px drawer      375px phone -> 330px
      430px phone -> 378px             1280px window -> 420px
 
-   The 300px floor is now slack rather than a rescue. The row's widest
-   obligation is 32 padding + 64 image + 12 gap + 124 stepper + 12 + 62 Remove
-   = 306px, and at 88vw that is cleared from a 348px viewport up; under it the
-   narrow-phone query below takes the stepper and Remove down a step. */
+   The 300px floor is real slack now, not a rescue. The row's widest
+   obligation is 32 padding + 64 image + 12 gap + 100 stepper + 12 + 62 Remove
+   = 282px, which the 300px floor clears at every width down to 320px — so
+   nothing has to step down on a narrow phone any more. */
 .cart-drawer {
   width: min(420px, max(300px, 88vw));
   /* One source of truth for the drawer's inline padding. The cross-sell used
@@ -266,24 +257,26 @@
 .cart-summary-bar-save { color: var(--ok); }
 
 /* ---- the cart line --------------------------------------------------------
-   The row has to fit the panel, and it has to stop pushing the cross-sell
-   under the fold. It now does both, and it does them at 98px against the
-   207px it started at, with nothing a shopper reads or taps made smaller than
-   the standards allow.
+   110px, against the 207px it started at, and the composition is the point
+   rather than the number: image on the left, and in one column beside it the
+   title, then the price, then the quantity — the shape the brief asks for,
+   instead of five elements floating at different alignments.
 
-   Where the 109px came from, in order of size:
+   Where the 97px came from:
 
      44px  the stepper and Remove share a row instead of stacking. This was
            impossible at 75vw and is comfortable at 88vw — the text column
            went from about 195px to 238px, which is the whole difference.
-      4px  the stepper is 40px tall rather than 44 (see below)
+     12px  the stepper is 32px tall rather than 44
       8px  vertical padding, --s-4 to --s-3
      18px  the title clamps to one line rather than two
      20px  the line total is hidden at quantity 1, where it is the unit price
-           printed twice — the duplication §4 of the brief calls out — and
-           shown at every other quantity, where it is the figure that differs
+           printed twice — and shown at every other quantity, where it is the
+           figure that differs
      15px  the thumbnail, 72px to 64px. Its job is to confirm which product
            this is; it was sized like a hero.
+    -20px  given back: the price moved off the title's row onto its own, which
+           costs a row and buys the title the whole 238px column
 
    This is an Operate surface in impeccable's sense: the shopper is completing
    a task, so scanning and consistency outrank expression, and no saving here
@@ -315,26 +308,27 @@
 .cart-line-img { width: 64px; height: 64px; }
 
 /* The middle cell becomes its own two-column grid, and that is what lets the
-   line take the reference's shape without theme.js emitting different markup.
+   line be rearranged without theme.js emitting different markup.
    theme.js hands us five flat siblings — title, optional variant, price,
    stepper, Remove — and named grid placement rearranges them in place:
 
-     title .................. price + struck MRP
+     title, the full width of the column
      variant
+     price + struck MRP
      [ − 1 + ] .......................... Remove
 
-   The previous pass had Remove absolutely positioned in the row's corner and
-   the stepper alone on a full-width line. That was the right answer at 75vw
-   and is the wrong one at 88vw: the text column has gone from about 195px to
-   238px, and a 124px stepper plus a 62px Remove now fit a single row with
-   room to spare. A whole 44px row comes out of the line, and Remove goes back
-   into the document flow where it can be reached in reading order rather than
+   Remove used to be absolutely positioned in the row's corner with the
+   stepper alone on a full-width line. That was the right answer at 75vw and
+   is the wrong one at 88vw: the text column has gone from about 195px to
+   238px, and a 100px stepper plus a 62px Remove fit one row with 76px to
+   spare. A whole 44px row comes out of the line, and Remove goes back into
+   the document flow where it can be reached in reading order rather than
    floated over the two rows it used to cover. */
 .cart-line > :nth-child(2) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
   column-gap: var(--s-3);
-  align-items: baseline;
+  align-items: center;
 }
 
 /* Scoped to the drawer from here down. sections/main-cart.liquid — the /cart
@@ -343,9 +337,9 @@
    would be inert there, but text-align and margin would not, so an unscoped
    rule quietly restyles a page this brief is not about. Everything the drawer
    needs is a drawer rule. */
-.cart-drawer .cart-line-title   { grid-column: 1; grid-row: 1; }
-.cart-drawer .cart-line-variant { grid-column: 1; grid-row: 2; }
-.cart-drawer .cart-line-stepper { grid-column: 1; grid-row: 3; justify-self: start; }
+.cart-drawer .cart-line-title   { grid-column: 1 / -1; grid-row: 1; }
+.cart-drawer .cart-line-variant { grid-column: 1 / -1; grid-row: 2; }
+.cart-drawer .cart-line-stepper { grid-column: 1; grid-row: 4; justify-self: start; }
 
 /* The server-rendered fallback. cart-drawer.liquid emits "Qty N" in a .micro
    in place of the stepper and Remove, for the paint before theme.js takes
@@ -353,35 +347,43 @@
    slot the price is meant to leave empty. Sent to the stepper's row instead,
    so the fallback is a legible cart rather than a scrambled one if the script
    never arrives. */
-.cart-drawer .cart-line > :nth-child(2) > .micro { grid-column: 1; grid-row: 3; }
+.cart-drawer .cart-line > :nth-child(2) > .micro { grid-column: 1; grid-row: 4; }
 
-/* The one price on the line, and it carries both figures: what is being paid
-   and the MRP struck beside it, exactly as §14 of the brief asks. It sits at
-   the end of the title's row because that is where the reference puts it and
-   because a price aligned to the panel's right edge is scanned as a column
-   when there are several lines. */
+/* The price gets its own full-width row under the title rather than sharing
+   the title's row on the right.
+
+   Right-aligning it there was costing the title about 100px — the width of
+   "₹1,299 ₹1,900" plus its gap — out of a 238px column, and a MamaJoy title
+   truncated at 19 characters reads "MamaJoy Baby Play…", which names the
+   brand and nothing else. The title now has the whole column and the same one
+   line reaches "MamaJoy Baby Play Mat – Alphabets…".
+
+   Stacked is also the order the questions get asked in, the same order the
+   product card uses: what is it, then what does it cost. It costs 18px of
+   height and the stepper row gives back more than that. */
 .cart-drawer .cart-line-price {
-  grid-column: 2;
-  grid-row: 1;
-  text-align: right;
-  margin-top: 0;
+  grid-column: 1 / -1;
+  grid-row: 3;
+  margin-top: 2px;
 }
 
-/* 40px to match the stepper it now shares a row with — theme.css sets it to
-   the 44px --tap, which made Remove and not the stepper the thing setting the
-   row's height. Same web-versus-native reasoning as the stepper: 40px is well
-   past WCAG 2.5.8's 24px, and the two controls being the same height is what
-   makes the row read as one row. */
+/* 32px, matching the stepper it shares a row with — theme.css sets it to the
+   44px --tap, which made Remove and not the stepper the thing setting the
+   row's height. Same web-versus-native reasoning as the stepper: 32px is a
+   third clear of WCAG 2.5.8's 24px, and the two controls being the same
+   height is what makes the row read as one row rather than two things that
+   happen to be level. */
 .cart-drawer .cart-line-remove {
   grid-column: 2;
-  grid-row: 3;
+  grid-row: 4;
   justify-self: end;
   align-self: center;
-  min-height: 40px;
+  min-height: 32px;
   margin: 0;
 }
 
-/* One line, as the reference does it.
+/* One line, and with the price moved off this row it is a whole 238px line
+   rather than the 126px stub it was.
 
    Two lines cost about 18px on every cart, and the second line of a MamaJoy
    title is almost always the variant tail — "– Toys & Cars", "0–3 Years |
@@ -426,14 +428,22 @@
    touch data is explicit that it should not be applied to web unexamined —
    "web WCAG 2.2 has a separate 24 by 24 CSS px minimum", and its Don't is
    "collapse iOS 44pt, Android 48dp, and web 24 CSS px into one cross-platform
-   number". This is a web surface, so 40×40 is judged against 24×24 and clears
-   it by two thirds. That correction matters: an earlier comment in this file
-   claimed dropping under 44 was forbidden outright, and it was wrong.
+   number". This is a web surface, so it is judged against 24×24.
 
-     40 + 44 + 40 = 124px, down from 144, and 40px tall rather than 44.
+     144×44  original          the slab in the screenshot
+     124×40  previous pass
+     100×32  now               34% of the original's area
+
+   32px is a third clear of the 24px web minimum, and ui-ux-pro-max's second
+   touch rule — at least 8px between adjacent targets — is satisfied by the
+   12px gap to Remove. The control is now roughly 42% of the text column
+   rather than 93% of it, which is what "compact, premium, unobtrusive" means
+   in numbers.
 
    The buttons stay square and the input stays the widest cell, so the number
-   is still the thing the eye lands on. */
+   is still the thing the eye lands on. This is the floor: below 32 the digit
+   stops being comfortably readable at 14px and the box starts crowding its
+   own type. */
 .cart-line-stepper.stepper {
   width: max-content;
   max-width: 100%;
@@ -441,8 +451,8 @@
   margin-top: var(--s-2);
 }
 
-.cart-line-stepper .qty-btn { width: 40px; height: 40px; }
-.cart-line-stepper .qty-input { width: 44px; height: 40px; }
+.cart-line-stepper .qty-btn { width: 32px; height: 32px; }
+.cart-line-stepper .qty-input { width: 36px; height: 32px; }
 
 /* Double-tap-to-zoom is a real cause of a cart that "goes zoomed", and it is
    the +/− pair that provokes it: they are the only controls in the drawer a
@@ -464,12 +474,13 @@
    moment anyone touches +. See mj-features.js. */
 .cart-line[data-mj-line-dup] .cart-line-total { display: none; }
 
-/* Below about 348px the stepper, Remove and the gap between them no longer
-   clear the text column, so both step down once rather than the row wrapping
-   into two. 36px is still half again the 24px web minimum. */
-@media (max-width: 360px) {
-  .cart-line-stepper .qty-btn { width: 36px; }
-  .cart-line-stepper .qty-input { width: 40px; }
+/* 320px is the narrowest phone still in service and the drawer's 300px floor
+   takes over there, leaving a 192px text column. The stepper and Remove need
+   100 + 12 + 62 = 174px of it, so the row holds without stepping anything
+   down — the earlier narrow-phone shrink is no longer needed and is gone. All
+   that is left at this width is the Remove label, which is the one thing that
+   can give without a control losing its target. */
+@media (max-width: 340px) {
   .cart-line-remove { font-size: 12px; }
 }
 
@@ -482,17 +493,22 @@
    nothing to do with the price. */
 .mj-up-img { position: relative; }
 
-/* Plain green text, not a bordered pill — the treatment the reference uses,
-   and about 12px narrower for the same words. In a row that has to hold three
-   figures inside 135px, a border and its padding are width spent on
-   decoration rather than on the number.
+/* Plain text, not a bordered pill: in a row holding three figures, a border
+   and its padding are about 12px of width spent on decoration rather than on
+   the number. It is also the quieter object, which is what the brief means by
+   "the discount should be visually useful, not promotional clutter".
 
-   The colour is still --ok, the same green as "You Save" in the footer and
-   the pincode confirmation, so a saving reads one way throughout the drawer.
-   5.0:1 on the tinted panel. */
+   11px, the same step as the struck MRP beside it, so the two secondary
+   figures read as one tier under the price. It sat at 10px through the
+   previous pass while the note above it claimed 11 — the note was right and
+   the value was not.
+
+   --ok, the same green as "You Save" in the footer and the pincode
+   confirmation, so a saving reads one way throughout the drawer. 5.0:1 on the
+   tinted panel. */
 .mj-up-off {
   color: var(--ok);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 1.3;
   /* The row may wrap; the percentage itself never breaks across lines. */
@@ -504,130 +520,191 @@
    mj-features.js, not written into a product card, so designating a different
    product is one line in one place.
 
-   Red, as asked, and specifically --danger — the brick red already in the
-   theme's token set and already carrying the stock badge four lines below.
-   No new colour enters the palette. Filled against the outlined stock badge,
-   so the two reds are told apart by treatment rather than by hue: white on
-   --danger measures 6.9:1, well past the 4.5:1 floor.
+   This is .pc-badge, the store's own badge: chalk pill, 100px radius, 11px
+   500 uppercase with .05em tracking. Not a lookalike — the same values, from
+   the same file, because that badge already sits on this store's photography
+   everywhere else and this one had no reason to be a different object. Two
+   values are one step tighter than the grid's, both noted at the declaration.
 
-   An earlier pass had this in ink on the argument that a third accent would
-   leave the section with nothing quiet in it. The brief overrides that
-   explicitly, and the reference agrees — BlaBliBlu runs a filled red product
-   badge and a red section badge in the same block. */
+   The filled block is gone, and component-product-card.css records why it
+   should never have been one: the sale badge there used to be solid indigo
+   and was deliberately quieted because it "out-shouted the photography it was
+   sitting on". A filled red rectangle over a photograph of a parent and child
+   is that same mistake, made again on a smaller card. A chalk pill sits on
+   the picture instead of blocking it.
+
+   The red survives as the type colour rather than the fill: --danger on
+   --chalk measures 6.5:1, past the 4.5:1 floor, and it is the same brick the
+   stock badge above already uses. Prominent, restrained, no new colour.
+
+   Obstruction is solved by reserved space, not by placement luck. .mj-up-img
+   carries 32px of top padding — the pill's own 21px plus its 8px inset, plus
+   clearance — and object-fit:contain fits the product into what is left, so
+   the product can never rise under the badge whatever shape the photograph
+   is. Placement alone is not enough here and the measurement proved it: at
+   4:3 with 28px reserved, the contained carrier still crossed into the badge
+   by 4px. */
 .mj-up-flag {
   position: absolute;
-  top: 6px;
-  left: 6px;
-  background: var(--danger);
-  color: var(--chalk);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .02em;
+  top: var(--s-2);
+  left: var(--s-2);
+  z-index: 3;
+  background: var(--chalk);
+  /* --edge-strong, not --edge. Reserving space above the product means the
+     pill always lands on the card's own chalk rather than on photography, and
+     a chalk pill on chalk is nothing but its hairline — at --edge it very
+     nearly disappeared. .pc-badge--sale had the same problem and took the
+     same answer: coloured type and "a slightly firmer hairline rather than
+     volume". */
+  border: 1px solid var(--edge-strong);
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .05em;
+  text-transform: uppercase;
   line-height: 1;
-  padding: 4px 6px;
-  border-radius: var(--r-sm, 6px);
+  /* --s-2 rather than .pc-badge's --s-3 on the inline axis. Same pill, one
+     step tighter, because this card is 165px against the grid's 185px and at
+     the full padding the badge ran to nearly half the card's width. The
+     vertical padding is unchanged, so the pill keeps its height and the 32px
+     reserved above the product still clears it. */
+  padding: var(--s-1) var(--s-2);
+  border-radius: 100px;
   white-space: nowrap;
 }
 
-/* The price row: ₹699  ₹1,499  53% OFF — all three on one line, in the
-   reference's order.
+/* The price row: ₹1,199  ₹1,999  40% OFF — all three on one line.
 
-   Last pass this wrapped, and the note here said the fix would need a wider
-   card, which at two columns means a wider drawer. The drawer is wider now,
-   so the card is too: 151px at a 393px phone against the 99px it had. Inside
-   its 8px padding that is 135px of usable row, and the three figures measure
+   Last pass this was measured as fitting and it wraps on the phone, and the
+   reason is worth writing down because it invalidates the measurement rather
+   than the design. It was measured in Chromium on Linux, which fell back to
+   DejaVu Sans. The five Switzer and Gambetta files 404 on this theme, so iOS
+   falls back too — to its own face, whose digits are wider. A row measured at
+   133px inside 135px had no margin for a different fallback and did not
+   survive one. It is now measured against Liberation Sans, which is metric-
+   compatible with Arial and a conservative stand-in for what iOS actually
+   substitutes.
 
-     ₹1,299 at 13px   ~48px
-     ₹1,999 struck    ~37px
-     40% OFF          ~40px
-     two 4px gaps       8px
-                    -------
-                      133px
+   Three things bought the room, none of them a font-size cut on the figure
+   that matters:
 
-   which holds. ₹699 is 14px narrower again. flex-wrap stays as the safety net
-   for a large text-size setting and for the 375px case, where the same row is
-   6px over and the percentage drops under rather than overflowing.
+     18px  the tile lost its border and inner padding (see .mj-up-tile)
+      2px  --s-1 gaps rather than 4px, which is what .pc-price uses under 700px
+      4px  the struck MRP and the percentage step to 11px
 
-   tabular-nums on the figures so the two cards' prices align vertically —
-   web-design-guidelines asks for it wherever numbers are compared, and two
-   prices side by side is exactly that.
+   .pc-price had already solved the two-figure version of this problem, and
+   its comment says so: "at 13px with the standard 8px gap a four-digit price
+   and its compare-at wrapped onto two lines". Its answer was a smaller struck
+   figure and a 4px gap, and the same answer works with a third item once the
+   padding is gone.
+
+   Order is price, struck MRP, percentage, as the brief specifies. That is not
+   the order .pc-price uses — the grid card leads with the struck figure and
+   states the discount in the badge over the photograph instead — and the
+   divergence is deliberate: the brief asks for all three inline here.
+
+   letter-spacing and tabular-nums are taken from .pc-price-now, so the two
+   cards' figures sit on the same rhythm and align vertically.
 
    The row carries margin-top:auto, so it sits at the card's foot whatever the
    title above it does. */
 .mj-up-prices {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: var(--s-1);
   flex-wrap: wrap;
   margin-top: auto;
+  padding-top: var(--s-1);
+  line-height: 1.3;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
 }
 
 .mj-up-price {
   margin-top: 0;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
 }
 
-/* The struck MRP. Muted and a step down from the selling price, so the pair
-   reads as one fact with an obvious subject rather than as two prices
-   competing. 10px because this row has three things in it and the width to
-   fit them is not generous. */
+/* The struck MRP, at .pc-price-was's own mobile size and colour. */
 .mj-up-was {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ink-2);
   text-decoration: line-through;
 }
 
-/* At 375px the row is a few pixels over. One step down on the selling price
-   and one on the gaps buys those pixels back without touching the struck MRP
-   or the percentage, which are already at their floor. */
-@media (max-width: 380px) {
-  .mj-up-prices { gap: 3px; }
-  .mj-up-price { font-size: 12px; }
+/* 320px is the one width where three figures genuinely do not fit: the card
+   is 138px there and the row wants 141px. flex-wrap catches it and the
+   percentage drops to a second line, which is the brief's own stated
+   exception for a very narrow viewport. Everything from 360px up holds one
+   line. */
+@media (max-width: 340px) {
+  .mj-up-price { font-size: 13px; }
 }
 
-/* ---- fitting the cross-sell above the fold --------------------------------
+/* ---- the cross-sell card, on the store's own product-card language ---------
    The drawer is a fixed-height column: head, a scrolling body, then the
-   footer. The cross-sell lives at the bottom of the body, so it is only
-   visible without scrolling if head + line + cross-sell + footer fit the
-   viewport. At 75vw none of them had been asked to give anything up.
+   footer, and the cross-sell sits at the bottom of the body — so how tall
+   this card is decides whether the section is visible without scrolling.
 
-   It fits now, and the measurement is in the report: at 393px with the in-app
-   browser's chrome the stack is 672px against 672px of room — head 55, body
-   433, footer 184, nothing to scroll. At 375px it is 30px over, and the 30px
-   that scrolls is the tiles' bottom padding: both Add buttons are still on
-   screen.
+   Measured with the in-app browser's chrome subtracted, one item in the cart:
 
-   Height came out of chrome, out of the line's own layout, and out of the
-   duplicate price — never out of a control's reach. The stepper, Remove and
-   Add are 40px, 40px and 44px against WCAG 2.5.8's 24px web minimum. */
+     414px phone   716 of 716   fits
+     390px phone   676 of 664   12px scroll
+     375px phone   668 of 632   36px scroll
 
-/* The whole frame inside the box. object-fit:cover was trimming these
-   photographs to the container's shape, and the two it trimmed worst are the
-   two that matter: the pillow is wide and lost its ends, the mat is a floor
-   shot and lost the floor. contain fits the picture instead of the box, so a
-   portrait and a landscape source both arrive whole and the card height stays
-   the same either way.
+   The square image box costs 41px a card against the 4:3 one tried first, and
+   it is bought deliberately: it renders the products at nearly twice the
+   area. Two --s steps of drawer chrome pay most of it back and the remainder
+   is reported rather than shaved off the spacing scale.
 
-   The letterbox is chalk rather than jute so it reads as the card's own paper
-   showing through, not as a grey plate behind the product. */
+   Height came out of chrome, out of the line's own layout and out of the
+   duplicate price — never out of a control's reach. Stepper, Remove and Add
+   are 32, 32 and 40px against WCAG 2.5.8's 24px web minimum. */
+
+/* The photograph box, matched to .pc-media rather than invented: same square
+   proportion, same --r-lg rounding, same inset hairline instead of a border.
+   Inset because a border would cost layout and shift the image.
+
+   The one deliberate divergence from .pc-media is the fit. The grid uses
+   object-fit:cover at 185px wide, where a crop is invisible. Here the box is
+   165px and the brief is explicit that nothing may be cropped, so it stays
+   contain.
+
+   1:1, the grid's own ratio, and the reason is measurable. Under contain the
+   box's shape decides how large the product renders, and the shape has to
+   serve both photographs: the carrier is portrait, the pillow landscape. In
+   the 4:3 box tried first, the portrait carrier scaled to 66×88 — the box was
+   landscape, the subject was not, and it lost on the short side. Square:
+
+     carrier (3:4) in 4:3   66 × 88     5,800 px²
+     carrier (3:4) in 1:1   92 × 123   11,400 px²   nearly double
+
+   The landscape pillow loses nothing going square, because it was already
+   fitting on width. So 1:1 is not a copy of the grid for consistency's sake;
+   it is the ratio that renders both products largest, and it happens to be
+   what the grid already uses. */
 .mj-up-img {
-  /* 4:3, up from 3:2. With contain the ratio decides how much height the card
-     spends, not how much of the photograph is seen, so this is bought purely
-     for the product's sake: a landscape box shrinks a portrait subject to fit
-     its short side, and both the carrier and the pillow shots are people, not
-     packshots. Squarer means the subject renders larger inside the same card.
-
-     Combined with the card going from 99px wide to 151px, the photograph is
-     about 90% larger on screen than it was — none of which came from changing
-     how it is fitted. The 13px of extra card height is paid for out of the
-     44px the cart line gave back. */
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-lg, 16px);
+  /* Chalk, where .pc-media uses jute, and this is the second place the fit
+     forces a divergence. In the grid the ground is a placeholder that a
+     cover-fitted photograph completely covers, so jute is never actually
+     seen. Under contain it is seen — it becomes the letterbox — and a beige
+     plate around a product reads as an image that failed to load rather than
+     as a product photographed in air. Chalk is the card's own paper, so the
+     space around the product reads as space. The inset hairline stays, so the
+     box keeps the grid's edge either way. */
   background: var(--chalk);
-  /* The reference's tiles work because the product sits in air rather than
-     against the card's edges. These are lifestyle photographs, not packshots,
-     so they need that room even more. */
-  padding: var(--s-2);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  overflow: hidden;
+  /* Space reserved for the badge, rather than the badge laid over the
+     product. 32px is the badge's own bottom edge — 8px inset plus about 21px
+     of pill — with a pixel to spare, and it applies to both cards so the two
+     image areas stay identical. The other three sides get the air the product
+     needs to read as photographed rather than as cropped to the edge. */
+  padding: 32px var(--s-2) var(--s-2);
 }
 
 /* Two classes and an element, deliberately.
@@ -642,18 +719,48 @@
    picture inside the box and lets the card's own chalk show around it. */
 .mj-up-tile .mj-up-img img { object-fit: contain; }
 
+/* .pc-body: top padding only, none on the sides, so the title starts on the
+   photograph's own left edge rather than inboard of it. Two competing left
+   edges inside one small component is what that file calls "the kind of thing
+   that reads as sloppiness without being nameable", and it was exactly what
+   the bordered tile was doing here. */
 .mj-up-body {
-  padding: 8px;
-  gap: 4px;
+  padding: var(--s-2) 0 0;
+  gap: 0;
 }
 
-/* Two lines of title reserved whether the title needs them or not, so the
-   price row and the Add button sit at the same height in both cards. Without
-   it a one-line title lifts its whole card and the pair stops reading as a
-   set — §13's "do not allow one card to become significantly taller than
-   another". Written as a calc rather than 2lh so it does not depend on a unit
-   Safari only learned in 16.4. */
-.mj-up-title { min-height: calc(2 * 1.35 * 12px); }
+/* .pc-title at the size this card can carry: same weight, same line-height,
+   same two-line clamp, same reserved height so a one-line title cannot lift
+   its card above the one beside it. 13px rather than 15 because the card is
+   165px wide against the grid's 185px.
+
+   min-height is 2.7em, the same figure .pc-title uses, so it tracks the font
+   size instead of being pinned to it — and em rather than lh, which Safari
+   only learned in 16.4. */
+.mj-up-title {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -.005em;
+  min-height: 2.7em;
+}
+
+/* The store's own outline button, reused rather than restyled: mj-features.js
+   now renders .cta-outline .cta-block on this button, so the border, the
+   indigo, the radius, the gated hover, the press scale and the pending-label
+   swap all come from theme.css. Only the size is overridden here, which is
+   exactly what .pc-add-btn does in the grid for the same reason.
+
+   40px against the grid's 44px: the button is a secondary action on a
+   secondary surface, and it is 40 to match the row's other controls rather
+   than to save the four pixels. Still a third clear of the 24px web minimum,
+   and it is full-width, so the target is 165×40. */
+.mj-up-add {
+  margin-top: var(--s-3);
+  min-height: 40px;
+  font-size: 13px;
+  padding-inline: var(--s-3);
+}
 
 /* The section reads as a band the drawer holds rather than a box floating in
    it, so the tint bleeds to both edges. --cart-pad is the same variable the
@@ -741,24 +848,39 @@
 
    Type steps down only where the element is a label. The price, the total and
    the checkout button keep their weight, because those are what the shopper
-   came to read — §29's point that the cart's problem was never that it needed
-   more UI, and the fix is not to shrink everything by a notch. */
-.cart-drawer-head { padding: var(--s-3) var(--cart-pad); }
+   came to read — the cart's problem was never that it needed more UI, and the
+   fix is not to shrink everything by a notch.
+
+   Head and body padding each come down one step on the --s scale to pay for
+   the square image box. Steps on the scale, not shaved pixels: --s-2 and
+   --s-3 are values this theme already uses everywhere, and a spacing system
+   that gets edited by twos stops being a system. */
+.cart-drawer-head { padding: var(--s-2) var(--cart-pad); }
 
 .cart-drawer-head h2 { font-size: 17px; }
 
-.cart-drawer-body { padding: var(--s-4) var(--cart-pad); }
+.cart-drawer-body { padding: var(--s-3) var(--cart-pad); }
 
-/* The footer was measured against the reference and came out about 40% taller
-   for the same three things — total, CTA, trust line. All of the difference
-   was padding, so all of it comes out of padding: nothing in here is smaller
-   than it was, and the summary bar keeps its full 44px because it is a button
-   that opens the price breakdown. The safe-area inset stays whole, since on a
-   home-indicator phone it is the only thing keeping the CTA off the bar. */
+/* The footer holds three things — total, CTA, trust line — and was spending
+   184px on them. Every pixel taken back here is spacing, not size:
+
+     8px  the summary bar's own padding-block, --s-2 to 0. It keeps its 44px
+          min-height, so the button it is has lost no target at all; the
+          padding was sitting inside a box already tall enough.
+     4px  the gap under the summary, --s-3 to --s-2
+     2px  the trust line's margin-top, --s-2 to 6px
+
+   Nothing below is smaller than it was. The checkout button keeps .cta's full
+   52px, the total keeps its 18px, "You Save" keeps its 12px, and the
+   safe-area inset stays whole because on a home-indicator phone it is the
+   only thing holding the CTA off the bar. */
 .cart-drawer-foot {
   padding: var(--s-3) var(--cart-pad);
   padding-bottom: calc(var(--s-3) + env(safe-area-inset-bottom));
 }
+
+.cart-drawer .cart-summary { margin-bottom: var(--s-2); }
+.cart-drawer .cart-summary-bar { padding-block: 0; }
 
 /* Remove is positioned in the cart-line block above. The margin rule that used
    to live here is gone with it — it sat later in the file than the new
@@ -772,5 +894,5 @@
 .cart-drawer-note {
   font-size: clamp(10px, 2.9vw, 12px);
   white-space: nowrap;
-  margin-top: var(--s-2);
+  margin-top: 6px;
 }

@@ -302,10 +302,25 @@
                               '</span>' : '') +
                        (off ? '<span class="mj-up-off">' + off + '% OFF</span>' : '') +
                      '</p>' +
-                     '<button type="button" class="mj-up-add" data-mj-add="' + v.id + '">' +
-                       '<span class="mj-up-add-idle">+ Add</span>' +
-                       '<span class="mj-up-add-busy" aria-hidden="true">Adding&hellip;</span>' +
-                       '<span class="visually-hidden"> ' + esc(p.title) + '</span>' +
+                     /* The store's own outline button, class for class, the
+                        same one snippets/product-card.liquid renders in the
+                        collection grid: .cta-outline .cta-block with a
+                        .btn-label / .btn-pending pair that theme.css swaps on
+                        aria-busy. Nothing about how it looks or behaves is
+                        defined in mj-features.css any more.
+
+                        Both spans have to stay direct children of the button
+                        — theme.css keys the swap on
+                        [aria-busy="true"] > .btn-label — and the product name
+                        goes inside the label rather than beside it, so a
+                        screen reader hears one control named "Add to cart —
+                        MamaJoy Baby Carrier" instead of a button and a loose
+                        fragment. */
+                     '<button type="button" class="cta-outline cta-block mj-up-add" data-mj-add="' + v.id + '">' +
+                       '<span class="btn-label">Add to cart' +
+                         '<span class="visually-hidden"> — ' + esc(p.title) + '</span>' +
+                       '</span>' +
+                       '<span class="btn-pending" aria-hidden="true">Adding&hellip;</span>' +
                      '</button>' +
                    '</div>' +
                  '</li>';
