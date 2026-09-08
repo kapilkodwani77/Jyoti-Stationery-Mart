@@ -252,7 +252,13 @@
     var run = ++upsellRun;
 
     cartHandles().then(function (inCart) {
-      if (!inCart.length) return;
+      /* An empty cart used to return here, so emptying the drawer took the
+         cross-sell with it and left a message on a blank panel. It renders in
+         that state too now. Nothing else has to change for it to work:
+         pickSuggestions filters against what is in the cart, and with nothing
+         in the cart it filters nothing out and returns the first two of the
+         priority order — the same carrier and pillow a one-item cart is
+         offered, from the same list, in the same cards. */
       var picks = pickSuggestions(inCart);
       if (!picks.length) return;
 
@@ -524,57 +530,46 @@
   })();
 
   /* =========================================================================
-     7. Cart line: suppress the line total when it repeats the unit price
+     7. Keep the cross-sell present through every repaint
 
-     theme.js renders both figures on every line — the unit price with its
-     struck MRP, and the line total. At quantity 1 they are the same number
-     printed twice, which is the duplication the cart brief calls out. At any
-     other quantity the total is the figure that actually differs and has to
-     stay.
+     The cross-sell is painted on the two timers that follow a click on the
+     cart trigger. That covers opening the drawer, and it covered every state
+     that mattered while the section was hidden on an empty cart.
 
-     CSS cannot decide this on its own. `[data-cart-qty-input][value="1"]`
-     looks like it would, but theme.js's patchTotals path updates the field
-     with `input.value = item.quantity` — the property, not the attribute — so
-     the markup keeps saying value="1" after the shopper presses +. An
-     attribute selector would read the state the cart had two changes ago.
+     It stops covering them the moment the section is meant to survive an
+     empty cart, because the most important repaint has no click behind it:
+     removing the last item. theme.js re-renders the body itself, the
+     cross-sell goes with the innerHTML it was appended to, and nothing fires
+     to bring it back until the shopper closes and reopens the drawer. The
+     empty state would show the message and the blank panel it was supposed to
+     stop showing.
 
-     So the quantity is read from the live property and stamped on the row,
-     and the stylesheet keys off the stamp.
+     So the trigger is the repaint rather than the click. Observing the body
+     catches every path that rewrites it — renderDrawer, patchTotals, a
+     removal, the skeleton on first open — without patching any of them, which
+     is the same reason the pincode above uses an observer.
 
-     A MutationObserver rather than handlers on the stepper, for the same
-     reason the pincode uses one: the drawer is repainted by several paths —
-     the full renderDrawer, the patchTotals diff, a removal, the drawer's own
-     first open — and observing the body catches all of them without patching
-     any. patchTotals writes .cart-line-price and .cart-line-total before it
-     writes input.value, but the callback is a microtask after the whole
-     function returns, so the value read here is the settled one.
-
-     childList and characterData only. The stamp is an attribute, attributes
-     are not observed, and the observer therefore cannot see its own writes.
+     Termination, since this schedules a write into the thing it observes:
+     renderUpsell's own append is a mutation, and the callback it fires finds
+     [data-mj-upsell] present and does nothing. One cycle, not a loop. The
+     debounce collapses a burst of mutations into a single render, and the run
+     token inside renderUpsell drops any result that a newer render has
+     already superseded.
      ========================================================================= */
-  (function lineTotalDedupe() {
+  (function keepUpsell() {
     var body = document.querySelector('[data-cart-body]');
     if (!body || typeof MutationObserver === 'undefined') return;
 
-    function stamp() {
-      var lines = body.querySelectorAll('.cart-line');
-      for (var i = 0; i < lines.length; i++) {
-        var input = lines[i].querySelector('[data-cart-qty-input]');
-        /* No input means the server-rendered line, which prints "Qty N" and
-           no total at all, so there is nothing to suppress. */
-        var dup = !!input && String(input.value).trim() === '1';
-        if (dup) lines[i].setAttribute('data-mj-line-dup', '');
-        else lines[i].removeAttribute('data-mj-line-dup');
-      }
+    var pending = null;
+
+    function ensure() {
+      if (document.querySelector('[data-mj-upsell]')) return;
+      clearTimeout(pending);
+      pending = setTimeout(renderUpsell, 60);
     }
 
-    new MutationObserver(stamp).observe(body, {
-      childList: true,
-      subtree: true,
-      characterData: true
-    });
-
-    stamp();
+    new MutationObserver(ensure).observe(body, { childList: true, subtree: true });
+    ensure();
   })();
 
   void RM;

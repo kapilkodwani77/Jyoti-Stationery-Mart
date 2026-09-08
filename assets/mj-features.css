@@ -199,10 +199,10 @@
    stop applying rather than half applying — a failure that can be seen and
    fixed.
 
-   One selector is deliberately inflated: .mj-up-tile .mj-up-img img, which
-   out-ranks the base object-fit rather than tying with it. That one had a
-   visible bug resting on the tie, and a coin-flip is not a place to leave
-   one. It is called out where it appears. */
+   Nothing here is specificity-inflated any more. The one rule that was —
+   .mj-up-tile .mj-up-img img, forcing object-fit:contain over the base cover
+   — is gone with the switch back to cover, so every override in this file now
+   wins on source order alone. */
 
 /* 88% of the viewport on a phone, 420px on a desktop, never under 300px.
 
@@ -254,7 +254,29 @@
    it measures about 5.7:1 against --chalk, past the 4.5:1 floor for normal
    text. The "You Save" label stays exactly as it was, so the meaning never
    rests on the colour alone for anyone who cannot separate the two. */
-.cart-summary-bar-save { color: var(--ok); }
+.cart-summary-bar-save { color: var(--ok); font-weight: 600; }
+
+/* ---- weight, on three figures and no others -------------------------------
+   The drawer had one weight for almost every number in it, so nothing in the
+   price hierarchy was carried by type — only by size and colour. Three
+   figures step up to 600, chosen because each is an answer rather than a
+   reference:
+
+     "You Save ₹1,202"   the outcome of the whole cart      (above)
+     the selling price   what is actually being charged
+     the discount        already 600; unchanged, listed for completeness
+
+   Deliberately NOT bolded, so the pairs stay legible as pairs: the struck
+   MRP on the line, the struck MRP in each tile, the "Total Price" label, the
+   product titles, and the trust line. A struck figure at 600 competes with
+   the price it is meant to qualify, which is the opposite of the hierarchy
+   asked for.
+
+   600 rather than 700: --font-body's heaviest face in this theme is Switzer
+   600, and 700 would be synthesised by the browser. On a theme whose faces
+   are currently 404ing that synthesis is what would actually render, and a
+   faux-bold numeral is visibly worse than a real semibold one. */
+.cart-drawer .cart-line-price .price-now { font-weight: 600; }
 
 /* ---- the cart line --------------------------------------------------------
    110px, against the 207px it started at, and the composition is the point
@@ -270,9 +292,8 @@
      12px  the stepper is 32px tall rather than 44
       8px  vertical padding, --s-4 to --s-3
      18px  the title clamps to one line rather than two
-     20px  the line total is hidden at quantity 1, where it is the unit price
-           printed twice — and shown at every other quantity, where it is the
-           figure that differs
+     20px  the line total is not painted at all (see below); the drawer
+           states the cost on the line and again in the footer
      15px  the thumbnail, 72px to 64px. Its job is to confirm which product
            this is; it was sized like a hero.
     -20px  given back: the price moved off the title's row onto its own, which
@@ -283,8 +304,8 @@
    is taken out of a control's reach.
 
    Two columns, not three. The third track held the line total and cost about
-   48px plus a gap; the total moves into the text column's second row instead,
-   where it costs height only when it is shown at all.
+   48px plus a gap. The total is no longer painted at all, so the track it
+   needed is gone with it.
 
    minmax(0, 1fr) is load-bearing. A bare 1fr carries min-width:auto, so the
    track refuses to shrink under its min-content and pushes the overflow
@@ -465,14 +486,19 @@
 .cart-drawer .mj-up-add,
 .cart-drawer .cta { touch-action: manipulation; }
 
-/* At quantity 1 the line total is the unit price repeated verbatim, which is
-   the duplication the brief calls out. It is hidden there and shown at every
-   other quantity, where it is the figure that actually differs. The stamp is
-   set from JavaScript rather than from an attribute selector because theme.js
-   updates the input by property (`input.value = item.quantity`) on the
-   patchTotals path, so the value attribute in the markup goes stale the
-   moment anyone touches +. See mj-features.js. */
-.cart-line[data-mj-line-dup] .cart-line-total { display: none; }
+/* The per-line total is not rendered in the drawer at any quantity.
+
+   It was hidden at quantity 1 and shown from 2 up, on the reasoning that the
+   multiplied figure is the one that differs. In use it reads as a third
+   number under the Remove link with nothing naming it, and the drawer already
+   answers what it costs twice over — the unit price on the line, the Total
+   Price in the footer.
+
+   theme.js still renders and still updates the element; only the paint is
+   suppressed, so nothing about the cart's arithmetic changes. The footer
+   total and "You Save" are computed by theme.js from Shopify's own cart
+   object and never read this element. */
+.cart-drawer .cart-line-total { display: none; }
 
 /* 320px is the narrowest phone still in service and the drawer's 300px floor
    takes over there, leaving a 192px text column. The stepper and Remove need
@@ -504,8 +530,8 @@
    the value was not.
 
    --ok, the same green as "You Save" in the footer and the pincode
-   confirmation, so a saving reads one way throughout the drawer. 5.0:1 on the
-   tinted panel. */
+   confirmation, so a saving reads one way throughout the drawer. 5.3:1 on the
+   mist the section now sits on. */
 .mj-up-off {
   color: var(--ok);
   font-size: 11px;
@@ -520,11 +546,12 @@
    mj-features.js, not written into a product card, so designating a different
    product is one line in one place.
 
-   This is .pc-badge, the store's own badge: chalk pill, 100px radius, 11px
-   500 uppercase with .05em tracking. Not a lookalike — the same values, from
+   This is .pc-badge, the store's own badge: chalk pill, 100px radius, weight
+   500, uppercase with .05em tracking. Not a lookalike — the same values, from
    the same file, because that badge already sits on this store's photography
-   everywhere else and this one had no reason to be a different object. Two
-   values are one step tighter than the grid's, both noted at the declaration.
+   everywhere else and this one had no reason to be a different object. Three
+   things differ from the grid's, each noted at its declaration: the corner,
+   the font size and the inline padding.
 
    The filled block is gone, and component-product-card.css records why it
    should never have been one: the sale badge there used to be solid indigo
@@ -537,28 +564,38 @@
    --chalk measures 6.5:1, past the 4.5:1 floor, and it is the same brick the
    stock badge above already uses. Prominent, restrained, no new colour.
 
-   Obstruction is solved by reserved space, not by placement luck. .mj-up-img
-   carries 32px of top padding — the pill's own 21px plus its 8px inset, plus
-   clearance — and object-fit:contain fits the product into what is left, so
-   the product can never rise under the badge whatever shape the photograph
-   is. Placement alone is not enough here and the measurement proved it: at
-   4:3 with 28px reserved, the contained carrier still crossed into the badge
-   by 4px. */
+   Top-right, as asked, where the grid's own badge sits top-left. It sits on
+   the photograph again now that the image fills its box — the reserved strip
+   is gone with the padding — and the top-right corner is the right place for
+   it on this catalogue: all three products are centred studio shots with
+   clear headroom, so the corner is background rather than subject. The pill
+   is opaque chalk with a hairline, which is what lets it read on a
+   photograph without a shadow or a scrim under it.
+
+   If a photograph with a subject in that corner is ever added, this needs
+   revisiting — placement over an image is a per-photograph judgement, not a
+   rule that holds by construction. */
 .mj-up-flag {
   position: absolute;
   top: var(--s-2);
-  left: var(--s-2);
+  right: var(--s-2);
+  left: auto;
   z-index: 3;
   background: var(--chalk);
-  /* --edge-strong, not --edge. Reserving space above the product means the
-     pill always lands on the card's own chalk rather than on photography, and
-     a chalk pill on chalk is nothing but its hairline — at --edge it very
-     nearly disappeared. .pc-badge--sale had the same problem and took the
-     same answer: coloured type and "a slightly firmer hairline rather than
-     volume". */
+  /* --edge-strong, not --edge. These photographs are studio shots on white,
+     so a chalk pill on one is very nearly a chalk pill on chalk, and at
+     --edge its boundary all but disappeared. .pc-badge--sale sits on the same
+     photography and took the same answer: coloured type and "a slightly
+     firmer hairline rather than volume". */
   border: 1px solid var(--edge-strong);
   color: var(--danger);
-  font-size: 11px;
+  /* 10px, where .pc-badge is 11. "BEST SELLER" is eleven characters against
+     the grid badge's "SAVE 40%", and at 11px with .05em tracking the pill ran
+     93px into a 149px image box — 62% of the card's width, which is a label
+     competing with the photograph it sits on. 10px brings it to about 54%.
+     It is the same size as .mj-up-stock two rules down, so the section's two
+     small red labels are one size rather than two. */
+  font-size: 10px;
   font-weight: 500;
   letter-spacing: .05em;
   text-transform: uppercase;
@@ -566,8 +603,7 @@
   /* --s-2 rather than .pc-badge's --s-3 on the inline axis. Same pill, one
      step tighter, because this card is 165px against the grid's 185px and at
      the full padding the badge ran to nearly half the card's width. The
-     vertical padding is unchanged, so the pill keeps its height and the 32px
-     reserved above the product still clears it. */
+     vertical padding is untouched, so the pill keeps the grid's height. */
   padding: var(--s-1) var(--s-2);
   border-radius: 100px;
   white-space: nowrap;
@@ -623,7 +659,7 @@
 .mj-up-price {
   margin-top: 0;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink);
 }
 
@@ -663,61 +699,42 @@
    duplicate price — never out of a control's reach. Stepper, Remove and Add
    are 32, 32 and 40px against WCAG 2.5.8's 24px web minimum. */
 
-/* The photograph box, matched to .pc-media rather than invented: same square
-   proportion, same --r-lg rounding, same inset hairline instead of a border.
-   Inset because a border would cost layout and shift the image.
+/* .pc-media, now with no divergence at all: square, --r-lg rounding, --jute
+   ground, inset hairline, and the photograph filling the box edge to edge.
 
-   The one deliberate divergence from .pc-media is the fit. The grid uses
-   object-fit:cover at 185px wide, where a crop is invisible. Here the box is
-   165px and the brief is explicit that nothing may be cropped, so it stays
-   contain.
+   The white space around the product was mine, not the photograph's. Every
+   product image in this catalogue is already square — the carrier and pillow
+   are 1254×1254, the mat 983×983, checked against the Admin API — and a
+   square source in a square box cannot be cropped by object-fit:cover,
+   because there is no overflow on either axis to trim. Contain and cover
+   render the identical pixels here.
 
-   1:1, the grid's own ratio, and the reason is measurable. Under contain the
-   box's shape decides how large the product renders, and the shape has to
-   serve both photographs: the carrier is portrait, the pillow landscape. In
-   the 4:3 box tried first, the portrait carrier scaled to 66×88 — the box was
-   landscape, the subject was not, and it lost on the short side. Square:
+   So the two things that were shrinking the product were both this file's:
+   32px of top padding reserved for the badge, and 8px on the other three
+   sides. Removing them gives the product the whole 165px box, about 45% more
+   area, and it now sits in its frame the way the grid's cards do.
 
-     carrier (3:4) in 4:3   66 × 88     5,800 px²
-     carrier (3:4) in 1:1   92 × 123   11,400 px²   nearly double
+   The ground goes back to --jute for the same reason: it is a placeholder
+   under an image that covers it completely, so it is never seen. It was only
+   ever visible because contain plus padding left a letterbox to see it in.
 
-   The landscape pillow loses nothing going square, because it was already
-   fitting on width. So 1:1 is not a copy of the grid for consistency's sake;
-   it is the ratio that renders both products largest, and it happens to be
-   what the grid already uses. */
+   Cover rather than contain is kept deliberately, not carelessly: if a
+   non-square photograph is ever added to this catalogue it would be trimmed
+   here, exactly as it would be in the collection grid, which is the
+   behaviour the store already accepts everywhere else. */
 .mj-up-img {
   aspect-ratio: 1 / 1;
   border-radius: var(--r-lg, 16px);
-  /* Chalk, where .pc-media uses jute, and this is the second place the fit
-     forces a divergence. In the grid the ground is a placeholder that a
-     cover-fitted photograph completely covers, so jute is never actually
-     seen. Under contain it is seen — it becomes the letterbox — and a beige
-     plate around a product reads as an image that failed to load rather than
-     as a product photographed in air. Chalk is the card's own paper, so the
-     space around the product reads as space. The inset hairline stays, so the
-     box keeps the grid's edge either way. */
-  background: var(--chalk);
+  background: var(--jute);
   box-shadow: inset 0 0 0 1px var(--edge);
   overflow: hidden;
-  /* Space reserved for the badge, rather than the badge laid over the
-     product. 32px is the badge's own bottom edge — 8px inset plus about 21px
-     of pill — with a pixel to spare, and it applies to both cards so the two
-     image areas stay identical. The other three sides get the air the product
-     needs to read as photographed rather than as cropped to the edge. */
-  padding: 32px var(--s-2) var(--s-2);
+  padding: 0;
 }
 
-/* Two classes and an element, deliberately.
-
-   The base rule is `.mj-up-img img { object-fit: cover }` — identical
-   specificity to a plain override, which means the two were decided purely on
-   source order. That is a coin-flip to leave a visible bug resting on, and it
-   was still cropping in practice. Out-ranking it outright settles it.
-
-   contain, not cover: cover trims the photograph to the box's shape, which on
-   a lifestyle shot takes the top of somebody's head off. contain fits the
-   picture inside the box and lets the card's own chalk show around it. */
-.mj-up-tile .mj-up-img img { object-fit: contain; }
+/* The override that forced contain is gone, so the base
+   `.mj-up-img img { object-fit: cover }` — the same declaration .pc-media img
+   carries — is what applies. See the note above on why cover is safe with a
+   square source in a square box. */
 
 /* .pc-body: top padding only, none on the sides, so the title starts on the
    photograph's own left edge rather than inboard of it. Two competing left
@@ -776,16 +793,42 @@
   margin-inline: calc(var(--cart-pad) * -1);
   padding: var(--s-3) var(--cart-pad);
   border-top: 1px solid var(--edge);
-  /* MamaJoy's own --indigo at 6%, not a new blue. Over --chalk that resolves
-     to about #E5E6E4, where --ink reads 14.5:1, --ink-2 5.2:1 and --ok 5.0:1.
-     Every one clears the 4.5:1 floor, so nothing inside the section had to be
-     restyled to survive the tint — which is the test of whether a background
-     belongs in a system or is being imposed on it.
 
-     The flat value first for browsers without color-mix; they get the same
-     colour, just not derived. */
-  background: #E5E6E4;
-  background: color-mix(in srgb, var(--indigo) 6%, var(--chalk));
+  /* #E9ECF1 is .surf-mist, theme.css line 175 — the store's own cool surface,
+     and the exact ground the product grid sits on. templates/index.json sets
+     "surface": "mist" on that section, which is why the collection screenshot
+     shows those cards on a blue-grey field.
+
+     Previously this was color-mix(--indigo 6%, --chalk), which derived a
+     plausible tint and landed on #E5E6E4 — a warm grey-green, not the blue.
+     Deriving a colour that already exists as a named surface is how a second,
+     nearly-identical value enters a palette. Taken literally now, with the
+     source named, because there is no token for it: .surf-mist is a class
+     carrying a literal, not a custom property.
+
+     surface-class.liquid is explicit that mist is "deliberately offered on
+     fewer sections than the other two" and that its value is being the one
+     temperature change on the page. The cross-sell is the drawer's one
+     shopping block among cart chrome, which is the same job.
+
+     Contrast on it, all past the 4.5:1 floor, so nothing inside needed
+     restyling to survive the change: --ink 15.5:1, --ink-2 5.7:1,
+     --ok 5.3:1, --danger 5.8:1. */
+  background: #E9ECF1;
+
+  /* Fills whatever height is left in the body rather than stopping short and
+     leaving a band of dead chalk above the footer — the empty area visible
+     under the cross-sell in the qty-2 screenshot. Paired with the flex column
+     on .cart-drawer-body below. 1 0 auto, so it grows into slack but never
+     shrinks under its own content when the body has to scroll. */
+  flex: 1 0 auto;
+}
+
+/* The body is the flex column that makes the line above work. It was a plain
+   block, so its leftover height simply sat empty under the last child. */
+.cart-drawer-body {
+  display: flex;
+  flex-direction: column;
 }
 
 /* Heading and stock badge share one row: the heading is the half allowed to
@@ -806,8 +849,8 @@
 
 .mj-up-head-label { min-width: 0; }
 
-/* --danger, the theme's existing brick red: 5.5:1 on the tinted panel, past
-   the 4.5:1 floor. No new colour. */
+/* --danger, the theme's existing brick red: 5.8:1 on the mist the section
+   now sits on, past the 4.5:1 floor. No new colour. */
 .mj-up-stock {
   white-space: nowrap;
   color: var(--danger);
@@ -896,3 +939,24 @@
   white-space: nowrap;
   margin-top: 6px;
 }
+
+/* ---- the empty cart -------------------------------------------------------
+   theme.css gives .cart-empty --s-9 of vertical padding — 96px top and
+   bottom. That is right on the /cart page, where the block is alone on a full
+   window and the air is what stops it looking abandoned. In the drawer it now
+   has the cross-sell under it, and 192px of padding pushed that off the
+   screen entirely: the empty drawer was a message, then most of a phone
+   height of nothing.
+
+   --s-6 is 32px, which keeps the message clear of the header and lands the
+   cross-sell inside the fold. Only the drawer's copy changes; /cart keeps
+   its own.
+
+   The footer is hidden in this state by theme.js, so there is no checkout
+   button for the block to crowd. */
+.cart-drawer .cart-empty { padding: var(--s-6) var(--s-4); }
+
+/* Start shopping keeps its full 52px .cta height and sits under the message,
+   where theme.js renders it; only the gap above it comes in a step, since the
+   block is no longer the only thing in the panel. */
+.cart-drawer .cart-empty-cta { margin-top: var(--s-5); }
