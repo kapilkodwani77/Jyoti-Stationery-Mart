@@ -546,65 +546,79 @@
    mj-features.js, not written into a product card, so designating a different
    product is one line in one place.
 
-   This is .pc-badge, the store's own badge: chalk pill, 100px radius, weight
-   500, uppercase with .05em tracking. Not a lookalike — the same values, from
-   the same file, because that badge already sits on this store's photography
-   everywhere else and this one had no reason to be a different object. Three
-   things differ from the grid's, each noted at its declaration: the corner,
-   the font size and the inline padding.
+   The shape is .pc-badge's — a 100px pill, uppercase, tracked — so it reads
+   as the same family of object as the badge already on this store's grid
+   cards. Everything else about it now diverges, and each divergence is noted
+   at its own declaration: the corner, the fill, the type colour, the border,
+   the size, the weight, the tracking and the padding. That is a long list for
+   a badge, and it is worth being honest that this is no longer .pc-badge with
+   adjustments; it is the grid badge's silhouette carrying a different
+   treatment, because a 165px card in a drawer is a different problem from a
+   185px card on a page.
 
-   The filled block is gone, and component-product-card.css records why it
-   should never have been one: the sale badge there used to be solid indigo
-   and was deliberately quieted because it "out-shouted the photography it was
-   sitting on". A filled red rectangle over a photograph of a parent and child
-   is that same mistake, made again on a smaller card. A chalk pill sits on
-   the picture instead of blocking it.
+   Solid --danger with --chalk type, on instruction. That reverses the chalk
+   pill this rule carried for one pass, and the earlier reasoning is worth
+   keeping rather than deleting: component-product-card.css quieted its own
+   sale badge from solid indigo because it "out-shouted the photography it
+   was sitting on", and a filled badge on a photograph of a parent and child
+   is the same risk. What makes it safe here is size. A filled badge that is
+   small and tucked into a corner reads as a product flag; the one that
+   out-shouted was full-size and mid-frame. So the fill comes back and the
+   footprint comes down with it — the two changes are one decision, not two.
 
-   The red survives as the type colour rather than the fill: --danger on
-   --chalk measures 6.5:1, past the 4.5:1 floor, and it is the same brick the
-   stock badge above already uses. Prominent, restrained, no new colour.
+   --chalk on --danger measures 6.1:1, past the 4.5:1 floor, and both are
+   values the theme already holds. No new colour, no shadow, no scrim: a
+   solid fill needs none of the help an opaque pill on a light photograph
+   needed, which is also why the hairline is gone.
 
-   Top-right, as asked, where the grid's own badge sits top-left. It sits on
-   the photograph again now that the image fills its box — the reserved strip
-   is gone with the padding — and the top-right corner is the right place for
-   it on this catalogue: all three products are centred studio shots with
-   clear headroom, so the corner is background rather than subject. The pill
-   is opaque chalk with a hairline, which is what lets it read on a
-   photograph without a shadow or a scrim under it.
+   Top-right, tucked to an 8px inset. The three products are centred studio
+   shots, so the corner is background rather than subject — but this is a
+   per-photograph judgement rather than something the layout guarantees, and
+   the carrier shot is the one to watch, because the baby's raised hand is the
+   nearest thing to that corner. Making the badge smaller is what buys the
+   clearance: 80x15px now against the 93x21 it started at, which is 45% less
+   of the photograph covered.
 
    If a photograph with a subject in that corner is ever added, this needs
-   revisiting — placement over an image is a per-photograph judgement, not a
-   rule that holds by construction. */
+   revisiting. */
 .mj-up-flag {
   position: absolute;
   top: var(--s-2);
   right: var(--s-2);
   left: auto;
   z-index: 3;
-  background: var(--chalk);
-  /* --edge-strong, not --edge. These photographs are studio shots on white,
-     so a chalk pill on one is very nearly a chalk pill on chalk, and at
-     --edge its boundary all but disappeared. .pc-badge--sale sits on the same
-     photography and took the same answer: coloured type and "a slightly
-     firmer hairline rather than volume". */
-  border: 1px solid var(--edge-strong);
-  color: var(--danger);
-  /* 10px, where .pc-badge is 11. "BEST SELLER" is eleven characters against
-     the grid badge's "SAVE 40%", and at 11px with .05em tracking the pill ran
-     93px into a 149px image box — 62% of the card's width, which is a label
-     competing with the photograph it sits on. 10px brings it to about 54%.
-     It is the same size as .mj-up-stock two rules down, so the section's two
-     small red labels are one size rather than two. */
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: .05em;
+  background: var(--danger);
+  color: var(--chalk);
+  /* No border. The hairline existed to give an opaque chalk pill an edge
+     against a white studio background; a solid brick fill is its own edge. */
+  border: 0;
+  /* 9px and weight 600, against the 10px/500 it carried and .pc-badge's
+     11px/500. "BEST SELLER" is eleven characters where the grid badge's
+     "SAVE 40%" is eight, so matching the grid's size is what made this one
+     wide rather than what made it consistent. The weight goes up as the size
+     comes down: reversed out of a solid fill, 600 is what keeps 9px legible,
+     and it is the same 600 the section's other small labels use.
+
+     Widths across the three passes, in a 149px image box:
+
+       93 x 21   11px / .05em / --s-3 padding    62% of the card
+       88 x 21   10px / .05em / --s-2 padding    59%
+       80 x 15    9px / .04em / 3px 7px          53%
+
+     Measured at a 390px phone; the percentage falls at wider viewports and
+     rises to 62% at 320px, where the card itself is 128px.
+
+     Small enough to sit in the corner and clear the subject, large enough to
+     read — which is the whole brief for this badge. */
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .04em;
   text-transform: uppercase;
   line-height: 1;
-  /* --s-2 rather than .pc-badge's --s-3 on the inline axis. Same pill, one
-     step tighter, because this card is 165px against the grid's 185px and at
-     the full padding the badge ran to nearly half the card's width. The
-     vertical padding is untouched, so the pill keeps the grid's height. */
-  padding: var(--s-1) var(--s-2);
+  /* Raw px rather than --s steps, matching .mj-up-stock's own 2px 6px two
+     rules down: at this size the 4px scale step is a quarter of the badge's
+     height, so the scale stops being the right instrument. */
+  padding: 3px 7px;
   border-radius: 100px;
   white-space: nowrap;
 }
